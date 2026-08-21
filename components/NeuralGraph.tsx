@@ -226,8 +226,8 @@ export function NeuralGraph({
                 >
                   <title>{labelById.get(id) ?? id}</title>
                   <circle r={Math.max(8, r + 5)} fill="transparent" />
-                  <circle r={r} fill={isSelf ? '#e35c35' : DOT_COLOR} fillOpacity={isSelf ? 1 : 0.92} />
-                  {isSelf && <circle r={r + 5} fill="none" stroke="#e35c35" strokeWidth={0.8} opacity={0.5} />}
+                  <circle r={r} fill={isSelf ? 'var(--kg-mem, #e35c35)' : DOT_COLOR} fillOpacity={isSelf ? 1 : 0.92} />
+                  {isSelf && <circle r={r + 5} fill="none" stroke="var(--kg-mem, #e35c35)" strokeWidth={0.8} opacity={0.5} />}
                   {/* input layer: monospace label + tiny sparkline */}
                   {layer.kind === 'tool' && (
                     <>
@@ -250,7 +250,7 @@ export function NeuralGraph({
                     </text>
                   )}
                   {isSelf && (
-                    <text y={24} textAnchor="middle" fontFamily="var(--font-mono)" fontSize={9.5} fontWeight={600} fill="#e35c35">
+                    <text y={24} textAnchor="middle" fontFamily="var(--font-mono)" fontSize={9.5} fontWeight={600} fill="var(--kg-mem, #e35c35)">
                       Notes
                     </text>
                   )}

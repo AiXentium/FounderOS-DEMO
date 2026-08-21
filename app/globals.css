@@ -238,44 +238,61 @@
    read clearly on white. */
 :root[data-theme='mono-light'] {
   color-scheme: light;
-  --bg: #f5f6f8; /* soft cool-grey canvas — no white glare */
-  --bg-2: #eef0f3;
+  /* G-Brain blue pass (2026-08-20): anchored to the inverted knowledge-graph
+     palette — the orange core inverts to steel azure (invert(#E07B39) ≈
+     #1F84C6), the ground to a cool blue-white. */
+  --bg: #f2f6f9; /* cool blue-white canvas — the inverted graph's ground */
+  --bg-2: #e9eff5;
   --surface: #ffffff; /* cards are white, lifted off the canvas */
-  --surface-2: #eceef1; /* hover fill (nav rows, list rows) */
-  --surface-3: #e2e5ea;
-  --border: #d6dae0; /* soft grey rules — clear but not harsh */
-  --border-strong: #bcc2ca; /* hover / emphasis / chips / kbd */
-  --text: #1b1e23; /* primary — near-black, soft on the eyes */
-  --text-2: #4c525b; /* muted — clearly legible mid grey */
-  --text-3: #737a84; /* dim — still readable, no wash-out */
-  /* Accent is a dark slate: active nav, primary badges, inverted fills. */
-  --accent: #1b1e23;
-  --accent-2: #363b42;
+  --surface-2: #e9eff4; /* hover fill (nav rows, list rows) */
+  --surface-3: #dce6ee;
+  --border: #cfdce6; /* blue-grey rules — clear but not harsh */
+  --border-strong: #afc3d2; /* hover / emphasis / chips / kbd */
+  --text: #16222c; /* primary — dark blue-slate ink */
+  --text-2: #47596b; /* muted — legible slate blue */
+  --text-3: #70839a; /* dim — still readable, no wash-out */
+  /* Accent is the graph's steel azure: active nav, badges, inverted fills. */
+  --accent: #1f84c6;
+  --accent-2: #1a70a9;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(27, 30, 35, 0.06);
-  --accent-line: rgba(27, 30, 35, 0.16);
-  /* Status stays vivid so it pops against the neutral greys. */
+  --accent-soft: rgba(31, 132, 198, 0.08);
+  --accent-line: rgba(31, 132, 198, 0.28);
+  /* Status stays semantic so a live system still reads "green". */
   --ok: #17924e;
   --warn: #b7791f;
   --err: #d92d20;
-  --glow: 0 1px 2px rgba(27, 30, 35, 0.06); /* a whisper of lift on cards */
+  --glow: 0 1px 2px rgba(22, 34, 44, 0.06); /* a whisper of lift on cards */
   --grid: transparent;
-  --hairline: #e7e9ed; /* soft row dividers */
-  /* Viz carries real color here (not the Monolith grey rule) so graphs read. */
+  --hairline: #e3eaf1; /* soft blue-tinted row dividers */
+  /* Viz stays in the graph's cool family: violet / azure / teal. */
   --brain-1: #6d5cf0;
-  --brain-2: #2b8fd8;
-  --brain-3: #17924e;
+  --brain-2: #1f84c6;
+  --brain-3: #2dbdaf;
   --funnel-hot: #d92d20;
   --funnel-warm: #b7791f;
   --funnel-cold: #6b83a3;
-  --funnel-s0: #2b8fd8;
+  --funnel-s0: #1f84c6;
   --funnel-s1: #6d5cf0;
   --funnel-s2: #b7791f;
   --funnel-s3: #0f9c8a;
   --funnel-s4: #17924e;
   --funnel-s5: #c04a8a;
   --funnel-s6: #7a828c;
-  --kg-tool: #d92d20;
+  /* Knowledge graph reads inverted: cyan tools, ink agents, royal-blue
+     humans, teal memory core, and every life-area hue swapped for its
+     optical inversion (see lib/kg-colors.ts). */
+  --kg-tool: #4cc4d0;
+  --kg-person: #2f5fd0;
+  --kg-employee: #16222c;
+  --kg-mem: #2fa8bc;
+  --kg-synapse: #7fd2df;
+  --kg-c-ef4444: #14b3b3; /* Sales red → cyan */
+  --kg-c-3b82f6: #c08b1e; /* Communications blue → amber */
+  --kg-c-22c55e: #cf3f9a; /* Finances green → magenta */
+  --kg-c-a855f7: #79ab19; /* TECH purple → lime */
+  --kg-c-14b8a6: #d9445c; /* Clients teal → crimson */
+  --kg-c-f59e0b: #2f6fe0; /* Marketing amber → royal blue */
+  --kg-c-fafafa: #16222c; /* knowledge white → ink */
 }
 
 /* Row-divider hairlines for every theme (mono sets its own above, and the

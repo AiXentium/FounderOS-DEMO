@@ -12,6 +12,7 @@ import {
   type Simulation,
 } from 'd3-force';
 import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardList, Maximize2, Minimize2, Sparkles, UserRound, Users, Wrench, X, type LucideIcon, Bot, Cpu} from 'lucide-react';
+import { themedNodeColor } from '@/lib/kg-colors';
 import { DEPT_EXEC_TITLES, graphDirectory, orderGraphDepartments, SELF_ID, toolSlugOf, workerNodeId, type DirectoryGroup, type KGNode, type KGNodeKind, type KnowledgeGraph as KGData } from '@/lib/knowledge-graph';
 import { ACTION_LENSES, ENTITY_LENSES, FUNCTION_LENSES, lensNodeSet, type Lens } from '@/lib/graph-lens';
 import { GraphDirectory } from '@/components/GraphDirectory';
@@ -56,8 +57,8 @@ const CAT: Record<KGNodeKind, { color: string; Icon: LucideIcon; label: string; 
   // wearing the OS emblem in white (the operator, 2026-08-07: no green)
   board: { color: 'var(--text)', Icon: Cpu, label: 'Board agents', r: 10 },
   task: { color: 'var(--muted)', Icon: ClipboardList, label: 'SOP tasks', r: 7 },
-  person: { color: 'var(--warn)', Icon: UserRound, label: 'Humans', r: 10 },
-  employee: { color: 'var(--accent)', Icon: Bot, label: 'AI agents', r: 10 },
+  person: { color: 'var(--kg-person, var(--warn))', Icon: UserRound, label: 'Humans', r: 10 },
+  employee: { color: 'var(--kg-employee, var(--accent))', Icon: Bot, label: 'AI agents', r: 10 },
   tool: { color: 'var(--kg-tool)', Icon: Wrench, label: 'Tools', r: 7.5 },
 };
 
@@ -78,7 +79,7 @@ const TIER_OPACITY: Record<KGNodeKind, number> = {
 // legend (the operator, 2026-08-06) — the core speaks for itself.
 const LEGEND_KINDS: KGNodeKind[] = ['team', 'board', 'task', 'person', 'employee', 'tool'];
 
-const nodeColor = (n: KGNode) => n.color ?? CAT[n.kind].color;
+const nodeColor = (n: KGNode) => (n.color ? themedNodeColor(n.color) : CAT[n.kind].color);
 
 // Each segment of the chain gets its own visible colour: the operator → department
 // (white) → SOP tasks (muted) → the worker who does the job (accent) → tools
@@ -134,11 +135,11 @@ const hashStr = (s: string) => {
 // The whole vault burns one HARD reddish orange (the operator's call, 2026-07-06)
 // — the per-node shimmer opacity plus the synapse sparks carry all the
 // variation. Hubs are the same fire, just bigger, with their radiating spokes.
-const HUB_COLOR = '#e35c35';
-const NOTE_COLOR = '#e35c35';
-const ORPHAN_COLOR = '#e35c35'; // rim dust dims via its lower fill opacity
+const HUB_COLOR = 'var(--kg-mem, #e35c35)';
+const NOTE_COLOR = 'var(--kg-mem, #e35c35)';
+const ORPHAN_COLOR = 'var(--kg-mem, #e35c35)'; // rim dust dims via its lower fill opacity
 // the bright traveling sparks that fire along the links like synapses
-const SYNAPSE_COLOR = '#ffb08a';
+const SYNAPSE_COLOR = 'var(--kg-synapse, #ffb08a)';
 const SYNAPSE_N = 14;
 
 const memColor = (m: { id: string; cluster: number; links: number; type: string }) =>
@@ -1158,7 +1159,7 @@ export function KnowledgeGraph({
       orderGraphDepartments(
         graph.nodes.filter((n) => n.kind === 'team'),
         (t) => t.id.replace('team:', ''),
-      ).map((t) => ({ id: t.id, color: t.color ?? 'var(--brain-1)' })),
+      ).map((t) => ({ id: t.id, color: t.color ? themedNodeColor(t.color) : 'var(--brain-1)' })),
     [graph],
   );
   const commRefs = useRef(new Map<string, SVGCircleElement>());
@@ -1428,7 +1429,7 @@ export function KnowledgeGraph({
           teamId: t.id,
           deptId,
           name: t.label,
-          color: t.color ?? 'var(--brain-1)',
+          color: t.color ? themedNodeColor(t.color) : 'var(--brain-1)',
           tagline: departments.find((d) => d.id === deptId)?.tagline ?? '',
         };
       }),

@@ -65,3 +65,18 @@ describe('theme registry', () => {
     for (const t of THEMES) expect(css, t).toContain(`data-theme='${t}'`);
   });
 });
+
+describe('Daylight (mono-light) G-Brain blue skin', () => {
+  test('steel-azure accent on a cool blue-white canvas', () => {
+    // 2026-08-20: Daylight re-anchored to the inverted G-Brain graph palette
+    // (invert(#E07B39) ≈ #1F84C6), replacing the old neutral slate accent.
+    expect(THEME_META['mono-light'].swatch).toEqual(['#f2f6f9', '#1f84c6', '#16222c']);
+    const css = readFileSync(join(process.cwd(), 'app/globals.css'), 'utf8');
+    const block = css.match(/:root\[data-theme='mono-light'\] \{[^}]+\}/)?.[0] ?? '';
+    expect(block).toContain('--bg: #f2f6f9');
+    expect(block).toContain('--text: #16222c');
+    expect(block).toContain('--accent: #1f84c6');
+    // the old slate-as-accent Daylight is gone
+    expect(block).not.toContain('--accent: #1b1e23');
+  });
+});
