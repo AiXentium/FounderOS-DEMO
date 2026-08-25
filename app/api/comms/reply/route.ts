@@ -19,6 +19,8 @@ const ReplySchema = z.discriminatedUnion('source', [
     to: z.string().email(),
     subject: z.string().max(300).optional(),
     text: z.string().min(1).max(20000),
+    inReplyTo: z.string().min(1).max(998).optional(),
+    references: z.array(z.string().min(1).max(998)).max(100).optional(),
   }),
 ]);
 
@@ -38,6 +40,8 @@ export async function POST(request: Request) {
     to: parsed.data.to,
     subject: parsed.data.subject ?? '(no subject)',
     text: parsed.data.text,
+    inReplyTo: parsed.data.inReplyTo,
+    references: parsed.data.references,
   });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }

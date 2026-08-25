@@ -23,6 +23,11 @@ export type CommsLaneItem = {
   unread: number;
   priority?: 1 | 2 | 3;
   replyTo?: string; // sender's email address — present ⇒ the reader can respond
+  subject?: string;
+  emailUid?: number;
+  emailThreadId?: string;
+  emailMessageId?: string;
+  starred?: boolean;
   kind?: string;
   app?: string | null;
 };
@@ -87,6 +92,11 @@ export function buildCommsLanes(input: {
         ts: e.ts,
         unread: e.unread ?? 0,
         ...(e.replyTo ? { replyTo: e.replyTo } : {}),
+        ...(e.subject ? { subject: e.subject } : {}),
+        ...(e.emailUid ? { emailUid: e.emailUid } : {}),
+        ...(e.emailThreadId ? { emailThreadId: e.emailThreadId } : {}),
+        ...(e.emailMessageId ? { emailMessageId: e.emailMessageId } : {}),
+        ...(e.starred !== undefined ? { starred: e.starred } : {}),
       }));
     lanes.push(makeLane(box.id, box.name, 'email', emailState, items, tags));
   }

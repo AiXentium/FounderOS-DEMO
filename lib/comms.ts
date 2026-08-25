@@ -11,6 +11,11 @@ export type CommsItem = {
   sender?: string; // the person/chat behind the message — priority matching key
   replyTo?: string; // email address or slack channel name for replies
   account?: string; // originating connector account (e.g. inbox-1) — reply-from
+  subject?: string;
+  emailUid?: number;
+  emailThreadId?: string;
+  emailMessageId?: string;
+  starred?: boolean;
   priority?: 1 | 2 | 3; // stamped from contact_tags (1 red · 2 yellow · 3 green)
 };
 
