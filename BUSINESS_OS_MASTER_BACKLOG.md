@@ -28,11 +28,11 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Category:** Database
 - **Description:** Replace initialization-only schema setup with ordered, repeatable migrations and a production database adapter contract.
 - **Priority:** CRITICAL
-- **Status:** NOT STARTED
+- **Status:** COMPLETE
 - **Dependencies:** BO-001
 - **Estimated Effort:** 7 days
 - **Files Affected:** `lib/db.ts`, `lib/data.ts`, `scripts/`, `migrations/`, `package.json`
-- **Acceptance Criteria:** A clean database migrates forward deterministically; repeated migration is safe; rollback/recovery procedure is documented; tests pass.
+- **Acceptance Criteria:** A clean database migrates forward deterministically; repeated migration is safe; rollback/recovery procedure is documented; tests pass. Completed with `migrations/001_schema_tracking.sql`, `lib/migrations.ts`, and `scripts/migrate.ts`; clean and existing database runs passed.
 - **Milestone:** Business OS v2.0 Alpha
 
 ### BO-003 — Implement users, sessions, and authentication
