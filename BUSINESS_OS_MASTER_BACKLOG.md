@@ -4,12 +4,114 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 
 ## Milestones
 
+- **Epic 0 — Business OS v2 Modernization:** migrate the runtime and persistence foundation before platform features.
 - **Business OS v2.0 Alpha:** secure foundation and core contracts.
 - **Business OS v2.0 Beta:** complete local product workflows and reliable execution.
 - **Business OS v2.0 RC:** integrations, operational hardening, and release validation.
 - **Business OS v2.0 GA:** production deployment, recovery, documentation, and final release gate.
 
 ## Backlog
+
+## Epic 0 — Business OS v2 Modernization
+
+### BO-000A — Upgrade Next.js 14 → Next.js 15
+- **Category:** Platform
+- **Description:** Upgrade the framework and preserve current routes and runtime behavior.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** None
+- **Estimated Effort:** 3 days
+- **Files Affected:** `package.json`, lockfile, `next.config.mjs`, `app/`, `tests/`
+- **Acceptance Criteria:** Next.js 15 installed; build, TypeScript, tests, and route smoke checks pass.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000B — Upgrade React 18 → React 19
+- **Category:** Platform
+- **Description:** Upgrade React and React DOM with compatibility fixes.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000A
+- **Estimated Effort:** 3 days
+- **Files Affected:** `package.json`, lockfile, `app/`, `components/`, `tests/`
+- **Acceptance Criteria:** React 19 installed; build, TypeScript, tests, and browser smoke checks pass.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000C — Introduce pnpm workspace compatibility
+- **Category:** Platform
+- **Description:** Make clean installation and scripts reproducible through pnpm workspace conventions.
+- **Priority:** HIGH
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000A, BO-000B
+- **Estimated Effort:** 2 days
+- **Files Affected:** `pnpm-workspace.yaml`, `package.json`, lockfile, CI files, `README.md`
+- **Acceptance Criteria:** Clean pnpm install and package scripts work; workspace metadata is documented.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000D — Introduce Prisma alongside the existing repository layer
+- **Category:** Database
+- **Description:** Add Prisma schema/client and a compatibility layer without removing SQLite.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000C
+- **Estimated Effort:** 7 days
+- **Files Affected:** `prisma/`, `lib/repositories/`, `lib/db.ts`, `lib/data.ts`, `tests/`
+- **Acceptance Criteria:** Prisma initializes safely; compatibility repositories use SQLite; existing workflows remain green.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000E — Introduce PostgreSQL support
+- **Category:** Database
+- **Description:** Add PostgreSQL configuration and adapter while SQLite and PostgreSQL run in parallel.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000D
+- **Estimated Effort:** 7 days
+- **Files Affected:** `prisma/`, `lib/repositories/`, `.env.example`, deployment files, `tests/`
+- **Acceptance Criteria:** PostgreSQL starts and migrates from documented configuration; both adapters share contracts.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000F — Convert repository implementations one at a time
+- **Category:** Repositories
+- **Description:** Migrate repositories incrementally through the compatibility layer.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000E
+- **Estimated Effort:** 15 days
+- **Files Affected:** `lib/repositories/`, `lib/db.ts`, `lib/data.ts`, domain modules, `tests/`
+- **Acceptance Criteria:** Each converted repository has focused SQLite/PostgreSQL parity tests; routes do not access databases directly.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000G — Migrate seed system
+- **Category:** Database
+- **Description:** Make seeds target the repository compatibility layer for both databases.
+- **Priority:** HIGH
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000F
+- **Estimated Effort:** 5 days
+- **Files Affected:** `lib/seed.ts`, `scripts/seed.ts`, `prisma/`, `tests/`
+- **Acceptance Criteria:** Fresh SQLite and PostgreSQL seeds are idempotent and produce matching entity counts.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000H — Run SQLite/PostgreSQL parity validation
+- **Category:** Testing
+- **Description:** Compare row counts, business logic, reports, and repository behavior.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000G
+- **Estimated Effort:** 8 days
+- **Files Affected:** `tests/`, `scripts/`, `docs/DATABASE.md`, `docs/`
+- **Acceptance Criteria:** Automated parity report covers all four comparison areas and all differences are resolved or approved.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
+
+### BO-000I — Remove SQLite as the primary persistence layer
+- **Category:** Database
+- **Description:** Make PostgreSQL the production default only after parity is confirmed; retain SQLite for local/demo compatibility.
+- **Priority:** CRITICAL
+- **Status:** NOT STARTED
+- **Dependencies:** BO-000H
+- **Estimated Effort:** 5 days
+- **Files Affected:** `lib/data.ts`, `lib/db.ts`, `prisma/`, `.env.example`, `README.md`, `tests/`
+- **Acceptance Criteria:** Production defaults to PostgreSQL; SQLite is not primary; migration and rollback guidance exists; build/tests pass.
+- **Milestone:** Epic 0 — Business OS v2 Modernization
 
 ### BO-001 — Define canonical domain and module boundaries
 
@@ -41,7 +143,7 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Description:** Add user identity, login/logout, secure sessions, session revocation, and account lifecycle.
 - **Priority:** CRITICAL
 - **Status:** BLOCKED
-- **Dependencies:** BO-002
+- **Dependencies:** BO-000A COMPLETE, BO-000B COMPLETE, BO-000C COMPLETE, BO-000D COMPLETE, BO-000E COMPLETE, BO-000F COMPLETE, BO-000G COMPLETE, BO-000H COMPLETE, BO-000I COMPLETE
 - **Estimated Effort:** 10 days
 - **Files Affected:** `app/`, `lib/auth/`, `middleware.ts`, `lib/db.ts`, `tests/`
 - **Acceptance Criteria:** Unauthenticated requests cannot access protected data; sessions can be revoked; login/logout and expiry tests pass; secrets are never logged. Blocked because the repository is currently Next.js 14/React 18/SQLite and does not contain the required Next.js 15/React 19/Prisma/PostgreSQL/Auth.js stack.
