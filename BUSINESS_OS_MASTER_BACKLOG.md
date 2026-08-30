@@ -40,11 +40,11 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Category:** Authentication
 - **Description:** Add user identity, login/logout, secure sessions, session revocation, and account lifecycle.
 - **Priority:** CRITICAL
-- **Status:** NOT STARTED
+- **Status:** BLOCKED
 - **Dependencies:** BO-002
 - **Estimated Effort:** 10 days
 - **Files Affected:** `app/`, `lib/auth/`, `middleware.ts`, `lib/db.ts`, `tests/`
-- **Acceptance Criteria:** Unauthenticated requests cannot access protected data; sessions can be revoked; login/logout and expiry tests pass; secrets are never logged.
+- **Acceptance Criteria:** Unauthenticated requests cannot access protected data; sessions can be revoked; login/logout and expiry tests pass; secrets are never logged. Blocked because the repository is currently Next.js 14/React 18/SQLite and does not contain the required Next.js 15/React 19/Prisma/PostgreSQL/Auth.js stack.
 - **Milestone:** Business OS v2.0 Alpha
 
 ### BO-004 — Implement organizations, workspaces, roles, and permissions
