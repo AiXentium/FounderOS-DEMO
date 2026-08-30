@@ -16,11 +16,11 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Category:** Architecture
 - **Description:** Establish ownership for platform, workspace, AI, CRM, finance, communications, marketing, analytics, connector, and deployment domains; record the canonical contracts.
 - **Priority:** CRITICAL
-- **Status:** NOT STARTED
+- **Status:** COMPLETE
 - **Dependencies:** None
 - **Estimated Effort:** 3 days
 - **Files Affected:** `docs/`, `lib/`, `app/`, `BUSINESS_OS_MASTER_BACKLOG.md`
-- **Acceptance Criteria:** Domain ownership and public contracts are documented; no duplicate backlog scope remains; TypeScript passes.
+- **Acceptance Criteria:** Domain ownership and public contracts are documented; no duplicate backlog scope remains; TypeScript passes. Completed in `docs/DOMAIN_BOUNDARIES.md` with `tests/domain-boundaries.test.ts`.
 - **Milestone:** Business OS v2.0 Alpha
 
 ### BO-002 — Introduce versioned production database migrations
