@@ -1,0 +1,10 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "plugins": ["import"],
+  "rules": {
+    "import/order": ["warn", {"groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]], "newlines-between": "never", "alphabetize": {"order": "asc", "caseInsensitive": true}}],
+    "jsx-a11y/anchor-is-valid": "off",
+    "@typescript-eslint/no-explicit-any": "warn"
+  },
+  "ignorePatterns": [".next/", ".next-build/", ".next-verify/", "data/", "coverage/", "next-env.d.ts"]
+}

@@ -18,11 +18,11 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Category:** Platform
 - **Description:** Upgrade the framework and preserve current routes and runtime behavior.
 - **Priority:** CRITICAL
-- **Status:** NOT STARTED
+- **Status:** COMPLETE
 - **Dependencies:** None
 - **Estimated Effort:** 3 days
 - **Files Affected:** `package.json`, lockfile, `next.config.mjs`, `app/`, `tests/`
-- **Acceptance Criteria:** Next.js 15 installed; build, TypeScript, tests, and route smoke checks pass.
+- **Acceptance Criteria:** Next.js 15 installed; build, TypeScript, tests, route smoke checks, and the documented quality gate pass. Completed with `eslint.config.mjs`, `QUALITY_GATE.md`, and `scripts/verify.ts`.
 - **Milestone:** Epic 0 — Business OS v2 Modernization
 
 ### BO-000B — Upgrade React 18 → React 19

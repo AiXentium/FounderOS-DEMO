@@ -8,6 +8,8 @@ Complete BO-000A through BO-000I in order before platform features: upgrade Next
 
 BO-003 remains blocked until every Epic 0 item is COMPLETE.
 
+BO-000A is complete, including its quality gate. BO-000B is the next modernization task.
+
 ## Phase 1 — secure foundation
 
 Deliver identity, organizations, workspaces, roles, permissions, migrations, production storage, secrets, audit logs, rate limiting, and error/observability standards.
