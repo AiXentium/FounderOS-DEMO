@@ -8,7 +8,7 @@ Complete BO-000A through BO-000I in order before platform features: upgrade Next
 
 BO-003 remains blocked until every Epic 0 item is COMPLETE.
 
-BO-000A is complete, including its quality gate. BO-000B is the next modernization task.
+BO-000A and BO-000B are complete, including their quality gates. BO-000C is the next modernization task.
 
 ## Phase 1 — secure foundation
 
