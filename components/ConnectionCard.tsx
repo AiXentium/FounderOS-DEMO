@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react';
 import { BrandLogo } from '@/lib/brand-logos';
 import { connectKeysFor, type CatalogEntry } from '@/lib/integrations-catalog';
 import { ConnectFlow } from '@/components/ConnectFlow';
@@ -14,7 +15,7 @@ export function ConnectionCard({ entry, guidance }: { entry: CatalogEntry; guida
       <div className="flex items-start gap-3">
         <BrandLogo slug={entry.slug} name={entry.name} />
         <div className="min-w-0 flex-1 pt-0.5">
-          <div className="truncate text-[13.5px] font-semibold leading-tight text-os-text">{entry.name}</div>
+          <div className="flex items-center gap-1.5"><div className="truncate text-[13.5px] font-semibold leading-tight text-os-text">{entry.name}</div>{entry.externalUrl && <a href={entry.externalUrl} target="_blank" rel="noreferrer" title={`Open ${entry.name}`} className="text-os-dim hover:text-os-accent"><ExternalLink className="h-3 w-3" /></a>}</div>
           <div className="mt-1 truncate text-[11px] leading-tight text-os-dim">{entry.tagline}</div>
         </div>
       </div>

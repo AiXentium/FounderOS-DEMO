@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, Clock, Paperclip } from 'lucide-react';
+import { Send, Clock, Paperclip, X } from 'lucide-react';
 import { Badge } from '@/components/terminal';
 import type { SocialPost } from '@/lib/schemas';
 
@@ -67,6 +67,11 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function cancel(id: string) {
+    const res = await fetch(`/api/social/posts?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (res.ok) setPosts((prev) => prev.filter((post) => post.id !== id));
   }
 
   const queued = posts.filter((p) => p.status === 'queued');
@@ -160,6 +165,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
                     {post.scheduledFor ? fmtWhen(post.scheduledFor) : 'queued'}
                   </Badge>
                 </span>
+                <button type="button" onClick={() => void cancel(post.id)} aria-label="Remove queued post" className="text-os-dim hover:text-os-warn"><X className="h-3 w-3" /></button>
               </div>
             </div>
           ))}

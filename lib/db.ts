@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { isValidCron } from '@/lib/cron';
+import { runMigrations } from '@/lib/migrations';
 import {
   AgentCronSchema,
   AgentMessageSchema,
@@ -242,6 +243,57 @@ CREATE TABLE IF NOT EXISTS social_posts (
   scheduled_for TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS affiliate_products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  source TEXT NOT NULL,
+  url TEXT NOT NULL,
+  tracked_url TEXT NOT NULL,
+  price TEXT NOT NULL DEFAULT '—',
+  commission TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'needs review',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS affiliate_campaigns (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  product_ids TEXT NOT NULL DEFAULT '[]',
+  platforms TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS website_projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  prompt TEXT NOT NULL DEFAULT '',
+  direction TEXT NOT NULL DEFAULT 'editorial',
+  page_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS workspaces (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS project_agents (
+  project_id TEXT NOT NULL,
+  agent_id TEXT NOT NULL,
+  assigned_at TEXT NOT NULL,
+  PRIMARY KEY (project_id, agent_id)
+);
+CREATE TABLE IF NOT EXISTS local_jobs (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'queued',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS people (
   id TEXT PRIMARY KEY,
   department_id TEXT NOT NULL REFERENCES departments(id),
@@ -396,6 +448,7 @@ export function openDb(path: string) {
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
   db.exec(DDL);
+  runMigrations(db);
   migrateAgentsTable(db);
   migrateLeadMagnetsTable(db);
   migrateFunnelContactsTable(db);
@@ -921,6 +974,47 @@ export function openDb(path: string) {
         .all()
         .map((r) => rowToPost(r as Parameters<typeof rowToPost>[0]));
     },
+    remove(id: string): boolean {
+      return db.prepare('DELETE FROM social_posts WHERE id = ?').run(id).changes > 0;
+    },
+  };
+
+  const affiliateProducts = {
+    all() {
+      return db.prepare('SELECT * FROM affiliate_products ORDER BY created_at DESC').all() as Array<Record<string, string>>;
+    },
+    create(product: { id: string; name: string; source: string; url: string; trackedUrl: string; price?: string; commission?: string; status?: string; createdAt: string }) {
+      db.prepare(`INSERT OR REPLACE INTO affiliate_products (id, name, source, url, tracked_url, price, commission, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(product.id, product.name, product.source, product.url, product.trackedUrl, product.price ?? '—', product.commission ?? 'pending', product.status ?? 'needs review', product.createdAt);
+    },
+  };
+
+  const affiliateCampaigns = {
+    all() { return db.prepare('SELECT * FROM affiliate_campaigns ORDER BY created_at DESC').all() as Array<Record<string, string>>; },
+    create(campaign: { id: string; name: string; productIds: string[]; platforms: string[]; status?: string; createdAt: string }) {
+      db.prepare(`INSERT OR REPLACE INTO affiliate_campaigns (id, name, product_ids, platforms, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(campaign.id, campaign.name, JSON.stringify(campaign.productIds), JSON.stringify(campaign.platforms), campaign.status ?? 'draft', campaign.createdAt);
+    },
+  };
+
+  const websiteProjects = {
+    all(workspaceId?: string) { const rows = db.prepare('SELECT * FROM website_projects ORDER BY updated_at DESC').all(); return rows.map((r: any) => ({ ...r, page: JSON.parse(r.page_json) })).filter((r: any) => !workspaceId || r.page.workspaceId === workspaceId || (!r.page.workspaceId && workspaceId === 'default')); },
+    save(project: { id: string; name: string; prompt: string; direction: string; page: unknown; workspaceId?: string; createdAt: string; updatedAt: string }) { db.prepare(`INSERT OR REPLACE INTO website_projects (id, name, prompt, direction, page_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(project.id, project.name, project.prompt, project.direction, JSON.stringify({ ...(project.page as object), workspaceId: project.workspaceId ?? 'default' }), project.createdAt, project.updatedAt); },
+  };
+
+  const workspaces = {
+    all() { return db.prepare('SELECT * FROM workspaces ORDER BY updated_at DESC').all() as Array<Record<string, string>>; },
+    save(workspace: { id: string; name: string; slug: string; createdAt: string; updatedAt: string }) { db.prepare('INSERT OR REPLACE INTO workspaces (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(workspace.id, workspace.name, workspace.slug, workspace.createdAt, workspace.updatedAt); },
+  };
+
+  const projectAgents = {
+    all(projectId?: string) { const rows = projectId ? db.prepare('SELECT * FROM project_agents WHERE project_id = ? ORDER BY assigned_at').all(projectId) : db.prepare('SELECT * FROM project_agents ORDER BY assigned_at DESC').all(); return rows as Array<Record<string, string>>; },
+    assign(projectId: string, agentId: string) { db.prepare('INSERT OR REPLACE INTO project_agents (project_id, agent_id, assigned_at) VALUES (?, ?, ?)').run(projectId, agentId, new Date().toISOString()); },
+    remove(projectId: string, agentId: string) { db.prepare('DELETE FROM project_agents WHERE project_id = ? AND agent_id = ?').run(projectId, agentId); },
+  };
+
+  const localJobs = {
+    all() { return db.prepare('SELECT * FROM local_jobs ORDER BY created_at DESC').all().map((r: any) => ({ ...r, payload: JSON.parse(r.payload_json) })); },
+    enqueue(job: { id: string; type: string; payload?: unknown; createdAt: string }) { db.prepare(`INSERT OR REPLACE INTO local_jobs (id, type, payload_json, status, attempts, created_at, updated_at) VALUES (?, ?, ?, 'queued', 0, ?, ?)`).run(job.id, job.type, JSON.stringify(job.payload ?? {}), job.createdAt, job.createdAt); },
+    update(id: string, status: string, error = '') { db.prepare('UPDATE local_jobs SET status = ?, attempts = attempts + 1, last_error = ?, updated_at = ? WHERE id = ?').run(status, error, new Date().toISOString(), id); },
   };
 
   const people = {
@@ -1163,6 +1257,12 @@ export function openDb(path: string) {
     social,
     emailList,
     socialPosts,
+    affiliateProducts,
+    affiliateCampaigns,
+    websiteProjects,
+    workspaces,
+    projectAgents,
+    localJobs,
     funnel,
     people,
     leadMagnets,

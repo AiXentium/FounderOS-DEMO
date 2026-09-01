@@ -19,6 +19,16 @@ type RouteEntry = {
 // a real 200 (not a 400/404 for a missing arg). Live-connector routes
 // (connections, social/sync) must still answer 200 with honest state.
 const ROUTES: RouteEntry[] = [
+  { route: 'templates', load: () => import('@/app/api/templates/route'), url: 'http://localhost/api/templates' },
+  { route: 'health', load: () => import('@/app/api/health/route'), url: 'http://localhost/api/health' },
+  { route: 'workspaces', load: () => import('@/app/api/workspaces/route'), url: 'http://localhost/api/workspaces' },
+  { route: 'projects/agents', load: () => import('@/app/api/projects/agents/route'), url: 'http://localhost/api/projects/agents' },
+  { route: 'affiliate/campaigns', load: () => import('@/app/api/affiliate/campaigns/route'), url: 'http://localhost/api/affiliate/campaigns' },
+  { route: 'affiliate/products', load: () => import('@/app/api/affiliate/products/route'), url: 'http://localhost/api/affiliate/products' },
+  { route: 'affiliate/status', load: () => import('@/app/api/affiliate/status/route'), url: 'http://localhost/api/affiliate/status' },
+  { route: 'ai/status', load: () => import('@/app/api/ai/status/route'), url: 'http://localhost/api/ai/status' },
+  { route: 'assets', load: () => import('@/app/api/assets/route'), url: 'http://localhost/api/assets' },
+  { route: 'backup', load: () => import('@/app/api/backup/route'), url: 'http://localhost/api/backup' },
   { route: 'agents', load: () => import('@/app/api/agents/route'), url: 'http://localhost/api/agents' },
   { route: 'lead-magnets', load: () => import('@/app/api/lead-magnets/route'), url: 'http://localhost/api/lead-magnets' },
   { route: 'agents/activity', load: () => import('@/app/api/agents/activity/route'), url: 'http://localhost/api/agents/activity?limit=5' },
@@ -38,8 +48,10 @@ const ROUTES: RouteEntry[] = [
   { route: 'funnel', load: () => import('@/app/api/funnel/route'), url: 'http://localhost/api/funnel' },
   { route: 'funnel/lead-message', load: () => import('@/app/api/funnel/lead-message/route'), url: 'http://localhost/api/funnel/lead-message?name=Smoke%20Test%20Lead' },
   { route: 'keys', load: () => import('@/app/api/keys/route'), url: 'http://localhost/api/keys' },
+  { route: 'jobs', load: () => import('@/app/api/jobs/route'), url: 'http://localhost/api/jobs' },
   { route: 'life/map', load: () => import('@/app/api/life/map/route'), url: 'http://localhost/api/life/map' },
   { route: 'metrics', load: () => import('@/app/api/metrics/route'), url: 'http://localhost/api/metrics' },
+  { route: 'readiness', load: () => import('@/app/api/readiness/route'), url: 'http://localhost/api/readiness' },
   { route: 'roadmap', load: () => import('@/app/api/roadmap/route'), url: 'http://localhost/api/roadmap' },
   { route: 'social', load: () => import('@/app/api/social/route'), url: 'http://localhost/api/social' },
   { route: 'social/[platform]', load: () => import('@/app/api/social/[platform]/route'), url: 'http://localhost/api/social/instagram', params: { platform: 'instagram' } },
@@ -50,6 +62,8 @@ const ROUTES: RouteEntry[] = [
   { route: 'tools', load: () => import('@/app/api/tools/route'), url: 'http://localhost/api/tools' },
   { route: 'ventures', load: () => import('@/app/api/ventures/route'), url: 'http://localhost/api/ventures' },
   { route: 'webhooks/manychat', load: () => import('@/app/api/webhooks/manychat/route'), url: 'http://localhost/api/webhooks/manychat' },
+  { route: 'website/context', load: () => import('@/app/api/website/context/route'), url: 'http://localhost/api/website/context' },
+  { route: 'website/projects', load: () => import('@/app/api/website/projects/route'), url: 'http://localhost/api/website/projects' },
 ];
 
 function discoverGetRoutes(dir: string, base = ''): string[] {

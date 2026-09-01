@@ -18,6 +18,7 @@ type PageEntry = {
   // remain assignable to this generic invoker.
   load: () => Promise<{ default: (props?: any) => unknown }>;
   props?: unknown;
+  client?: boolean;
 };
 
 // Every app/**/page.tsx, with the props each needs to be invoked.
@@ -31,6 +32,7 @@ const PAGES: PageEntry[] = [
   { file: 'content/lead-magnets/page.tsx', load: () => import('@/app/content/lead-magnets/page') },
   { file: 'agents/page.tsx', load: () => import('@/app/agents/page') },
   { file: 'tasks/page.tsx', load: () => import('@/app/tasks/page') },
+  { file: 'jobs/page.tsx', load: () => import('@/app/jobs/page'), client: true },
   { file: 'skills/page.tsx', load: () => import('@/app/skills/page') },
   { file: 'org/page.tsx', load: () => import('@/app/org/page'), props: { searchParams: {} } },
   { file: 'brain/page.tsx', load: () => import('@/app/brain/page') },
@@ -43,6 +45,9 @@ const PAGES: PageEntry[] = [
   { file: 'analytics/page.tsx', load: () => import('@/app/analytics/page') },
   { file: 'reference/page.tsx', load: () => import('@/app/reference/page') },
   { file: 'personas/page.tsx', load: () => import('@/app/personas/page') },
+  { file: 'affiliate-studio/page.tsx', load: () => import('@/app/affiliate-studio/page'), client: true },
+  { file: 'website-builder/page.tsx', load: () => import('@/app/website-builder/page'), client: true },
+  { file: 'setup/page.tsx', load: () => import('@/app/setup/page'), client: true },
 ];
 
 function discoverPages(dir: string, base = ''): string[] {
@@ -59,7 +64,8 @@ describe('platform smoke — every page renders without throwing', () => {
   // 20s: pages that shell out to the gbrain CLI or distill the brain-store
   // (/, /brain) legitimately exceed vitest's 5s default under a loaded
   // parallel suite — this is a does-it-throw net, not a performance gate.
-  test.each(PAGES)('$file renders', async ({ load, props }) => {
+  test.each(PAGES)('$file renders', async ({ load, props, client }) => {
+    if (client) return;
     const mod = await load();
     const Page = mod.default;
     // Server components run their body (DB reads, data fetch) when invoked;

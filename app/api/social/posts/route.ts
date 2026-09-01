@@ -39,3 +39,10 @@ export async function POST(request: Request) {
   getDb().socialPosts.enqueue(post);
   return NextResponse.json({ post }, { status: 201 });
 }
+
+export async function DELETE(request: Request) {
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  const removed = getDb().socialPosts.remove(id);
+  return removed ? NextResponse.json({ ok: true }) : NextResponse.json({ error: 'post not found' }, { status: 404 });
+}

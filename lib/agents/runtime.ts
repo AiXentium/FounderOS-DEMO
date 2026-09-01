@@ -88,3 +88,33 @@ export function createRuntime(db: FounderDb, agents: RuntimeAgent[]) {
 }
 
 export type AgentRuntime = ReturnType<typeof createRuntime>;
+
+/**
+ * AI-powered agent call with automatic provider rotation
+ * This function can be used by agents to make LLM calls with fallback
+ */
+import { callLLMWithRotation, getProviderStatus } from '@/lib/ai-rotation'
+import { getAIRotationState } from '@/lib/ai-agent-provider'
+
+export async function callAgentLLM(
+  prompt: string,
+  options?: {
+    maxTokens?: number
+    temperature?: number
+    retryCount?: number
+  }
+): Promise<string> {
+  const state = getAIRotationState()
+  return callLLMWithRotation(state, prompt, options)
+}
+
+export function getAgentLLMStatus(): Array<{
+  name: string
+  status: 'active' | 'rate_limited' | 'error' | 'inactive'
+  usage: string
+  model: string
+  lastError?: string
+}> {
+  const state = getAIRotationState()
+  return getProviderStatus(state)
+}

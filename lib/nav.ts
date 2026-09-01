@@ -22,6 +22,11 @@ import {
   BarChart3,
   LayoutGrid,
   Layers,
+  Link2,
+  PanelsTopLeft,
+  Activity,
+  Calendar,
+  Settings,
 } from 'lucide-react';
 
 export type NavItem = { href: string; label: string; icon: typeof Home };
@@ -32,8 +37,11 @@ export const NAV_OPERATE: NavItem[] = [
   { href: '/funnel', label: 'Funnel', icon: Filter },
   { href: '/workflows', label: 'Workflows', icon: Workflow },
   { href: '/social', label: 'Social', icon: Share2 },
+  { href: '/affiliate-studio', label: 'Affiliate Studio', icon: Link2 },
+  { href: '/website-builder', label: 'Website Builder', icon: PanelsTopLeft },
   { href: '/content', label: 'Content', icon: Clapperboard },
   { href: '/finances', label: 'Finances', icon: Wallet },
+  { href: '/setup', label: 'Business Setup', icon: Sparkles },
 ];
 
 // The agent workforce: the roster and the org chart that maps how they report.
@@ -55,9 +63,12 @@ export const NAV_INTELLIGENCE: NavItem[] = [
 
 export const NAV_SYSTEM: NavItem[] = [
   { href: '/integrations', label: 'Connections', icon: Plug },
+  { href: '/jobs', label: 'Job Operations', icon: Activity },
+  { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/roadmap', label: 'Roadmap', icon: Map },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/reference', label: 'Reference Model', icon: LayoutGrid },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 // At the very bottom: persona templates that can run variants of this platform.

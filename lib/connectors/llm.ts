@@ -116,9 +116,38 @@ export function createGatewayProvider(model: string = DEFAULT_MODEL): LlmProvide
 }
 
 export function getLlmProvider(): LlmProvider {
+  if (process.env.LLM_PROVIDER === 'failover' || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || process.env.AI_BASE_URL || process.env.OMNIROUTE_BASE_URL) return createFailoverProvider();
   const name = process.env.LLM_PROVIDER ?? 'gateway';
   if (name === 'stub') return stubLlmProvider;
   return createGatewayProvider();
+}
+
+/** OpenAI-compatible failover chain. A provider is skipped on quota, rate-limit,
+ * timeout, or any HTTP failure; the next configured provider gets the request. */
+export function createFailoverProvider(): LlmProvider {
+  return { name: 'failover', async chat(req) {
+    const candidates = [
+      process.env.OMNIROUTE_BASE_URL && { name: 'OmniRoute', url: `${process.env.OMNIROUTE_BASE_URL.replace(/\/$/, '')}/chat/completions`, key: process.env.OMNIROUTE_API_KEY ?? '', model: process.env.OMNIROUTE_MODEL ?? process.env.AI_MODEL ?? 'local-model' },
+      process.env.OPENROUTER_API_KEY && { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions', key: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini' },
+      process.env.GROQ_API_KEY && { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile' },
+      process.env.CEREBRAS_API_KEY && { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: process.env.CEREBRAS_MODEL ?? 'llama-3.3-70b' },
+      process.env.TOGETHER_API_KEY && { name: 'Together', url: 'https://api.together.xyz/v1/chat/completions', key: process.env.TOGETHER_API_KEY, model: process.env.TOGETHER_MODEL ?? 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+      process.env.MISTRAL_API_KEY && { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: process.env.MISTRAL_MODEL ?? 'mistral-small-latest' },
+      process.env.DEEPSEEK_API_KEY && { name: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat' },
+      process.env.FIREWORKS_API_KEY && { name: 'Fireworks', url: 'https://api.fireworks.ai/inference/v1/chat/completions', key: process.env.FIREWORKS_API_KEY, model: process.env.FIREWORKS_MODEL ?? 'accounts/fireworks/models/llama-v3p1-8b-instruct' },
+      process.env.AI_BASE_URL && { name: 'Custom AI', url: `${process.env.AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, key: process.env.AI_API_KEY ?? '', model: process.env.AI_MODEL ?? 'local-model' },
+      process.env.OLLAMA_BASE_URL && { name: 'Ollama', url: `${process.env.OLLAMA_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, key: '', model: process.env.OLLAMA_MODEL ?? 'llama3.1' },
+    ].filter(Boolean) as Array<{ name: string; url: string; key: string; model: string }>;
+    let last = 'no providers configured';
+    for (const provider of candidates) { try {
+      const response = await fetch(provider.url, { method: 'POST', headers: { 'content-type': 'application/json', ...(provider.key ? { authorization: `Bearer ${provider.key}` } : {}) }, body: JSON.stringify({ model: req.model ?? provider.model, messages: [{ role: 'system', content: req.system ?? '' }, ...req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role, content: m.content }))] }), signal: AbortSignal.timeout(30000) });
+      if (!response.ok) { last = `${provider.name} HTTP ${response.status}`; continue; }
+      const body = await response.json(); const text = body.choices?.[0]?.message?.content;
+      if (typeof text !== 'string') { last = `${provider.name} returned no text`; continue; }
+      return { text, toolCalls: [] };
+    } catch (error) { last = `${provider.name}: ${error instanceof Error ? error.message : String(error)}`; } }
+    throw new Error(`AI failover exhausted: ${last}`);
+  } };
 }
 
 export function chat(req: LlmChatRequest): Promise<LlmChatResult> {

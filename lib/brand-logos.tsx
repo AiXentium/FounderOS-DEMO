@@ -67,6 +67,8 @@ const LETTERMARK: Record<string, string> = {
   dmflow: '#0084FF',
   skool: '#E4573D',
   'proposal-gen': '#00764f',
+  openrouter: '#6E56CF', groq: '#F97316', cerebras: '#2563EB', together: '#14B8A6', mistral: '#F59E0B', deepseek: '#0EA5E9', fireworks: '#EF4444', ollama: '#64748B', viator: '#16A34A',
+  'custom-ai': '#64748B', omniroute: '#6E56CF', 'amazon-associates': '#FF9900', impact: '#111827', 'cj-affiliate': '#2563EB', shareasale: '#F97316', clickbank: '#DC2626', awin: '#7C3AED', 'rakuten-advertising': '#E11D48', 'aliexpress-affiliate': '#F97316',
 };
 
 function siFor(slug: string): SiIcon | null {

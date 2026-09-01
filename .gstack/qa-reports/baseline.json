@@ -1,0 +1,23 @@
+{
+  "date": "2026-08-30",
+  "url": "http://localhost:4100",
+  "healthScore": 96,
+  "issues": [
+    {
+      "id": "ISSUE-001",
+      "title": "BrainViz hydration mismatch",
+      "severity": "medium",
+      "category": "console"
+    }
+  ],
+  "categoryScores": {
+    "console": 70,
+    "links": 100,
+    "visual": 100,
+    "functional": 100,
+    "ux": 100,
+    "performance": 100,
+    "content": 100,
+    "accessibility": 100
+  }
+}

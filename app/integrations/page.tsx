@@ -6,6 +6,7 @@ import { ApiKeys } from '@/components/ApiKeys';
 import { SectionHead } from '@/components/terminal';
 import { ConnectionCard } from '@/components/ConnectionCard';
 import { IntegrationCategory } from '@/components/IntegrationCategory';
+import { AiAutomationConnections } from '@/components/AiAutomationConnections';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,7 @@ export default async function ConnectionsPage() {
   return (
     <div>
       <PageHeader eyebrow="connections" title="Connections" />
+      <AiAutomationConnections />
 
       {/* Your connected tools — driven by real connector status */}
       {connected.length > 0 && (

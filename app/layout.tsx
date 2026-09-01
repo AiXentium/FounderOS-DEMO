@@ -1,25 +1,16 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { ConductorPanel } from '@/components/ConductorPanel';
-import { CohortBanner } from '@/components/CohortBanner';
-import { CohortModal } from '@/components/CohortModal';
 import { getDb } from '@/lib/data';
 import type { Command } from '@/lib/palette';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
 
-const fontMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-mono',
-});
-
 export const metadata: Metadata = {
-  title: 'FOUNDER OS',
-  description: 'Personal operating system and AI agent command center for a single person company',
+  title: 'BUSINESS OS SYSTEM',
+  description: 'A local-first operating system for building and running a business.',
 };
 
 const NAV_COMMANDS: Command[] = [
@@ -28,6 +19,7 @@ const NAV_COMMANDS: Command[] = [
   { id: 'nav-comms', label: 'Comms', keywords: 'messages email whatsapp slack inbox unified feed', href: '/comms', hint: 'view' },
   { id: 'nav-agents', label: 'Agents', keywords: 'runtime run real roster', href: '/agents', hint: 'view' },
   { id: 'nav-connections', label: 'Connections', keywords: 'integrations tools status creds', href: '/integrations', hint: 'view' },
+  { id: 'nav-jobs', label: 'Job Operations', keywords: 'queue worker retries background jobs', href: '/jobs', hint: 'view' },
   { id: 'nav-roadmap', label: 'Roadmap', keywords: 'plan phases quarters', href: '/roadmap', hint: 'view' },
   { id: 'nav-analytics', label: 'Analytics', keywords: 'metrics numbers', href: '/analytics', hint: 'view' },
   { id: 'nav-reference', label: 'Reference Model', keywords: 'domains business brm', href: '/reference', hint: 'view' },
@@ -62,7 +54,7 @@ function buildCommands(): Command[] {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={fontMono.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Apply the persisted theme before first paint — no dark↔light flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
@@ -78,16 +70,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 full-bleed on 32"/ultrawide. See tailwind screens wide/ultra. */}
             <div className="mx-auto max-w-[1280px] wide:max-w-[1760px] ultra:max-w-none">
               {children}
-              {/* Cohort invite — last thing on every view, by construction */}
-              <CohortBanner />
             </div>
           </main>
         </div>
         <CommandPalette commands={buildCommands()} />
         {/* Notion-style agent dock — the Conductor, aware of the current screen */}
         <ConductorPanel />
-        {/* First-run welcome on the home screen — once per browser */}
-        <CohortModal />
       </body>
     </html>
   );

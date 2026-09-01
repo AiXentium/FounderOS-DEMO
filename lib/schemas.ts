@@ -55,12 +55,15 @@ export const INTEGRATION_CATEGORIES = [
   'Knowledge',
   'AI & Automation',
   'Creative',
+  'FREE API LLM',
+  'AFFILIATE NETWORKS',
 ] as const;
 export const IntegrationCategorySchema = z.enum(INTEGRATION_CATEGORIES);
 export const IntegrationSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
   tagline: z.string().min(1),
+  externalUrl: z.string().url().optional(),
   category: IntegrationCategorySchema,
   // when set, the catalog entry reflects this real connector's live state
   connectorId: z.string().min(1).optional(),

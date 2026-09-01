@@ -80,11 +80,36 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'obsidian', name: 'Notes', tagline: 'Markdown vault', category: 'Storage', connectorId: 'obsidian', envKeys: [] },
 
   // AI & Automation
-  { slug: 'openai', name: 'OpenAI', tagline: 'GPT models & embeddings', category: 'AI & Automation' },
-  { slug: 'anthropic', name: 'Anthropic', tagline: 'Claude models', category: 'AI & Automation', popular: true },
+  { slug: 'openai', name: 'OpenAI', tagline: 'GPT models & embeddings', category: 'AI & Automation', envKeys: ['OPENAI_API_KEY', 'AI_GATEWAY_API_KEY'] },
+  { slug: 'anthropic', name: 'Anthropic', tagline: 'Claude models', category: 'AI & Automation', popular: true, envKeys: ['AI_GATEWAY_API_KEY'] },
   { slug: 'zapier', name: 'Zapier', tagline: 'Automate anything', category: 'AI & Automation' },
   { slug: 'make', name: 'Make', tagline: 'Visual workflows', category: 'AI & Automation' },
   { slug: 'n8n', name: 'n8n', tagline: 'Self-hosted automation', category: 'AI & Automation' },
+
+  // Free / free-tier LLM providers. These use the common key panel and the
+  // failover runtime; no provider is required for demo mode.
+  { slug: 'openrouter', name: 'OpenRouter', tagline: 'Free and multi-model routing', category: 'FREE API LLM', envKeys: ['OPENROUTER_API_KEY'], popular: true, externalUrl: 'https://openrouter.ai/keys' },
+  { slug: 'groq', name: 'Groq', tagline: 'Fast free-tier inference', category: 'FREE API LLM', envKeys: ['GROQ_API_KEY'], externalUrl: 'https://console.groq.com/keys' },
+  { slug: 'cerebras', name: 'Cerebras', tagline: 'Fast open-model inference', category: 'FREE API LLM', envKeys: ['CEREBRAS_API_KEY'], externalUrl: 'https://cloud.cerebras.ai/' },
+  { slug: 'together', name: 'Together AI', tagline: 'Open models API', category: 'FREE API LLM', envKeys: ['TOGETHER_API_KEY'], externalUrl: 'https://api.together.ai/settings/api-keys' },
+  { slug: 'mistral', name: 'Mistral', tagline: 'Open and hosted models', category: 'FREE API LLM', envKeys: ['MISTRAL_API_KEY'], externalUrl: 'https://console.mistral.ai/api-keys/' },
+  { slug: 'deepseek', name: 'DeepSeek', tagline: 'Reasoning and chat models', category: 'FREE API LLM', envKeys: ['DEEPSEEK_API_KEY'], externalUrl: 'https://platform.deepseek.com/api_keys' },
+  { slug: 'fireworks', name: 'Fireworks', tagline: 'Open-model inference', category: 'FREE API LLM', envKeys: ['FIREWORKS_API_KEY'], externalUrl: 'https://fireworks.ai/account/api-keys' },
+  { slug: 'ollama', name: 'Ollama', tagline: 'Free local models', category: 'FREE API LLM', envKeys: ['OLLAMA_BASE_URL'], externalUrl: 'https://ollama.com/download' },
+  { slug: 'omniroute', name: 'OmniRoute', tagline: 'OpenAI-compatible multi-provider gateway', category: 'FREE API LLM', envKeys: ['OMNIROUTE_BASE_URL', 'OMNIROUTE_API_KEY'], externalUrl: 'https://github.com/AiXentium/OmniRoute' },
+  { slug: 'custom-ai', name: 'Custom OpenAI-compatible', tagline: 'FreeLLM, LM Studio, or any endpoint', category: 'FREE API LLM', envKeys: ['AI_BASE_URL', 'AI_API_KEY'], externalUrl: 'https://lmstudio.ai/' },
+
+  // Affiliate networks: credentials are optional until the operator is ready
+  // to activate live product feeds and commission reporting.
+  { slug: 'amazon-associates', name: 'Amazon Associates', tagline: 'Amazon products and commissions', category: 'AFFILIATE NETWORKS', envKeys: ['AMAZON_ASSOCIATE_TAG', 'AMAZON_PA_API_KEY'], popular: true, externalUrl: 'https://affiliate-program.amazon.com/' },
+  { slug: 'impact', name: 'Impact', tagline: 'Partner programs and product feeds', category: 'AFFILIATE NETWORKS', envKeys: ['IMPACT_ACCOUNT_ID', 'IMPACT_API_KEY'], externalUrl: 'https://app.impact.com/' },
+  { slug: 'cj-affiliate', name: 'CJ Affiliate', tagline: 'Advertisers, deep links, and feeds', category: 'AFFILIATE NETWORKS', envKeys: ['CJ_API_KEY', 'CJ_WEBSITE_ID'], externalUrl: 'https://www.cj.com/' },
+  { slug: 'shareasale', name: 'ShareASale', tagline: 'Merchant offers and tracking', category: 'AFFILIATE NETWORKS', envKeys: ['SHAREASALE_API_TOKEN'], externalUrl: 'https://www.shareasale.com/' },
+  { slug: 'clickbank', name: 'ClickBank', tagline: 'Digital offers and marketplace', category: 'AFFILIATE NETWORKS', envKeys: ['CLICKBANK_API_KEY'], externalUrl: 'https://www.clickbank.com/' },
+  { slug: 'awin', name: 'Awin', tagline: 'Global partner network', category: 'AFFILIATE NETWORKS', envKeys: ['AWIN_API_TOKEN', 'AWIN_PUBLISHER_ID'], externalUrl: 'https://www.awin.com/' },
+  { slug: 'rakuten-advertising', name: 'Rakuten Advertising', tagline: 'Retail partner programs', category: 'AFFILIATE NETWORKS', envKeys: ['RAKUTEN_API_KEY'], externalUrl: 'https://rakutenadvertising.com/' },
+  { slug: 'aliexpress-affiliate', name: 'AliExpress Portals', tagline: 'Marketplace product links', category: 'AFFILIATE NETWORKS', envKeys: ['ALIEXPRESS_API_KEY'], externalUrl: 'https://portals.aliexpress.com/' },
+  { slug: 'viator', name: 'Viator', tagline: 'Tours, activities, and travel experiences', category: 'AFFILIATE NETWORKS', envKeys: ['VIATOR_API_KEY', 'VIATOR_PARTNER_ID'], externalUrl: 'https://partnerresources.viator.com/' },
 
   // Creative
   { slug: 'figma', name: 'Figma', tagline: 'Design & prototypes', category: 'Creative', popular: true },
