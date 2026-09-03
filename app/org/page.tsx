@@ -8,6 +8,7 @@ import { ConductorCard } from '@/components/ConductorCard';
 import { SparkIcon } from '@/components/SparkIcon';
 import { PageHeader } from '@/components/PageHeader';
 import type { Agent, AgentStatus } from '@/lib/schemas';
+import { allConnectorStatuses } from '@/lib/connectors';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,12 +101,20 @@ export default async function OrgChartPage({ searchParams }: { searchParams?: Pr
   );
   const agentNames = Object.fromEntries(agents.map((a) => [a.id, a.name]));
   const lastBroadcast = db.broadcasts.recent(1)[0] ?? null;
+  const connectorStatuses = await allConnectorStatuses();
+  const connectedCount = connectorStatuses.filter((status) => status.state === 'connected').length;
 
   return (
     <div>
       <PageHeader
         title="Agent Hierarchy"
       />
+
+      <section className="mb-6 rounded-lg-t border border-os-border bg-os-surface p-5">
+        <div className="flex items-center justify-between gap-3"><div><div className="font-mono text-[11px] uppercase tracking-widest text-os-dim">Live operating audit</div><h2 className="mt-1 text-[18px] font-semibold">Runtime and connector readiness</h2></div><span className="font-mono text-[12px] text-os-accent">{connectedCount}/{connectorStatuses.length} connected</span></div>
+        <p className="mt-2 text-sm leading-6 text-os-muted">The Conductor routes work through this roster. Each specialist is available through the shared runtime; connector states below come from live checks, not seeded dashboard numbers.</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{connectorStatuses.map((status) => <div key={status.id} className="flex items-center justify-between rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2"><span className="truncate text-sm">{status.name}</span><span className={`font-mono text-[11px] uppercase ${status.state === 'connected' ? 'text-os-ok' : status.state === 'error' ? 'text-os-err' : 'text-os-dim'}`}>{status.state}</span></div>)}</div>
+      </section>
 
       {/* Venture switcher: Vantage / Launchpad Cohort — one click swaps which
           crew lights up below. All data stays shared. */}
