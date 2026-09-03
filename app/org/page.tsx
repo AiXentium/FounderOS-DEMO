@@ -9,6 +9,7 @@ import { SparkIcon } from '@/components/SparkIcon';
 import { PageHeader } from '@/components/PageHeader';
 import type { Agent, AgentStatus } from '@/lib/schemas';
 import { allConnectorStatuses } from '@/lib/connectors';
+import { zernioLiveAccounts } from '@/lib/connectors/zernio';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,8 @@ function SystemCard({ href, title, caption }: { href: string; title: string; cap
 export default async function OrgChartPage({ searchParams }: { searchParams?: Promise<{ venture?: string }> }) {
   const resolvedSearchParams = await searchParams;
   const db = getDb();
+  const liveAccounts = await zernioLiveAccounts();
+  const operatorHandle = Object.values(liveAccounts).map((a) => a.handle).find((h) => h?.trim());
   const departments = db.departments.all();
   const agents = db.agents.all();
   // The venture lens: same roster, same DB — the switcher just changes which
@@ -182,7 +185,7 @@ export default async function OrgChartPage({ searchParams }: { searchParams?: Pr
       {/* Operator */}
       <div className="flex flex-col items-center">
         <Users className="h-7 w-7 text-os-text" />
-        <div className="mt-1 text-base font-bold tracking-wide">Alex Rivera</div>
+        <div className="mt-1 text-base font-bold tracking-wide">{operatorHandle?.replace(/^@/, '') ?? 'Let’s Talk Miles & Travel'}</div>
         <div className="text-[10px] uppercase tracking-[0.3em] text-os-dim">Operator</div>
         <div className="mt-2 h-6 w-px bg-os-border-bright" />
         <div className="text-[10px] uppercase tracking-[0.2em] text-os-muted">Conductor (Super Agent)</div>

@@ -5,7 +5,7 @@ import { allConnectorStatuses } from '@/lib/connectors';
 import { createGBrainProvider } from '@/lib/connectors/gbrain';
 import { audienceSeries, PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/social';
 import { syncFromZernioLive } from '@/lib/social-live';
-import { zernioAccounts, zernioPostDays } from '@/lib/connectors/zernio';
+import { zernioLiveAccounts, zernioPostDays } from '@/lib/connectors/zernio';
 import { postSeriesFromDays } from '@/lib/posting-activity';
 import type { SocialPlatform } from '@/lib/schemas';
 import { gatherCommsFeed } from '@/lib/comms-feed';
@@ -73,8 +73,8 @@ function greeting(): string {
   return 'Good evening';
 }
 
-function operatorName(): string {
-  const handle = Object.values(zernioAccounts()).map((a) => a.handle).find((h) => h?.trim());
+async function operatorName(): Promise<string> {
+  const handle = Object.values(await zernioLiveAccounts()).map((a) => a.handle).find((h) => h?.trim());
   return handle?.replace(/^@/, '') ?? 'Let’s Talk Miles & Travel';
 }
 
@@ -131,13 +131,14 @@ export default async function HomePage() {
   // before the db reads below, but a cold render costs max(fetches) instead
   // of sync + max(fetches) — the paused-Supabase doctor alone was pushing the
   // console past 20s.
-  const [connections, overview, feed, postDays] = await Promise.all([
+  const [connections, overview, feed, postDays, name] = await Promise.all([
     allConnectorStatuses(),
     createGBrainProvider().overview(),
     gatherCommsFeed(),
     zernioPostDays(),
     syncFromZernioLive(db),
-  ]).then(([c, o, f, p]) => [c, o, f, p] as const);
+    operatorName(),
+  ]).then(([c, o, f, p, n]) => [c, o, f, p, n] as const);
 
   const agents = db.agents.all();
   const departments = new Map(db.departments.all().map((d) => [d.id, d.name]));
