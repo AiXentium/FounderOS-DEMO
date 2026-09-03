@@ -34,19 +34,15 @@ function tileValue(value: number, unit: string): { main: string; small: string }
   return { main: value.toLocaleString('en-US'), small: unit };
 }
 
-// Deterministic spark shape per metric id until per-metric history lands.
-function sparkFor(id: string, value: number): number[] {
-  const seed = [...id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  return Array.from({ length: 7 }, (_, i) => {
-    const wobble = ((seed * (i + 3)) % 17) / 17 - 0.5;
-    return Math.max(0, value * (0.82 + 0.18 * (i / 6) + wobble * 0.08));
-  });
+// No fabricated trend line: until a connector supplies history, show a flat
+// current-value marker rather than implying movement that was never measured.
+function sparkFor(_id: string, value: number): number[] {
+  return Array.from({ length: 7 }, () => value);
 }
 
 // Deterministic rising bars per channel for the by-platform cards.
 function barsFor(seed: string): number[] {
-  const base = [...seed].reduce((s, c) => s + c.charCodeAt(0), 0);
-  return Array.from({ length: 12 }, (_, i) => 4 + i * 1.3 + ((base + i * 7) % 5));
+  return Array.from({ length: 12 }, () => Math.max(1, Number(seed) || 1));
 }
 
 function fmtShort(iso: string): string {
@@ -243,6 +239,7 @@ export default async function AnalyticsPage() {
         title="Analytics"
         right={<Badge tone="accent">{live.length} live · {pending.length} pending</Badge>}
       />
+      <section className="mb-6 rounded-lg-t border border-os-border bg-os-surface p-5"><h2 className="text-[17px] font-semibold">Use these metrics to take action</h2><p className="mt-2 text-sm leading-6 text-os-muted">Every value below comes from a connector or the agent run log. Pending values stay blank until the required account is connected. Use Affiliate Studio for product campaigns, Content for drafts, Social for publishing, and Doctor for dependency failures.</p></section>
 
       {/* Live metric tiles */}
       {live.length > 0 && (
