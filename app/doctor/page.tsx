@@ -6,6 +6,7 @@ import { BrainCore } from '@/components/BrainCore';
 import { PillarRadar } from '@/components/PillarRadar';
 import { pillarRadarAxes } from '@/lib/pillar-radar';
 import { Dot, SectionHead } from '@/components/terminal';
+import { allConnectorStatuses } from '@/lib/connectors';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,8 @@ export default async function DoctorPage() {
   const overview = await createGBrainProvider().overview();
   const { store, doctor } = overview;
   const db = getDb();
+  const connectorStatuses = await allConnectorStatuses();
+  const usedAgentIds = new Set(db.agentRuns.recent(500).map((run) => run.agentId));
   const maxFiles = Math.max(1, ...store.folders.map((f) => f.files));
   const clusters = foldersToClusters(store.folders);
   const storeShort = store.path.replace(process.env.HOME ?? '', '~');
@@ -130,8 +133,8 @@ export default async function DoctorPage() {
     },
     {
       name: 'Supabase Second Brain',
-      sub: '1240 pages / 15k chunks · free tier idle-pause',
-      val: fallbackActive ? 'PAUSED' : 'LIVE',
+      sub: 'Remote vector store · status from live doctor check',
+      val: fallbackActive ? 'UNAVAILABLE' : 'LIVE',
       state: fallbackActive ? 'available' : 'connected',
     },
   ];
@@ -226,6 +229,13 @@ export default async function DoctorPage() {
         </div>
       </div>
 
+      <section className="mt-8 rounded-lg-t border border-os-border bg-os-surface p-5">
+        <SectionHead label="Operational dependency audit" count={`${connectorStatuses.length} live checks`} />
+        <p className="mb-4 text-sm leading-6 text-os-muted">A connector is only operationally important when a used agent depends on it. Unused optional connectors are reported for setup, but do not block the system.</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{connectorStatuses.map((status) => <div key={status.id} className="rounded-sm-t border border-os-border bg-os-surface2 p-3"><div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold">{status.name}</span><Dot state={status.state === 'connected' ? 'ok' : status.state === 'error' ? 'error' : 'warn'} /></div><div className="mt-1 text-xs leading-5 text-os-dim">{status.detail}</div></div>)}</div>
+        <div className="mt-4 border-t border-os-border pt-3 font-mono text-[11px] text-os-dim">{usedAgentIds.size ? `${usedAgentIds.size} agents have recorded runs in the last 500 checks.` : 'No agent runs recorded yet; readiness is configured, not proven by execution.'}</div>
+      </section>
+
       {/* The pipeline: where knowledge lives and how it becomes searchable */}
       <section className="mt-8">
         <SectionHead label="Pipeline" count={`${store.totalFiles} pages on disk`} />
@@ -289,12 +299,12 @@ export default async function DoctorPage() {
           <Stage step="3" title="Supabase Postgres + pgvector" caption='"Second Brain" · ZeroEntropy embeddings'>
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-md-t border border-os-border bg-os-surface2 px-3 py-2.5">
-                <div className="font-mono text-xl font-bold">1240</div>
-                <div className="font-mono text-[10px] uppercase tracking-wider text-os-dim">pages · last known</div>
+                <div className="font-mono text-xl font-bold">{store.totalFiles}</div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-os-dim">pages · on disk</div>
               </div>
               <div className="rounded-md-t border border-os-border bg-os-surface2 px-3 py-2.5">
-                <div className="font-mono text-xl font-bold">15k</div>
-                <div className="font-mono text-[10px] uppercase tracking-wider text-os-dim">chunks · last known</div>
+                <div className="font-mono text-xl font-bold">—</div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-os-dim">chunks · not reported</div>
               </div>
             </div>
             <div className="mt-3 space-y-1.5 text-[11px] leading-relaxed text-os-muted">
