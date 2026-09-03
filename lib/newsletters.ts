@@ -54,13 +54,12 @@ export const SEED_NEWSLETTERS: Newsletter[] = [
   },
 ];
 
-/** Live newsletters when the connector has data, else the seeded fallback. */
+/** Live newsletters only; an unconfigured connector returns an empty list. */
 export async function getNewsletters(
   env: Record<string, string | undefined> = process.env,
 ): Promise<Newsletter[]> {
   const live = await beehiivPosts(env);
-  if (live && live.length > 0) return live;
-  return SEED_NEWSLETTERS;
+  return live ?? [];
 }
 
 export type NewsletterSummary = {

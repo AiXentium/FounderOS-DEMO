@@ -15,7 +15,7 @@ async function runSync() {
     ok: true,
     recorded,
     syncedAt: new Date().toISOString(),
-    source: Object.keys(accounts).length > 0 ? 'zernio-live' : 'config-fallback',
+    source: Object.keys(accounts).length > 0 ? 'zernio-live' : 'unavailable',
     accounts,
   });
 }
