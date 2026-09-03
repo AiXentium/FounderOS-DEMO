@@ -10,7 +10,7 @@ beforeAll(() => {
 
 type RouteEntry = {
   route: string; // path under app/api, source of truth for coverage
-  load: () => Promise<{ GET?: (req: Request, ctx?: any) => unknown }>;
+  load: () => Promise<any>;
   url: string; // includes any required query params
   params?: Record<string, string>; // for dynamic [param] routes
 };
@@ -27,6 +27,7 @@ const ROUTES: RouteEntry[] = [
   { route: 'affiliate/products', load: () => import('@/app/api/affiliate/products/route'), url: 'http://localhost/api/affiliate/products' },
   { route: 'affiliate/status', load: () => import('@/app/api/affiliate/status/route'), url: 'http://localhost/api/affiliate/status' },
   { route: 'ai/status', load: () => import('@/app/api/ai/status/route'), url: 'http://localhost/api/ai/status' },
+  { route: 'ai-rotation/status', load: () => import('@/app/api/ai-rotation/status/route'), url: 'http://localhost/api/ai-rotation/status' },
   { route: 'assets', load: () => import('@/app/api/assets/route'), url: 'http://localhost/api/assets' },
   { route: 'backup', load: () => import('@/app/api/backup/route'), url: 'http://localhost/api/backup' },
   { route: 'agents', load: () => import('@/app/api/agents/route'), url: 'http://localhost/api/agents' },
@@ -45,6 +46,7 @@ const ROUTES: RouteEntry[] = [
   { route: 'connections', load: () => import('@/app/api/connections/route'), url: 'http://localhost/api/connections' },
   { route: 'contacts/tags', load: () => import('@/app/api/contacts/tags/route'), url: 'http://localhost/api/contacts/tags' },
   { route: 'departments', load: () => import('@/app/api/departments/route'), url: 'http://localhost/api/departments' },
+  { route: 'elementor', load: () => import('@/app/api/elementor/route'), url: 'http://localhost/api/elementor' },
   { route: 'funnel', load: () => import('@/app/api/funnel/route'), url: 'http://localhost/api/funnel' },
   { route: 'funnel/lead-message', load: () => import('@/app/api/funnel/lead-message/route'), url: 'http://localhost/api/funnel/lead-message?name=Smoke%20Test%20Lead' },
   { route: 'keys', load: () => import('@/app/api/keys/route'), url: 'http://localhost/api/keys' },
@@ -53,6 +55,8 @@ const ROUTES: RouteEntry[] = [
   { route: 'metrics', load: () => import('@/app/api/metrics/route'), url: 'http://localhost/api/metrics' },
   { route: 'readiness', load: () => import('@/app/api/readiness/route'), url: 'http://localhost/api/readiness' },
   { route: 'roadmap', load: () => import('@/app/api/roadmap/route'), url: 'http://localhost/api/roadmap' },
+  { route: 'royal-mcp', load: () => import('@/app/api/royal-mcp/route'), url: 'http://localhost/api/royal-mcp' },
+  { route: 'royal-mcp/elementor/outline', load: () => import('@/app/api/royal-mcp/elementor/outline/route'), url: 'http://localhost/api/royal-mcp/elementor/outline' },
   { route: 'social', load: () => import('@/app/api/social/route'), url: 'http://localhost/api/social' },
   { route: 'social/[platform]', load: () => import('@/app/api/social/[platform]/route'), url: 'http://localhost/api/social/instagram', params: { platform: 'instagram' } },
   { route: 'social/history', load: () => import('@/app/api/social/history/route'), url: 'http://localhost/api/social/history?limit=6' },
@@ -64,6 +68,9 @@ const ROUTES: RouteEntry[] = [
   { route: 'webhooks/manychat', load: () => import('@/app/api/webhooks/manychat/route'), url: 'http://localhost/api/webhooks/manychat' },
   { route: 'website/context', load: () => import('@/app/api/website/context/route'), url: 'http://localhost/api/website/context' },
   { route: 'website/projects', load: () => import('@/app/api/website/projects/route'), url: 'http://localhost/api/website/projects' },
+  { route: 'website/team', load: () => import('@/app/api/website/team/route'), url: 'http://localhost/api/website/team' },
+  { route: 'wordpress', load: () => import('@/app/api/wordpress/route'), url: 'http://localhost/api/wordpress' },
+  { route: 'workflows/execute', load: () => import('@/app/api/workflows/execute/route'), url: 'http://localhost/api/workflows/execute' },
 ];
 
 function discoverGetRoutes(dir: string, base = ''): string[] {

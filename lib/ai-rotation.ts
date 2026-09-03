@@ -26,7 +26,7 @@ interface LLMProvider {
   lastResetTime: number
 }
 
-interface RotationState {
+export interface RotationState {
   currentProvider: string
   providers: Record<string, LLMProvider>
   lastRotation: number

@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS affiliate_products (
   price TEXT NOT NULL DEFAULT '—',
   commission TEXT NOT NULL DEFAULT 'pending',
   status TEXT NOT NULL DEFAULT 'needs review',
+  image_url TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS affiliate_campaigns (
@@ -444,6 +445,13 @@ function migrateLeadMagnetsTable(db: InstanceType<typeof Database>): void {
   if (!columns.has('origin')) db.exec("ALTER TABLE lead_magnets ADD COLUMN origin TEXT NOT NULL DEFAULT 'seed'");
 }
 
+function migrateAffiliateProductsTable(db: InstanceType<typeof Database>): void {
+  const columns = new Set(
+    (db.prepare('PRAGMA table_info(affiliate_products)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!columns.has('image_url')) db.exec('ALTER TABLE affiliate_products ADD COLUMN image_url TEXT');
+}
+
 export function openDb(path: string) {
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
@@ -451,6 +459,7 @@ export function openDb(path: string) {
   runMigrations(db);
   migrateAgentsTable(db);
   migrateLeadMagnetsTable(db);
+  migrateAffiliateProductsTable(db);
   migrateFunnelContactsTable(db);
   migrateSkillsTable(db);
 
@@ -981,10 +990,14 @@ export function openDb(path: string) {
 
   const affiliateProducts = {
     all() {
-      return db.prepare('SELECT * FROM affiliate_products ORDER BY created_at DESC').all() as Array<Record<string, string>>;
+      return (db.prepare("SELECT * FROM affiliate_products WHERE url NOT LIKE '%example.com/%' ORDER BY created_at DESC").all() as Array<Record<string, string>>).map((row) => ({
+        ...row,
+        trackedUrl: row.tracked_url,
+        imageUrl: row.image_url || undefined,
+      }));
     },
-    create(product: { id: string; name: string; source: string; url: string; trackedUrl: string; price?: string; commission?: string; status?: string; createdAt: string }) {
-      db.prepare(`INSERT OR REPLACE INTO affiliate_products (id, name, source, url, tracked_url, price, commission, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(product.id, product.name, product.source, product.url, product.trackedUrl, product.price ?? '—', product.commission ?? 'pending', product.status ?? 'needs review', product.createdAt);
+    create(product: { id: string; name: string; source: string; url: string; trackedUrl: string; imageUrl?: string; price?: string; commission?: string; status?: string; createdAt: string }) {
+      db.prepare(`INSERT OR REPLACE INTO affiliate_products (id, name, source, url, tracked_url, image_url, price, commission, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(product.id, product.name, product.source, product.url, product.trackedUrl, product.imageUrl ?? null, product.price ?? '—', product.commission ?? 'pending', product.status ?? 'needs review', product.createdAt);
     },
   };
 

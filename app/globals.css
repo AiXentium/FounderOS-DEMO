@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep the in-OS website and HTML editor panels compact. */
+.h-\[720px\] { height: 520px !important; }
+
 /* Terminal direction — phosphor green command deck.
    Raw vars exist for the brain viz SVG and color-mix effects;
    the same values live in tailwind.config.ts as os.* classes. */

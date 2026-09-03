@@ -1,6 +1,8 @@
 import { emailStatus } from '@/lib/connectors/email';
 import { calendarStatus } from '@/lib/connectors/gcal';
 import { slackStatus } from '@/lib/connectors/slack';
+import { wordPressStatus } from '@/lib/connectors/wordpress';
+import { elementorStatus } from '@/lib/connectors/elementor';
 import { paymentsStatus } from '@/lib/connectors/payments';
 import { notionStatus } from '@/lib/connectors/notion';
 import { zernioStatus } from '@/lib/connectors/zernio';
@@ -18,6 +20,7 @@ import { webinarjamStatus } from '@/lib/connectors/webinarjam';
 import { trakyoStatus } from '@/lib/connectors/trakyo';
 import { metaAdsStatus } from '@/lib/connectors/meta-ads';
 import { ghlStatus } from '@/lib/connectors/ghl';
+import { viatorStatus } from '@/lib/connectors/viator';
 import { getBrainProvider } from '@/lib/brain';
 import { resolveManychatKey, runtimeEnv } from '@/lib/creds';
 import type { ConnectorStatus } from '@/lib/connectors/types';
@@ -56,11 +59,14 @@ const CHECKS: [string, ConnectorStatus['kind'], () => Promise<ConnectorStatus>][
   ['trakyo', 'crm', trakyoStatus],
   ['meta-ads', 'ads', metaAdsStatus],
   ['ghl', 'crm', ghlStatus],
+  ['viator', 'affiliate', async () => { const status = viatorStatus(runtimeEnv()); return { id: 'viator', name: 'Viator', kind: 'affiliate', state: status.state === 'connected' ? 'connected' : 'not_configured', detail: status.detail }; }],
   ['arcads', 'creative', arcadsStatus],
   ['wispr', 'local', wisprStatus],
   ['local-stack', 'local', localStackStatus],
   ['obsidian', 'knowledge', obsidianStatus],
   ['miro', 'creative', miroStatus],
+  ['wordpress', 'cms', () => wordPressStatus(runtimeEnv())],
+  ['elementor', 'cms', () => elementorStatus(runtimeEnv())],
   ['email', 'email', () => emailStatus(runtimeEnv())],
   ['calendar', 'calendar', calendarStatus],
   ['slack', 'slack', () => slackStatus(runtimeEnv())],

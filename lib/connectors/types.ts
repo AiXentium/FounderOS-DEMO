@@ -13,7 +13,9 @@ export type ConnectorKind =
   | 'creative'
   | 'knowledge'
   | 'local'
-  | 'orchestration';
+  | 'orchestration'
+  | 'cms'
+  | 'affiliate';
 
 export type ConnectorStatus = {
   id: string;

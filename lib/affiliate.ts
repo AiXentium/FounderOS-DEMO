@@ -1,6 +1,6 @@
 /** Keyless affiliate/social agency adapters. Replace these implementations with
  * provider calls once credentials are added; the UI remains unchanged. */
-export type AffiliateProvider = 'amazon' | 'aliexpress' | 'impact' | 'cj' | 'clickbank' | 'manual';
+export type AffiliateProvider = 'amazon' | 'aliexpress' | 'impact' | 'cj' | 'clickbank' | 'viator' | 'manual';
 
 export function affiliateMode(): 'demo' | 'live' {
   return process.env.AFFILIATE_MODE === 'live' ? 'live' : 'demo';
@@ -10,6 +10,7 @@ export function configuredProviders(): AffiliateProvider[] {
   const providers: Array<[AffiliateProvider, string]> = [
     ['amazon', 'AMAZON_ASSOCIATE_TAG'], ['aliexpress', 'ALIEXPRESS_API_KEY'],
     ['impact', 'IMPACT_ACCOUNT_ID'], ['cj', 'CJ_API_KEY'], ['clickbank', 'CLICKBANK_API_KEY'],
+    ['viator', 'VIATOR_API_KEY'],
   ];
   return providers.filter(([, key]) => Boolean(process.env[key])).map(([provider]) => provider).concat(['manual']);
 }

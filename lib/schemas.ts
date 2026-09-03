@@ -55,6 +55,7 @@ export const INTEGRATION_CATEGORIES = [
   'Knowledge',
   'AI & Automation',
   'Creative',
+  'Content Management',
   'FREE API LLM',
   'AFFILIATE NETWORKS',
 ] as const;

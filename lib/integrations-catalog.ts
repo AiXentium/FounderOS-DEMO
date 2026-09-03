@@ -109,7 +109,12 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'awin', name: 'Awin', tagline: 'Global partner network', category: 'AFFILIATE NETWORKS', envKeys: ['AWIN_API_TOKEN', 'AWIN_PUBLISHER_ID'], externalUrl: 'https://www.awin.com/' },
   { slug: 'rakuten-advertising', name: 'Rakuten Advertising', tagline: 'Retail partner programs', category: 'AFFILIATE NETWORKS', envKeys: ['RAKUTEN_API_KEY'], externalUrl: 'https://rakutenadvertising.com/' },
   { slug: 'aliexpress-affiliate', name: 'AliExpress Portals', tagline: 'Marketplace product links', category: 'AFFILIATE NETWORKS', envKeys: ['ALIEXPRESS_API_KEY'], externalUrl: 'https://portals.aliexpress.com/' },
-  { slug: 'viator', name: 'Viator', tagline: 'Tours, activities, and travel experiences', category: 'AFFILIATE NETWORKS', envKeys: ['VIATOR_API_KEY', 'VIATOR_PARTNER_ID'], externalUrl: 'https://partnerresources.viator.com/' },
+  { slug: 'viator', name: 'Viator', tagline: 'Tours, activities, and travel experiences', category: 'AFFILIATE NETWORKS', connectorId: 'viator', envKeys: ['VIATOR_API_KEY', 'VIATOR_PARTNER_ID'], externalUrl: 'https://partnerresources.viator.com/' },
+
+  // Content Management
+  { slug: 'wordpress', name: 'WordPress', tagline: 'Posts, pages & content', category: 'Content Management', connectorId: 'wordpress', popular: true, envKeys: ['WORDPRESS_URL', 'WORDPRESS_USERNAME', 'WORDPRESS_APP_PASSWORD'] },
+  { slug: 'elementor', name: 'Elementor', tagline: 'Visual page builder & design', category: 'Content Management', connectorId: 'elementor', popular: true, envKeys: ['WORDPRESS_URL', 'WORDPRESS_USERNAME', 'WORDPRESS_APP_PASSWORD'] },
+  { slug: 'webflow', name: 'Webflow', tagline: 'No-code site builder & hosting', category: 'Content Management', envKeys: ['WEBFLOW_API_TOKEN'] },
 
   // Creative
   { slug: 'figma', name: 'Figma', tagline: 'Design & prototypes', category: 'Creative', popular: true },

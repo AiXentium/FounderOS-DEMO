@@ -36,6 +36,8 @@ const PAGES: PageEntry[] = [
   { file: 'skills/page.tsx', load: () => import('@/app/skills/page') },
   { file: 'org/page.tsx', load: () => import('@/app/org/page'), props: { searchParams: {} } },
   { file: 'brain/page.tsx', load: () => import('@/app/brain/page') },
+  { file: 'builder/page.tsx', load: () => import('@/app/builder/page'), client: true },
+  { file: 'calendar/page.tsx', load: () => import('@/app/calendar/page') },
   { file: 'doctor/page.tsx', load: () => import('@/app/doctor/page') },
   { file: 'finances/page.tsx', load: () => import('@/app/finances/page') },
   { file: 'funnel/page.tsx', load: () => import('@/app/funnel/page'), props: { searchParams: {} } },
@@ -48,6 +50,7 @@ const PAGES: PageEntry[] = [
   { file: 'affiliate-studio/page.tsx', load: () => import('@/app/affiliate-studio/page'), client: true },
   { file: 'website-builder/page.tsx', load: () => import('@/app/website-builder/page'), client: true },
   { file: 'setup/page.tsx', load: () => import('@/app/setup/page'), client: true },
+  { file: 'settings/page.tsx', load: () => import('@/app/settings/page'), client: true },
 ];
 
 function discoverPages(dir: string, base = ''): string[] {

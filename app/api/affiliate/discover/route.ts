@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { getDb } from '@/lib/data';
+import { searchViator, viatorConfigured } from '@/lib/connectors/viator';
+import { searchViatorMcp } from '@/lib/connectors/viator-mcp';
 
 const demo = [
   ['Creator microphone', 'Amazon', '$79.99', '4.5%', 'audio creator podcast'],
@@ -12,6 +14,23 @@ const demo = [
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const query = typeof body.query === 'string' ? body.query.toLowerCase() : '';
+  const provider = body.provider === 'viator' || body.provider === 'manual' ? body.provider : 'all';
+  if (provider === 'manual') return NextResponse.json({ mode: 'manual', provider, query, products: [] });
+  if (viatorConfigured()) {
+    try {
+      const products = await searchViator(query);
+      products.forEach((product) => getDb().affiliateProducts.create({ ...product, createdAt: new Date().toISOString() }));
+      return NextResponse.json({ mode: 'live', provider: 'viator', query, products });
+    } catch (error) {
+      try {
+        const products = await searchViatorMcp(query);
+        products.forEach((product) => getDb().affiliateProducts.create({ ...product, createdAt: new Date().toISOString() }));
+        return NextResponse.json({ mode: 'live', provider: 'viator-mcp', warning: error instanceof Error ? error.message : 'Affiliate API unavailable', query, products });
+      } catch (mcpError) {
+        return NextResponse.json({ mode: 'live', provider: 'viator', error: mcpError instanceof Error ? mcpError.message : 'Viator request failed', products: [] }, { status: 502 });
+      }
+    }
+  }
   const matches = demo.filter((p) => !query || p.join(' ').toLowerCase().includes(query));
   const db = getDb();
   const products = matches.map(([name, source, price, commission, keywords]) => {
