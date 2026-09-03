@@ -320,6 +320,15 @@ body {
     repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 48px);
 }
 
+/* Readability floor: the OS is operated across large desktop canvases and
+   mobile screens. Keep labels and metadata readable instead of rendering
+   9–13px terminal text that becomes inaccessible at normal zoom. */
+[class*="text-[9px]"], [class*="text-[10px]"], [class*="text-[10.5px]"],
+[class*="text-[11px]"], [class*="text-[11.5px]"], [class*="text-[12px]"],
+[class*="text-[12.5px]"], [class*="text-[13px]"], [class*="text-[13.5px]"] {
+  font-size: 14px !important;
+}
+
 ::selection {
   background: var(--accent);
   color: var(--accent-ink);
