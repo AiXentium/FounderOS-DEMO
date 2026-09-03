@@ -211,7 +211,7 @@ function StatPopout({
                 {shown.length === 0 && <div className="font-mono text-[11px] text-os-dim">select a series to plot</div>}
               </div>
               <p className="mt-4 font-mono text-[10px] text-os-dim">
-                {RANGE_LABEL[String(range)]} window · {metric === 'dms' ? 'DM totals are seeded dummy until a source is wired' : 'email tracks the real Beehiiv subscriber count (Alex’s Newsletter)'}
+                {RANGE_LABEL[String(range)]} window · {metric === 'dms' ? 'DM history requires a connected inbox source' : 'email uses the connected Beehiiv subscriber source'}
               </p>
             </>
           )}
