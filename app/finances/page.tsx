@@ -151,7 +151,7 @@ export default async function FinancesPage() {
           </div>
           <div className="flex items-baseline justify-between gap-2">
             <span
-              className={`font-mono text-[16px] font-semibold leading-none tracking-[-0.02em] ${netMonthly >= 0 ? 'text-os-ok' : 'text-os-err'}`}
+              className={`font-mono text-[16px] font-semibold leading-none tracking-[-0.02em] ${netMonthly == null ? 'text-os-dim' : netMonthly >= 0 ? 'text-os-ok' : 'text-os-err'}`}
             >
               {netMonthly == null ? '—' : `${netMonthly >= 0 ? '' : '−'}${usd(Math.abs(netMonthly))}`}
             </span>
