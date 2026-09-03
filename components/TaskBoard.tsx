@@ -16,6 +16,8 @@ const COLUMNS: { status: AgentTask['status']; label: string; tone: string }[] = 
   { status: 'done', label: 'Done', tone: 'var(--ok)' },
 ];
 
+const isVerifiedTask = (task: AgentTask) => !task.id.startsWith('task-seed-');
+
 export function TaskBoard({
   initialTasks,
   agentNames,
@@ -36,7 +38,7 @@ export function TaskBoard({
         const res = await fetch('/api/agents/work');
         if (!res.ok) return;
         const body = (await res.json()) as { tasks?: AgentTask[] };
-        if (Array.isArray(body.tasks)) setTasks(body.tasks);
+        if (Array.isArray(body.tasks)) setTasks(body.tasks.filter(isVerifiedTask));
       } catch {
         /* keep the last good board */
       }
@@ -65,7 +67,7 @@ export function TaskBoard({
   return (
     <div>
       <p className="mb-4 font-mono text-[11px] text-os-dim">
-        Drag a card across the board as work moves. Agents advance their own cards as they commit and finish.
+        Drag verified work across the board as it moves. Agents advance their own cards when they commit and finish.
       </p>
       <div className="grid gap-4 md:grid-cols-3">
         {COLUMNS.map((col) => {
@@ -126,7 +128,7 @@ export function TaskBoard({
 
               {colTasks.length === 0 && (
                 <div className="rounded-lg border border-dashed border-os-border px-3 py-6 text-center font-mono text-[10px] text-os-dim">
-                  drop here
+                  no verified work
                 </div>
               )}
             </div>
