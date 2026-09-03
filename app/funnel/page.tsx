@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { getDb } from '@/lib/data';
 import {
   attentionQueue,
   funnelSummary,
@@ -22,6 +21,8 @@ import { attioStatus } from '@/lib/connectors/attio';
 import { ghlStatus } from '@/lib/connectors/ghl';
 import { trakyoStatus } from '@/lib/connectors/trakyo';
 import { metaAdsStatus } from '@/lib/connectors/meta-ads';
+import { wordPressStatus } from '@/lib/connectors/wordpress';
+import { runtimeEnv } from '@/lib/creds';
 import { getVenture } from '@/lib/ventures';
 import { FunnelRadialLazy, FunnelSpaceLazy } from '@/components/FunnelGraphsLazy';
 import { Badge, SectionHead } from '@/components/terminal';
@@ -327,7 +328,7 @@ export default async function FunnelPage({
     .join(' + ');
   const allJourneys = isLive
     ? mergeTrakyoTouches(liveJourneys, await trakyoTouches()).filter((j) => !venture || j.venture === venture)
-    : getDb().funnel.journeys(venture);
+    : [];
   // Quiet past DECAY_DAYS → out of the space, into the archive tab.
   const { active: journeys, archived } = splitFunnelJourneys(allJourneys, now);
   const summary = funnelSummary(journeys);
@@ -346,11 +347,12 @@ export default async function FunnelPage({
   if (stage && tableJourneys.length > 0) {
     commsFeed = await gatherCommsFeed(200).catch(() => null);
   }
-  const [attio, ghl, trakyo, metaAds] = await Promise.all([
+  const [attio, ghl, trakyo, metaAds, wordpress] = await Promise.all([
     attioStatus(),
     ghlStatus(),
     trakyoStatus(),
     metaAdsStatus(),
+    wordPressStatus(runtimeEnv()),
   ]);
 
   return (
@@ -363,11 +365,11 @@ export default async function FunnelPage({
             <Badge tone="ok">live · {liveLabel}</Badge>
           ) : (
             <Badge tone="warn" ghost>
-              demo data
+              no live funnel sources
             </Badge>
           )}
           <Badge tone="accent">
-            {summary.converted}/{summary.clients} converted · {usd(summary.revenueUsd)}
+            {summary.clients ? `${summary.converted}/${summary.clients} converted · ${usd(summary.revenueUsd)}` : 'no verified leads yet'}
           </Badge>
         </div>
       </header>
@@ -405,6 +407,7 @@ export default async function FunnelPage({
           <SourceCheck status={ghl} live={Boolean(ghlLive?.journeys.length)} count={ghlLive?.total} />
           <SourceCheck status={trakyo} />
           <SourceCheck status={metaAds} />
+          <SourceCheck status={wordpress} />
         </span>
         <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide">
           <Link
