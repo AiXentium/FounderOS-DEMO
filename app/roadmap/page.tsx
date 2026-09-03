@@ -3,6 +3,8 @@ import { groupRoadmapByQuarter } from '@/lib/roadmap';
 import { PageHeader } from '@/components/PageHeader';
 import { Badge, SectionHead, type BadgeTone } from '@/components/terminal';
 import type { RoadmapStatus } from '@/lib/schemas';
+import { allConnectorStatuses } from '@/lib/connectors';
+import { BlueprintPanel } from '@/components/BlueprintPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +15,14 @@ const STATUS_BADGE: Record<RoadmapStatus, { tone: BadgeTone; ghost: boolean; lab
   later: { tone: 'default', ghost: true, label: 'Later' },
 };
 
-export default function RoadmapPage() {
+export default async function RoadmapPage() {
   const db = getDb();
   const quarters = groupRoadmapByQuarter(db.roadmap.all());
   const phases = db.phases.all();
   const departments = new Map(db.departments.all().map((d) => [d.id, d]));
+  const statuses = await allConnectorStatuses();
+  const liveSkills = db.skills.all().filter((skill) => skill.status === 'live').length;
+  const missing = statuses.filter((status) => status.state !== 'connected').slice(0, 8).map((status) => `${status.name}: ${status.state}`);
 
   return (
     <div>
@@ -25,6 +30,8 @@ export default function RoadmapPage() {
         eyebrow="build plan"
         title="Roadmap"
       />
+
+      <BlueprintPanel summary={[`${db.agents.all().length} agents in the shared Conductor roster`, `${liveSkills} skills currently marked live`, `${statuses.filter((status) => status.state === 'connected').length}/${statuses.length} connectors currently connected`, `${db.departments.all().length} operating departments`, 'Tasks plan work; Jobs record execution; Doctor audits dependencies']} missing={missing.length ? missing : ['No missing connector checks']} />
 
       {/* High-level functionality phases */}
       <section className="mb-9">
