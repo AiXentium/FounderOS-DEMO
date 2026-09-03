@@ -5,6 +5,7 @@ import { Check } from 'lucide-react';
 import { THEMES, THEME_META, THEME_STORAGE_KEY, type Theme } from '@/lib/theme';
 import { PageHeader } from '@/components/PageHeader';
 import { SectionHead, Label } from '@/components/terminal';
+import { BrandingStudio } from '@/components/BrandingStudio';
 
 export default function SettingsPage() {
   const [currentTheme, setCurrentTheme] = useState<Theme | null>(null);
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   return (
     <div>
       <PageHeader eyebrow="preferences" title="Settings" />
+      <BrandingStudio />
 
       {/* Theme Settings */}
       <section className="mb-8">
