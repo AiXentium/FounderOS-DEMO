@@ -74,7 +74,7 @@ export default async function CommsPage() {
       <CommsTabs lanes={lanes} slackCards={slackCards} channels={channels} events={weekEvents} accounts={calLegend} nowISO={nowISO} />
 
       <p className="mt-4 rounded-xl border border-dashed border-os-border-strong px-3 py-3 text-center font-mono text-[10.5px] text-os-dim">
-        Four inboxes (expand to read + reply) and WhatsApp as lanes · Slack per client + every current channel · meetings via CalDAV
+        Connected inboxes (expand to read + reply) and WhatsApp as lanes · Slack per client + every current channel · verified meetings via CalDAV
       </p>
     </div>
   );

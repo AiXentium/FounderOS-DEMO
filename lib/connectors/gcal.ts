@@ -255,6 +255,16 @@ export async function calendarStatus(env: Record<string, string | undefined> = p
     };
   }
   try {
+    const now = new Date();
+    const startISO = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+    const endISO = new Date(Date.parse(startISO) + 14 * 86_400_000).toISOString();
+    const probes = await Promise.allSettled(
+      accounts.map((account) => withTimeout(fetchAccountIcal(account, startISO, endISO), 8000)),
+    );
+    if (!probes.some((probe) => probe.status === 'fulfilled')) {
+      const firstFailure = probes.find((probe): probe is PromiseRejectedResult => probe.status === 'rejected');
+      throw firstFailure?.reason ?? new Error('No configured calendar account responded');
+    }
     const events = await upcomingEvents(env, { days: 14 });
     return {
       id: 'calendar',

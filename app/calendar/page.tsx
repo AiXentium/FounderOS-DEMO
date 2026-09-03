@@ -23,12 +23,12 @@ export default async function CalendarPage() {
               No calendars configured
             </h2>
             <p className="mb-4 text-[14px] leading-relaxed text-os-muted">
-              Calendar events appear here once you wire up your Google accounts. The system detects Google Gmail inboxes
-              you&apos;ve already connected and fetches their calendars using CalDAV.
+              Calendar events appear here after a Google Calendar-capable account is configured and its CalDAV read succeeds.
+              Gmail credentials alone do not prove Calendar access.
             </p>
             <p className="text-[13px] text-os-dim">
-              Go to <span className="font-mono">Connections</span> and configure Gmail accounts to see your calendar
-              here.
+              Go to <span className="font-mono">Connections</span> and configure a Google account with Calendar access
+              to see verified events here.
             </p>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default async function CalendarPage() {
       {/* Stats row */}
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg-t border border-os-border bg-os-surface px-5 py-4">
-          <div className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-os-dim">Calendars connected</div>
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-os-dim">Calendar accounts configured</div>
           <div className="mt-2 font-mono text-[24px] font-semibold">{accounts.length}</div>
         </div>
         <div className="rounded-lg-t border border-os-border bg-os-surface px-5 py-4">
