@@ -13,6 +13,7 @@ import { arcadsStatus } from '@/lib/connectors/arcads';
 import { whatsappStatus } from '@/lib/connectors/whatsapp';
 import { wisprStatus } from '@/lib/connectors/wispr';
 import { localStackStatus } from '@/lib/connectors/local-stack';
+import { searchViatorMcp } from '@/lib/connectors/viator-mcp';
 import { getDb } from '@/lib/data';
 import type { LlmToolSpec } from '@/lib/connectors/llm';
 import type { AgentRunResult, RuntimeAgent } from '@/lib/agents/runtime';
@@ -125,6 +126,17 @@ export const realAgents: RuntimeAgent[] = [
         summary: `Instance hosts on this machine: ${stack.detail} · all agents bound to builtin runtime until the dedicated host lands`,
         data: stack.meta,
       };
+    },
+  },
+
+  {
+    id: 'viator-agent',
+    name: 'Affiliate Research Operator',
+    description: 'Searches live Viator inventory for Affiliate Studio and preserves source links and images for review.',
+    departmentId: 'dept-marketing-growth',
+    async run() {
+      const products = await searchViatorMcp('family coastal Spain travel');
+      return { ok: products.length > 0, summary: `${products.length} live Viator experiences available for Affiliate Studio research`, data: { products } };
     },
   },
 
