@@ -27,6 +27,7 @@ export default function AffiliateStudioPage() {
   const [assistantMessages, setAssistantMessages] = useState<Array<{ role: 'user' | 'agent'; text: string }>>([{ role: 'agent', text: 'I’m your Affiliate Studio strategist. Tell me a destination, audience, or season and I’ll brainstorm concepts, find live products, and prepare a draft campaign for your review.' }]);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
+  const [amazonQuery, setAmazonQuery] = useState('');
   useEffect(() => { fetch('/api/affiliate/products').then(r => r.ok ? r.json() : { products: [] }).then(body => setProducts(body.products ?? [])).catch(() => undefined); fetch('/api/affiliate/campaigns').then(r => r.ok ? r.json() : { campaigns: [] }).then(body => setCampaigns(body.campaigns ?? [])).catch(() => undefined); }, []);
   const active = products.find((p) => String(p.id) === String(selected)) ?? products[0];
   const trackedLink = useMemo(() => active ? (active.trackedUrl || `${active.url}${active.url.includes('?') ? '&' : '?'}utm_source=business-os&utm_medium=social&utm_campaign=affiliate_${active.id}`) : '', [active]);
@@ -108,6 +109,14 @@ export default function AffiliateStudioPage() {
       </div>
 
       <SectionHead label="Import product or affiliate URL" count="Amazon · AliExpress · CJ · Impact · manual" />
+      <section className="mb-4 rounded-lg-t border border-os-border bg-os-surface p-4">
+        <SectionHead label="Amazon browser research" count="SideStripe-assisted · review before import" />
+        <p className="mt-2 max-w-3xl text-[16px] leading-relaxed text-os-dim">Search Amazon in your signed-in browser, use SideStripe to create the affiliate link, then paste that link below. Business OS will not publish or purchase anything automatically.</p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input value={amazonQuery} onChange={(e) => setAmazonQuery(e.target.value)} placeholder="Search Amazon, e.g. travel camera bag" className="flex-1 rounded-sm-t border border-os-border bg-os-bg2 px-3 py-3 text-[16px] outline-none placeholder:text-os-dim" />
+          <button onClick={() => { const query = amazonQuery.trim() || 'travel products'; window.open(`https://www.amazon.com/s?k=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer'); }} className="rounded-sm-t border border-os-border px-4 py-2 font-mono text-[12px] uppercase text-os-accent hover:bg-os-surface2">Open Amazon research</button>
+        </div>
+      </section>
       <div className="mb-7 flex flex-col gap-2 sm:flex-row">
         <div className="flex flex-1 items-center gap-2 rounded-sm-t border border-os-border bg-os-surface px-3">
           <Link2 className="h-4 w-4 text-os-accent" />
