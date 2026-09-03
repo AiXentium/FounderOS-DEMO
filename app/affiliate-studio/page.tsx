@@ -7,6 +7,7 @@ import { Badge, SectionHead } from '@/components/terminal';
 
 type Product = { id: number | string; name: string; source: string; price?: string; commission?: string; url: string; status?: string; trackedUrl?: string; imageUrl?: string };
 type Campaign = { id: string; name: string; platforms?: string[]; status?: string };
+type TeamMember = { id: string; name: string; role: string; responsibilities: string[] };
 
 const initialProducts: Product[] = [];
 
@@ -28,7 +29,8 @@ export default function AffiliateStudioPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const [amazonQuery, setAmazonQuery] = useState('');
-  useEffect(() => { fetch('/api/affiliate/products').then(r => r.ok ? r.json() : { products: [] }).then(body => setProducts(body.products ?? [])).catch(() => undefined); fetch('/api/affiliate/campaigns').then(r => r.ok ? r.json() : { campaigns: [] }).then(body => setCampaigns(body.campaigns ?? [])).catch(() => undefined); }, []);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  useEffect(() => { fetch('/api/affiliate/products').then(r => r.ok ? r.json() : { products: [] }).then(body => setProducts(body.products ?? [])).catch(() => undefined); fetch('/api/affiliate/campaigns').then(r => r.ok ? r.json() : { campaigns: [] }).then(body => setCampaigns(body.campaigns ?? [])).catch(() => undefined); fetch('/api/affiliate/team').then(r => r.ok ? r.json() : { team: [] }).then(body => setTeam(body.team ?? [])).catch(() => undefined); }, []);
   const active = products.find((p) => String(p.id) === String(selected)) ?? products[0];
   const trackedLink = useMemo(() => active ? (active.trackedUrl || `${active.url}${active.url.includes('?') ? '&' : '?'}utm_source=business-os&utm_medium=social&utm_campaign=affiliate_${active.id}`) : '', [active]);
 
@@ -91,6 +93,12 @@ export default function AffiliateStudioPage() {
         </div>
         <div className="mt-3 space-y-2 rounded-sm-t border border-os-border bg-os-bg2 p-3">{assistantMessages.slice(-6).map((item, index) => <div key={`${item.role}-${index}`} className={`text-[20px] leading-relaxed ${item.role === 'agent' ? 'border-l-2 border-os-accent pl-3 text-os-copy' : 'text-os-dim'}`}><span className="mr-2 font-mono text-[11px] uppercase text-os-accent">{item.role === 'agent' ? 'agent' : 'you'}</span>{item.text}</div>)}</div>
         <div className="mt-3 flex flex-wrap gap-2">{['Find Spain holiday ideas', 'Brainstorm summer travel', 'Create a Lake Como campaign'].map((prompt) => <button key={prompt} onClick={() => { setAssistantMessage(prompt); }} className="rounded-sm-t border border-os-border px-3 py-2 font-mono text-[12px] uppercase text-os-dim hover:bg-os-surface2">{prompt}</button>)}</div>
+      </section>
+
+      <section className="mb-7 rounded-lg-t border border-os-border bg-os-surface p-4">
+        <SectionHead label="Affiliate Studio team" count="shared brief · approval gate" />
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{team.map((member) => <div key={member.id} className="rounded-sm-t border border-os-border bg-os-bg2 p-3"><div className="text-[18px] font-semibold">{member.name}</div><div className="mt-1 font-mono text-[13px] uppercase text-os-accent">{member.role}</div><div className="mt-2 text-[15px] leading-relaxed text-os-dim">{member.responsibilities.join(' · ')}</div></div>)}</div>
+        <div className="mt-3 rounded-sm-t border border-[var(--accent-line)] bg-os-accent/5 px-3 py-3 text-[15px] text-os-copy">All work stays in draft until you approve it. Website, affiliate, brand, and social agents share the same campaign context.</div>
       </section>
 
       <section className="mb-7 rounded-lg-t border border-os-border bg-os-surface p-4">
