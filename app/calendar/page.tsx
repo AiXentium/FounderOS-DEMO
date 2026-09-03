@@ -3,6 +3,7 @@ import type { CalEvent } from '@/lib/connectors/gcal';
 import { PageHeader } from '@/components/PageHeader';
 import { WeekCalendar } from '@/components/WeekCalendar';
 import { SectionHead, Badge } from '@/components/terminal';
+import { CalendarPlanner } from '@/components/CalendarPlanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export default async function CalendarPage() {
     return (
       <div>
         <PageHeader eyebrow="schedule" title="Calendar" />
+        <CalendarPlanner />
         <div className="rounded-lg-t border border-os-border bg-os-surface p-8">
           <div className="max-w-2xl">
             <h2 className="mb-2 font-mono text-sm font-semibold uppercase tracking-[0.1em] text-os-dim">
@@ -59,6 +61,8 @@ export default async function CalendarPage() {
           </div>
         }
       />
+
+      <CalendarPlanner />
 
       {/* Stats row */}
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
