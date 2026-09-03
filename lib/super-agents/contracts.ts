@@ -38,21 +38,21 @@ export type ApprovalRule = {
 };
 
 export type MemoryPolicy = {
-  readScopes: Array<'global' | 'business' | 'department' | 'project' | 'agent' | 'task'>;
-  writeScopes: Array<'business' | 'department' | 'project' | 'agent' | 'task'>;
-  remember: string[];
-  neverRemember: string[];
+  readScopes: ReadonlyArray<'global' | 'business' | 'department' | 'project' | 'agent' | 'task'>;
+  writeScopes: ReadonlyArray<'business' | 'department' | 'project' | 'agent' | 'task'>;
+  remember: ReadonlyArray<string>;
+  neverRemember: ReadonlyArray<string>;
 };
 
 export type TeamPolicy = {
   mayComposeTeams: boolean;
   maxConcurrentWorkers: number;
-  preferredCapabilities: string[];
+  preferredCapabilities: ReadonlyArray<string>;
   requireNamedSupervisorForParallelWork: boolean;
 };
 
 export type ExecutionPolicy = {
-  allowedPatterns: Array<'direct' | 'sequential' | 'parallel' | 'supervisor' | 'handoff' | 'plan-execute-judge'>;
+  allowedPatterns: ReadonlyArray<'direct' | 'sequential' | 'parallel' | 'supervisor' | 'handoff' | 'plan-execute-judge'>;
   maxPlanSteps: number;
   maxRetriesPerStep: number;
   requireEvidenceForCompletion: boolean;
@@ -60,9 +60,9 @@ export type ExecutionPolicy = {
 };
 
 export type EvaluationPolicy = {
-  successCriteria: string[];
-  evidenceRequirements: string[];
-  failureSignals: string[];
+  successCriteria: ReadonlyArray<string>;
+  evidenceRequirements: ReadonlyArray<string>;
+  failureSignals: ReadonlyArray<string>;
   repairStrategy: 'retry' | 'replan' | 'handoff' | 'human-review';
 };
 
@@ -72,20 +72,20 @@ export type SuperAgentDefinition = {
   role: SuperAgentRole;
   department: string;
   mission: string;
-  responsibilities: string[];
-  authority: string[];
-  prohibitedActions: string[];
-  capabilityNeeds: CapabilityRef[];
-  kpis: KpiDefinition[];
-  approvalRules: ApprovalRule[];
+  responsibilities: ReadonlyArray<string>;
+  authority: ReadonlyArray<string>;
+  prohibitedActions: ReadonlyArray<string>;
+  capabilityNeeds: ReadonlyArray<CapabilityRef>;
+  kpis: ReadonlyArray<KpiDefinition>;
+  approvalRules: ReadonlyArray<ApprovalRule>;
   memoryPolicy: MemoryPolicy;
   teamPolicy: TeamPolicy;
   executionPolicy: ExecutionPolicy;
   evaluationPolicy: EvaluationPolicy;
   modelPolicy: {
     mode: 'router';
-    prefer: string[];
-    avoid: string[];
+    prefer: ReadonlyArray<string>;
+    avoid: ReadonlyArray<string>;
     notes: string;
   };
 };
@@ -94,19 +94,19 @@ export type BusinessContext = {
   businessId: string;
   projectId?: string;
   objective: string;
-  constraints: string[];
-  availableCapabilities: string[];
-  kpiSnapshot?: Record<string, number>;
+  constraints: ReadonlyArray<string>;
+  availableCapabilities: ReadonlyArray<string>;
+  kpiSnapshot?: Readonly<Record<string, number>>;
 };
 
 export type MissionStep = {
   id: string;
   title: string;
   ownerRole: SuperAgentRole;
-  requiredCapabilities: string[];
-  dependsOn: string[];
+  requiredCapabilities: ReadonlyArray<string>;
+  dependsOn: ReadonlyArray<string>;
   risk: SuperAgentRiskLevel;
-  evidenceRequired: string[];
+  evidenceRequired: ReadonlyArray<string>;
 };
 
 export type SuperAgentMission = {
@@ -115,13 +115,13 @@ export type SuperAgentMission = {
   objective: string;
   ownerRole: SuperAgentRole;
   status: 'draft' | 'awaiting-approval' | 'ready' | 'running' | 'blocked' | 'judging' | 'complete' | 'failed';
-  steps: MissionStep[];
+  steps: ReadonlyArray<MissionStep>;
   createdAt: string;
   updatedAt: string;
 };
 
 export type CapabilityResolution = {
-  requested: string[];
-  resolved: CapabilityRef[];
-  missing: string[];
+  requested: ReadonlyArray<string>;
+  resolved: ReadonlyArray<CapabilityRef>;
+  missing: ReadonlyArray<string>;
 };
