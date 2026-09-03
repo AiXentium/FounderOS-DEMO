@@ -6,8 +6,8 @@
  * on tools, and flows into the next along a labelled edge. Bottleneck steps are
  * tagged with the money they leak; automations (live or suggested) show what
  * carries the load back. The bottom bar totals manual load, tagged leak, and
- * automation returns. Reads seeded, real-ready data; "Add step" drops a
- * placeholder node (client-only for now).
+ * automation returns. Reads blueprint definitions; execution evidence lives in
+ * Job Operations. "Add step" is a local proposal until it is persisted.
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import { User, Bot, Clock, Zap, Wrench, Plus, RotateCcw, ChevronRight, TriangleAlert } from 'lucide-react';
@@ -163,7 +163,7 @@ export function WorkflowMap({
   if (!current || !stats) {
     return (
       <p className="rounded-xl border border-dashed border-os-border px-4 py-10 text-center text-xs text-os-dim">
-        No workflows seeded yet.
+        No workflow blueprints configured yet.
       </p>
     );
   }

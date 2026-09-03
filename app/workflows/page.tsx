@@ -23,7 +23,8 @@ export default function WorkflowsPage() {
       <section className="mb-5 rounded-lg-t border border-os-border bg-os-surface p-4">
         <div className="font-mono text-[13px] uppercase tracking-[0.14em] text-os-accent">How this works</div>
         <p className="mt-2 max-w-4xl text-[16px] leading-relaxed text-os-copy">
-          These maps describe the Business OS execution lanes. They run through the OS agent and workflow executor;
+          These maps are operating blueprints for the Business OS execution lanes. They do not claim that a run occurred;
+          actual execution belongs in Job Operations and is shown only from recorded job evidence. They run through the OS agent and workflow executor;
           this page is not an n8n editor. n8n can be added as an external bridge for webhooks, schedules, or services
           without a native connector. Every external publishing step remains approval-gated.
         </p>
