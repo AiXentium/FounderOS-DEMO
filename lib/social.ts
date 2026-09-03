@@ -138,8 +138,8 @@ export function totalDms(db: FounderDb): number {
 /** Each audience channel as a GrowthPoint series: one per platform + email. */
 function audienceChannelPoints(db: FounderDb): GrowthPoint[][] {
   return [
-    ...db.social.accounts().map((a) => toPoints(db.social.snapshots(a.platform))),
-    db.emailList.snapshots().map((s) => ({ capturedAt: s.capturedAt, value: s.subscribers })),
+    ...db.social.accounts().map((a) => toPoints(db.social.snapshots(a.platform).filter((s) => s.source === 'zernio-config'))),
+    db.emailList.snapshots().filter((s) => s.source === 'beehiiv-live').map((s) => ({ capturedAt: s.capturedAt, value: s.subscribers })),
   ];
 }
 
@@ -195,13 +195,13 @@ export function audienceSeries(db: FounderDb): { channels: LabelledSeries[]; all
       key: a.platform,
       label: PLATFORM_LABELS[a.platform],
       color: PLATFORM_COLORS[a.platform],
-      points: toSeriesPoints(toPoints(db.social.snapshots(a.platform))),
+      points: toSeriesPoints(toPoints(db.social.snapshots(a.platform).filter((s) => s.source === 'zernio-config'))),
     })),
     {
       key: 'email',
       label: 'Email List',
       color: EMAIL_COLOR,
-      points: db.emailList.snapshots().map((s) => ({ date: s.capturedAt, value: s.subscribers })),
+      points: db.emailList.snapshots().filter((s) => s.source === 'beehiiv-live').map((s) => ({ date: s.capturedAt, value: s.subscribers })),
     },
   ].filter((c) => c.points.length > 0);
 

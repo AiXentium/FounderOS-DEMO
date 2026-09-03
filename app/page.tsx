@@ -5,7 +5,7 @@ import { allConnectorStatuses } from '@/lib/connectors';
 import { createGBrainProvider } from '@/lib/connectors/gbrain';
 import { audienceSeries, PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/social';
 import { syncFromZernioLive } from '@/lib/social-live';
-import { zernioPostDays } from '@/lib/connectors/zernio';
+import { zernioAccounts, zernioPostDays } from '@/lib/connectors/zernio';
 import { postSeriesFromDays } from '@/lib/posting-activity';
 import type { SocialPlatform } from '@/lib/schemas';
 import { gatherCommsFeed } from '@/lib/comms-feed';
@@ -71,6 +71,11 @@ function greeting(): string {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+function operatorName(): string {
+  const handle = Object.values(zernioAccounts()).map((a) => a.handle).find((h) => h?.trim());
+  return handle?.replace(/^@/, '') ?? 'Let’s Talk Miles & Travel';
 }
 
 function relativeTime(iso: string): string {
@@ -173,7 +178,7 @@ export default async function HomePage() {
   }));
 
   const nowQuarter = groupRoadmapByQuarter(db.roadmap.all())[0];
-  const nowItems = nowQuarter?.items.slice(0, 5) ?? [];
+  const nowItems = nowQuarter?.items.filter((it) => !/founder os|baseline/i.test(it.title)).slice(0, 5) ?? [];
 
   // Ticker line items — newest agent runs, honest OK / FAIL.
   const ticker = recentRuns.slice(0, 8);
@@ -192,7 +197,7 @@ export default async function HomePage() {
 
       <PageHeader
         eyebrow="operator console"
-        title={`${greeting()}, Alex`}
+        title={`${greeting()}, ${operatorName()}`}
         caret
         right={<Kbd>⌘K</Kbd>}
       />
