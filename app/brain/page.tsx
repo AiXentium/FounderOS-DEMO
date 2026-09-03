@@ -17,17 +17,11 @@ export const dynamic = 'force-dynamic';
  * stays one uninterrupted canvas.
  */
 
-// The client roster is the seeded funnel. Wire a CRM in here and the graph's
-// client ring becomes live without touching the graph itself.
+// Client nodes are shown only when a live CRM source is available. Seeded
+// funnel rows must never appear as current clients in the knowledge graph.
 function clientRoster(db: ReturnType<typeof getDb>): RosterClient[] {
-  return db.funnel.journeys().map((j) => ({
-    id: j.id,
-    name: j.name,
-    venture: j.venture,
-    status: j.status,
-    amountUsd: j.amountUsd,
-    source: 'funnel' as const,
-  }));
+  void db;
+  return [];
 }
 
 // The memory constellation distills a markdown knowledge store (parse + local

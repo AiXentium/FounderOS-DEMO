@@ -75,7 +75,7 @@ export default async function SocialPage() {
   // Live follower-count sync from Zernio/Late (falls back to static config when
   // the API is unreachable). This makes every figure on the page real-time.
   await syncFromZernioLive(db);
-  // Live Beehiiv subscriber count (no-op without a key → seeded fallback).
+  // Live Beehiiv subscriber count (no-op without a key).
   await syncBeehiivEmail(db);
   const dash = buildSocialDashboard(db);
   const email = buildEmailList(db);
@@ -89,7 +89,7 @@ export default async function SocialPage() {
 
   const total = audienceTotal(db);
   const queued = posts.filter((p) => p.status === 'queued').length;
-  const dmInbox = dmThreads(db); // Instagram DM inbox (seeded → live via ManyChat webhook)
+  const dmInbox = dmThreads(db); // Instagram DM inbox from live ManyChat webhooks.
 
   // Combined-audience series + REAL per-platform posting history (from Zernio/
   // Late) for the interactive left-column charts. `today` is computed server-side

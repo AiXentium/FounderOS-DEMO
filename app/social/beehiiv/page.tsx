@@ -32,7 +32,7 @@ export default async function BeehiivDashboardPage() {
           </div>
           <h1 className="text-[25px] font-bold uppercase leading-[1.1] tracking-[0.06em]">Newsletter</h1>
           <p className="mt-1 font-mono text-[11px] text-os-dim">
-            {live ? 'live via Beehiiv API' : 'seeded preview · add BEEHIIV_API_KEY for live'}
+            {live ? 'live via Beehiiv API' : 'no live Beehiiv connection · add BEEHIIV_API_KEY'}
           </p>
         </div>
         <a

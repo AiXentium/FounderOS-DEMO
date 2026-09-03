@@ -128,7 +128,7 @@ export function dmsByPlatform(db: FounderDb): SocialDm[] {
   return db.social.dms().filter((d) => db.social.dmSnapshots(d.platform).some((s) => s.source === 'zernio-config'));
 }
 
-/** Total DMs across every platform (seeded dummy until a real source lands). */
+/** Total DMs across connected/live inbox sources only. */
 export function totalDms(db: FounderDb): number {
   return dmsByPlatform(db).reduce((sum, d) => sum + d.count, 0);
 }
@@ -353,10 +353,10 @@ export type DmThread = {
 
 /** Group the DM messages for a platform into conversations, newest thread
     first. `unreplied` is true when the last message is inbound (needs a reply).
-    Seeded until the ManyChat webhook feeds `social_dm_messages` live. */
+    Messages are actionable only when they came from a live ManyChat webhook. */
 export function dmThreads(db: FounderDb, platform: SocialPlatform = 'instagram'): DmThread[] {
   const groups = new Map<string, SocialDmMessage[]>();
-  for (const m of db.social.dmMessages(platform)) {
+  for (const m of db.social.dmMessages(platform).filter((message) => message.source !== 'seed-dummy')) {
     // dmMessages is newest-first; collect per subscriber.
     const arr = groups.get(m.subscriberId) ?? [];
     arr.push(m);

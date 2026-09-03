@@ -102,7 +102,7 @@ export function InstagramDmInbox({ threads: initial, nowMs }: { threads: DmThrea
         </div>
         <span className="ml-auto flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.15em] text-os-dim">
           <span className={`h-1.5 w-1.5 ${isLive ? 'bg-os-ok' : 'bg-os-dim'}`} />
-          {isLive ? 'live · manychat' : 'seeded · live via manychat webhook'}
+          {isLive ? 'live · manychat' : 'no live ManyChat inbox connected'}
         </span>
       </div>
 
