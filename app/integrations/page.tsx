@@ -7,6 +7,8 @@ import { SectionHead } from '@/components/terminal';
 import { ConnectionCard } from '@/components/ConnectionCard';
 import { IntegrationCategory } from '@/components/IntegrationCategory';
 import { AiAutomationConnections } from '@/components/AiAutomationConnections';
+import { McpConnectionHub } from '@/components/McpConnectionHub';
+import { MCP_CONNECTIONS, mcpConnectionState } from '@/lib/mcp-connections';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +25,13 @@ export default async function ConnectionsPage() {
   const connected = catalog.filter((c) => c.connected);
   const popular = catalog.filter((c) => c.popular);
   const categories = [...integrationsByCategory().entries()];
+  const mcpStates = Object.fromEntries(MCP_CONNECTIONS.map((item) => [item.id, mcpConnectionState(item, statuses, readEnvLocal())]));
 
   return (
     <div>
       <PageHeader eyebrow="connections" title="Connections" />
       <AiAutomationConnections />
+      <McpConnectionHub items={MCP_CONNECTIONS} states={mcpStates} />
 
       {/* Your connected tools — driven by real connector status */}
       {connected.length > 0 && (
