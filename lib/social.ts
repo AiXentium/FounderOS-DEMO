@@ -103,9 +103,9 @@ export function syncFromZernioConfig(db: FounderDb, today?: string): number {
 }
 
 export function buildSocialDashboard(db: FounderDb): SocialDashboard {
-  const latest = new Map(db.social.latest().map((s) => [s.platform, s]));
-  const platforms = db.social.accounts().map((account) => {
-    const snapshots = db.social.snapshots(account.platform);
+  const latest = new Map(db.social.latest().filter((s) => s.source === 'zernio-config').map((s) => [s.platform, s]));
+  const platforms = db.social.accounts().filter((account) => latest.has(account.platform)).map((account) => {
+    const snapshots = db.social.snapshots(account.platform).filter((s) => s.source === 'zernio-config');
     return {
       platform: account.platform,
       handle: account.handle,
@@ -125,7 +125,7 @@ export function buildSocialDashboard(db: FounderDb): SocialDashboard {
 
 /** Per-platform DM counts, ordered to match the account list. */
 export function dmsByPlatform(db: FounderDb): SocialDm[] {
-  return db.social.dms();
+  return db.social.dms().filter((d) => db.social.dmSnapshots(d.platform).some((s) => s.source === 'zernio-config'));
 }
 
 /** Total DMs across every platform (seeded dummy until a real source lands). */
@@ -219,7 +219,7 @@ export function audienceSeries(db: FounderDb): { channels: LabelledSeries[]; all
 /** Total DMs per day across platforms (carry-forward sum of DM snapshots). */
 export function dmSeries(db: FounderDb): SeriesPoint[] {
   const byPlatform = new Map<string, GrowthPoint[]>();
-  for (const s of db.social.dmSnapshots()) {
+  for (const s of db.social.dmSnapshots().filter((s) => s.source === 'zernio-config')) {
     const list = byPlatform.get(s.platform) ?? [];
     list.push({ capturedAt: s.capturedAt, value: s.count });
     byPlatform.set(s.platform, list);
