@@ -2,7 +2,7 @@ import { readStoreNotes } from '@/lib/connectors/gbrain';
 import type { RosterClient } from '@/lib/schemas';
 import { buildBrainGraph } from '@/lib/brain-graph';
 import { buildKnowledgeGraph } from '@/lib/knowledge-graph';
-import { demoMemoryGraph, distillMemoryGraph, type MemoryGraph } from '@/lib/memory-core';
+import { distillMemoryGraph, type MemoryGraph } from '@/lib/memory-core';
 import { getDb } from '@/lib/data';
 import { PageHeader } from '@/components/PageHeader';
 import { BrainDump } from '@/components/BrainDump';
@@ -40,13 +40,12 @@ function memoryConstellation(): MemoryGraph {
   if (memoryCache && Date.now() - memoryCache.at < MEMORY_TTL_MS) return memoryCache.value;
   let value: MemoryGraph;
   try {
-    // A real store on disk always wins. A fresh clone has none, and an empty
-    // core renders the whole graph as a bare dot, so fall back to the generated
-    // stand-in: same layout, generic knowledge domains, no personal data.
+    // A real store on disk is authoritative. An empty store stays empty so
+    // the UI never presents a generated constellation as learned knowledge.
     const distilled = distillMemoryGraph(buildBrainGraph(readStoreNotes()));
-    value = distilled.nodes.length > 0 ? distilled : demoMemoryGraph();
+    value = distilled;
   } catch {
-    value = demoMemoryGraph();
+    value = { nodes: [], edges: [] };
   }
   memoryCache = { at: Date.now(), value };
   return value;
@@ -68,6 +67,9 @@ export default function BrainPage() {
     db.people.all(),
     db.sopTasks.all(),
   );
+  const agentCount = db.agents.all().length;
+  const trainedCount = db.skills.all().filter((skill) => skill.status === 'live').length;
+  const recentRunCount = db.agentRuns.recent(100).length;
 
   return (
     <div className="flex h-[calc(100dvh-9.25rem)] min-h-[520px] flex-col">
@@ -78,7 +80,7 @@ export default function BrainPage() {
         title="G-Brain"
         caret
         rightWide
-        right={<BrainDump compact />}
+        right={<div className="flex items-center gap-3"><span className="font-mono text-[11px] text-os-dim">{agentCount} agents · {trainedCount} live skills · {recentRunCount} recent runs</span><BrainDump compact /></div>}
       />
 
       {/* pull the graph up under the header (offsets PageHeader's shared mb-6)
