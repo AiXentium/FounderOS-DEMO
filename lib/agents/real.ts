@@ -332,7 +332,7 @@ export const realAgents: RuntimeAgent[] = [
         ideas.push(`${warnings.length} doctor check(s) need attention (${warnings.map((w) => w.name).join(', ')})`);
       if (inbox && inbox.files > 3) ideas.push(`inbox/ holds ${inbox.files} unprocessed pages — file or archive them`);
       if (store.totalFiles < 50)
-        ideas.push(`only ${store.totalFiles} pages on disk vs ~1240 in Supabase — run \`gbrain export\` to restore locally`);
+        ideas.push(`only ${store.totalFiles} pages on disk — verify the remote knowledge store before relying on completeness`);
       if (ideas.length === 0) ideas.push('storage healthy — no action needed');
 
       return {
@@ -477,9 +477,9 @@ export const realAgents: RuntimeAgent[] = [
         ok: true,
         summary: servingAttio
           ? `Serving Ledger live: ${live.clients.length} deals on the roster · funnel backup holds ${converted.length} clients`
-          : `Serving seeded funnel: ${converted.length} clients (${ventures}) · ${journeys.length - converted.length} in pipeline · Ledger ${live.state}`,
+          : `No live client roster available · Ledger ${live.state} · ${converted.length} local reference records not used as live clients`,
         data: {
-          source: servingAttio ? 'ledger' : 'funnel',
+          source: servingAttio ? 'ledger' : 'none',
           ledger: { state: live.state, deals: live.clients.length },
           clients: converted.map((j) => ({ id: j.id, name: j.name, venture: j.venture, amountUsd: j.amountUsd })),
         },

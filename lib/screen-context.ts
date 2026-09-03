@@ -49,7 +49,7 @@ async function funnelContext(): Promise<string> {
   const now = new Date();
   const [attioLive, ghlLive] = await Promise.all([attioFunnelJourneys(now), ghlFunnelJourneys(now)]);
   const live = [...(attioLive?.journeys ?? []), ...(ghlLive?.journeys ?? [])];
-  const all = live.length > 0 ? live : getDb().funnel.journeys();
+  const all = live;
   const { active, archived } = splitFunnelJourneys(all, now);
   const summary = funnelSummary(active);
   const metas = active.map((j) => ({ j, meta: journeyMeta(j, now) }));
@@ -72,7 +72,7 @@ async function funnelContext(): Promise<string> {
         ]
           .filter(Boolean)
           .join(' + ') + ' (live)'
-      : 'seeded demo data';
+      : 'no live funnel sources';
   return describeFunnelContext({
     clients: summary.clients,
     converted: summary.converted,
