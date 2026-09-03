@@ -22,7 +22,15 @@ export async function POST(request: Request) {
       campaign = { id: randomUUID(), name: `Affiliate plan: ${query}`, productIds: products.map((p) => p.id), platforms: ['instagram', 'tiktok', 'linkedin'], status: 'draft', createdAt: new Date().toISOString() };
       db.affiliateCampaigns.create(campaign);
     }
-    return NextResponse.json({ reply: campaign ? `I found ${products.length} live Viator experiences and created a draft campaign. Nothing has been published. Review the products and schedule before activating it.` : `I found ${products.length} live Viator experiences for “${query}”. Select one to build a campaign.`, products, campaign, actions: ['viator.search', ...(campaign ? ['affiliate.campaign.create'] : [])] });
+    const siteBrief = wantsCampaign ? {
+      title: 'Spain Coast Family Travel Guide',
+      sections: ['Best coastal destinations', 'Family-friendly food and beach clothing', 'Hotels and beach essentials', 'Seasonal trends and itinerary ideas'],
+      status: 'draft — requires review before publishing',
+    } : undefined;
+    const reply = campaign
+      ? `I found ${products.length} live Viator experiences and created a draft campaign. I also prepared a Spain-coast family promotion brief with food, hotels, beach clothing, and seasonal trend sections. Amazon product automation is not connected yet, so I will not invent or import Amazon products. Review the live experiences and add verified SiteStripe links before publishing.`
+      : `I found ${products.length} live Viator experiences for “${query}”. Tell me to create the campaign when you want a draft brief.`;
+    return NextResponse.json({ reply, products, campaign, siteBrief, actions: ['viator.search', ...(campaign ? ['affiliate.campaign.create', 'website.section.prepare'] : [])], warnings: ['Amazon product search requires a verified SiteStripe link or Creators API credentials.'] });
   } catch (error) {
     return NextResponse.json({ reply: 'I could not complete a live network search. Check the Viator connection and try again.', error: error instanceof Error ? error.message : 'network request failed', products: [] }, { status: 502 });
   }
