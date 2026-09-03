@@ -2,6 +2,7 @@ import { getDb } from '@/lib/data';
 import { PageHeader } from '@/components/PageHeader';
 import { AgentChat } from '@/components/AgentChat';
 import { ConductorChat } from '@/components/ConductorChat';
+import { AgentReadinessPanel } from '@/components/AgentReadinessPanel';
 import { AgentActivityFeed } from '@/components/AgentActivityFeed';
 import { AgentWorkPanel } from '@/components/AgentWorkPanel';
 import { recentActivity } from '@/lib/agents/activity';
@@ -128,6 +129,8 @@ export default function AgentsPage() {
       <div className="mb-6">
         <ConductorChat agentNames={agentNames} />
       </div>
+
+      <AgentReadinessPanel />
 
       <div className="mb-6 grid grid-cols-5 gap-3 max-[1100px]:grid-cols-2">
         {[

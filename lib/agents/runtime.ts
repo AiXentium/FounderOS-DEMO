@@ -78,6 +78,24 @@ export function createRuntime(db: FounderDb, agents: RuntimeAgent[]) {
             finishedAt: new Date().toISOString(),
           };
           db.broadcasts.insertReply(reply);
+          // Persist the exchange so agents have an auditable learning trail.
+          // This is memory, not silent model retraining or permission escalation.
+          db.agentMessages.insert({
+            id: randomUUID(),
+            agentId: agent.id,
+            role: 'user',
+            content: message,
+            toolCalls: [],
+            createdAt,
+          });
+          db.agentMessages.insert({
+            id: randomUUID(),
+            agentId: agent.id,
+            role: 'assistant',
+            content: result.summary,
+            toolCalls: [],
+            createdAt: reply.finishedAt,
+          });
           return reply;
         }),
       );
