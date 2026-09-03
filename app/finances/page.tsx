@@ -311,6 +311,19 @@ export default async function FinancesPage() {
           </ul>
         </section>
       )}
+
+      <section className="mt-6 rounded-lg-t border border-[var(--accent-line)] bg-os-accent/5 p-4">
+        <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-os-accent">Finance and commission agent</div>
+        <h2 className="mt-1 text-[18px] font-semibold">Verified bookkeeping workspace</h2>
+        <p className="mt-2 text-[14px] leading-6 text-os-muted">
+          This agent reconciles connected processor data and uploaded statements, categorizes expenses, and prepares a tax-planning summary for review. It does not estimate tax, file returns, or connect a bank without authorized credentials.
+        </p>
+        <div className="mt-3 grid gap-2 text-[14px] sm:grid-cols-3">
+          <div className="rounded-sm-t border border-os-border bg-os-surface p-3"><span className="font-semibold">Income evidence</span><div className="mt-1 text-os-dim">{hasIncome ? `${liveCount} live source${liveCount === 1 ? '' : 's'}` : 'Awaiting connected processor'}</div></div>
+          <div className="rounded-sm-t border border-os-border bg-os-surface p-3"><span className="font-semibold">Expense evidence</span><div className="mt-1 text-os-dim">{expensesLive ? `Imported · ${monthLabel}` : 'Awaiting statement upload'}</div></div>
+          <div className="rounded-sm-t border border-os-border bg-os-surface p-3"><span className="font-semibold">Tax status</span><div className="mt-1 text-os-dim">Requires verified books and jurisdiction settings</div></div>
+        </div>
+      </section>
     </div>
   );
 }
