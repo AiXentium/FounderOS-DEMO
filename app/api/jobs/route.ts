@@ -8,7 +8,8 @@ export async function POST(request: Request) {
   if (body.action === 'run') {
     const limit = Math.min(25, Math.max(1, Number(body.limit) || 1)); const results: { id: string; status: string }[] = [];
     for (const job of db.localJobs.all().filter((item: any) => item.status === 'queued' || (item.status === 'retry' && item.attempts < 3)).slice(0, limit)) {
-      try { db.localJobs.update(job.id, 'running'); db.localJobs.update(job.id, 'completed'); results.push({ id: job.id, status: 'completed' }); } catch (error) { db.localJobs.update(job.id, 'retry', error instanceof Error ? error.message : 'job failed'); results.push({ id: job.id, status: 'retry' }); }
+      db.localJobs.update(job.id, 'failed', `No executor registered for job type: ${job.type}`);
+      results.push({ id: job.id, status: 'failed' });
     }
     return NextResponse.json({ ran: results.length, results });
   }

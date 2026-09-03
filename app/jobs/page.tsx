@@ -1,18 +1,163 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Activity, Play, RefreshCw } from 'lucide-react';
-import { PageHeader } from '@/components/PageHeader';
-import { Badge, SectionHead } from '@/components/terminal';
+import { useEffect, useState } from "react";
+import { Activity, Play, RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { Badge, SectionHead } from "@/components/terminal";
 
-type Job = { id: string; type: string; status: string; attempts: number; last_error?: string; created_at?: string };
-type Summary = { total: number; queued: number; running: number; completed: number; retry: number; failed: number };
+type Job = {
+  id: string;
+  type: string;
+  status: string;
+  attempts: number;
+  last_error?: string;
+  created_at?: string;
+};
+type Summary = {
+  total: number;
+  queued: number;
+  running: number;
+  completed: number;
+  retry: number;
+  failed: number;
+};
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]); const [summary, setSummary] = useState<Summary>({ total: 0, queued: 0, running: 0, completed: 0, retry: 0, failed: 0 }); const [status, setStatus] = useState('');
-  const load = async () => { const response = await fetch('/api/jobs'); if (!response.ok) return; const body = await response.json(); setJobs(body.jobs ?? []); setSummary(body.summary ?? summary); };
-  useEffect(() => { void load(); }, []);
-  const run = async () => { setStatus('Running queued jobs…'); const response = await fetch('/api/jobs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'run', limit: 25 }) }); setStatus(response.ok ? 'Queue processed' : 'Worker encountered an error'); await load(); };
-  const backup = async () => { const response = await fetch('/api/backup'); if (!response.ok) return setStatus('Backup failed'); const blob = new Blob([JSON.stringify(await response.json(), null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `business-os-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(link.href); setStatus('Backup downloaded'); };
-  return <div><PageHeader eyebrow="system / operations" title="Job Operations" right={<Badge tone="ok"><Activity className="mr-1 inline h-3 w-3" /> local worker</Badge>} /><div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-6">{(['queued', 'running', 'completed', 'retry', 'failed', 'total'] as const).map((key) => <div key={key} className="rounded-lg-t border border-os-border bg-os-surface p-3"><div className="font-mono text-[9px] uppercase text-os-dim">{key}</div><div className="mt-2 text-xl font-semibold">{summary[key]}</div></div>)}</div><div className="mb-4 flex flex-wrap gap-2"><button onClick={() => void run()} className="flex items-center gap-2 rounded-sm-t bg-os-accent px-3 py-2 font-mono text-[10px] font-bold uppercase text-[var(--accent-ink)]"><Play className="h-3.5 w-3.5" /> Run worker</button><button onClick={() => void load()} className="flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase"><RefreshCw className="h-3.5 w-3.5" /> Refresh</button><button onClick={() => void backup()} className="rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase">Download backup</button>{status && <span className="self-center font-mono text-[10px] text-os-accent">{status}</span>}</div><section><SectionHead label="Recent jobs" count={`${jobs.length} records`} /><div className="overflow-hidden rounded-lg-t border border-os-border bg-os-surface">{jobs.length === 0 ? <div className="p-5 font-mono text-[10px] text-os-dim">No jobs queued yet. Agent actions and integrations will appear here.</div> : jobs.map((job) => <div key={job.id} className="flex flex-wrap items-center gap-3 border-b border-os-border px-4 py-3 last:border-0"><span className="min-w-[150px] flex-1 text-[12px]">{job.type}</span><span className="font-mono text-[10px] uppercase text-os-accent">{job.status}</span><span className="font-mono text-[9px] text-os-dim">attempts {job.attempts}</span>{job.last_error && <span className="text-[10px] text-os-warn">{job.last_error}</span>}</div>)}</div></section></div>;
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [summary, setSummary] = useState<Summary>({
+    total: 0,
+    queued: 0,
+    running: 0,
+    completed: 0,
+    retry: 0,
+    failed: 0,
+  });
+  const [status, setStatus] = useState("");
+  const load = async () => {
+    const response = await fetch("/api/jobs");
+    if (!response.ok) return;
+    const body = await response.json();
+    setJobs(body.jobs ?? []);
+    setSummary(body.summary ?? summary);
+  };
+  useEffect(() => {
+    void load();
+  }, []);
+  const run = async () => {
+    setStatus("Running queued jobs…");
+    const response = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "run", limit: 25 }),
+    });
+    setStatus(response.ok ? "Queue processed" : "Worker encountered an error");
+    await load();
+  };
+  const backup = async () => {
+    const response = await fetch("/api/backup");
+    if (!response.ok) return setStatus("Backup failed");
+    const blob = new Blob([JSON.stringify(await response.json(), null, 2)], {
+      type: "application/json",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `business-os-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    setStatus("Backup downloaded");
+  };
+  return (
+    <div>
+      <PageHeader
+        eyebrow="system / operations"
+        title="Job Operations"
+        right={
+          <Badge tone="ok">
+            <Activity className="mr-1 inline h-3 w-3" /> local worker
+          </Badge>
+        }
+      />
+      <section className="mb-5 rounded-lg-t border border-os-border bg-os-surface p-5"><h2 className="text-[17px] font-semibold">Job Steward</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-os-muted">This is the execution ledger: it records queued, running, completed, retry, and failed operations from agents and connectors. The steward flags missing executors and never marks work complete unless a real worker reports success.</p><p className="mt-2 font-mono text-[11px] text-os-dim">Use Tasks for planning and ownership. Use Jobs for execution evidence and failure diagnosis.</p></section>
+      <div className="mb-5 grid grid-cols-2 gap-2 md:grid-cols-6">
+        {(
+          [
+            "queued",
+            "running",
+            "completed",
+            "retry",
+            "failed",
+            "total",
+          ] as const
+        ).map((key) => (
+          <div
+            key={key}
+            className="rounded-lg-t border border-os-border bg-os-surface p-3"
+          >
+            <div className="font-mono text-[9px] uppercase text-os-dim">
+              {key}
+            </div>
+            <div className="mt-2 text-xl font-semibold">{summary[key]}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => void run()}
+          className="flex items-center gap-2 rounded-sm-t bg-os-accent px-3 py-2 font-mono text-[10px] font-bold uppercase text-[var(--accent-ink)]"
+        >
+          <Play className="h-3.5 w-3.5" /> Run worker
+        </button>
+        <button
+          onClick={() => void load()}
+          className="flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </button>
+        <button
+          onClick={() => void backup()}
+          className="rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase"
+        >
+          Download backup
+        </button>
+        {status && (
+          <span className="self-center font-mono text-[10px] text-os-accent">
+            {status}
+          </span>
+        )}
+      </div>
+      <section>
+        <SectionHead label="Recent jobs" count={`${jobs.length} records`} />
+        <div className="overflow-hidden rounded-lg-t border border-os-border bg-os-surface">
+          {jobs.length === 0 ? (
+            <div className="p-5 font-mono text-[10px] text-os-dim">
+              No jobs queued yet. Agent actions and integrations will appear
+              here.
+            </div>
+          ) : (
+            jobs.map((job) => (
+              <div
+                key={job.id}
+                className="flex flex-wrap items-center gap-3 border-b border-os-border px-4 py-3 last:border-0"
+              >
+                <span className="min-w-[150px] flex-1 text-[12px]">
+                  {job.type}
+                </span>
+                <span className="font-mono text-[10px] uppercase text-os-accent">
+                  {job.status}
+                </span>
+                <span className="font-mono text-[9px] text-os-dim">
+                  attempts {job.attempts}
+                </span>
+                {job.last_error && (
+                  <span className="text-[10px] text-os-warn">
+                    {job.last_error}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
 }
