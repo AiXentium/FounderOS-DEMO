@@ -94,9 +94,9 @@ export default async function FinancesPage() {
     : null;
   const byCategory = expensesLive ? ledgerSpend : [];
   const expenses = expensesLive ? ledgerSpend.reduce((s, c) => s + c.total, 0) : 0;
+  const liveCount = accounts.filter((a) => a.live).length;
   const hasIncome = incomeMtd != null || liveCount > 0;
   const netMonthly = hasIncome || expensesLive ? net(incomeMtd ?? 0, expenses) : null;
-  const liveCount = accounts.filter((a) => a.live).length;
   const maxAccount = Math.max(...accounts.map((a) => a.income ?? 0), 1);
   const maxCategory = Math.max(...byCategory.map((c) => c.total), 1);
 
