@@ -1002,9 +1002,18 @@ export function openDb(path: string) {
   };
 
   const affiliateCampaigns = {
-    all() { return db.prepare('SELECT * FROM affiliate_campaigns ORDER BY created_at DESC').all() as Array<Record<string, string>>; },
+    all() {
+      return (db.prepare('SELECT * FROM affiliate_campaigns ORDER BY created_at DESC').all() as Array<Record<string, string>>).map((row) => ({
+        ...row,
+        productIds: JSON.parse(row.product_ids || '[]'),
+        platforms: JSON.parse(row.platforms || '[]'),
+      }));
+    },
     create(campaign: { id: string; name: string; productIds: string[]; platforms: string[]; status?: string; createdAt: string }) {
       db.prepare(`INSERT OR REPLACE INTO affiliate_campaigns (id, name, product_ids, platforms, status, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(campaign.id, campaign.name, JSON.stringify(campaign.productIds), JSON.stringify(campaign.platforms), campaign.status ?? 'draft', campaign.createdAt);
+    },
+    updateStatus(id: string, status: 'draft' | 'approved' | 'denied') {
+      db.prepare('UPDATE affiliate_campaigns SET status = ? WHERE id = ?').run(status, id);
     },
   };
 
