@@ -20,6 +20,19 @@ export default function WorkflowsPage() {
   return (
     <div>
       <PageHeader eyebrow="process map" title="Workflows" />
+      <section className="mb-5 rounded-lg-t border border-os-border bg-os-surface p-4">
+        <div className="font-mono text-[13px] uppercase tracking-[0.14em] text-os-accent">How this works</div>
+        <p className="mt-2 max-w-4xl text-[16px] leading-relaxed text-os-copy">
+          These maps describe the Business OS execution lanes. They run through the OS agent and workflow executor;
+          this page is not an n8n editor. n8n can be added as an external bridge for webhooks, schedules, or services
+          without a native connector. Every external publishing step remains approval-gated.
+        </p>
+        <div className="mt-3 grid gap-2 text-[15px] sm:grid-cols-3">
+          <div className="rounded-sm-t border border-os-border bg-os-bg2 p-3"><span className="font-semibold">Business OS</span><div className="mt-1 text-os-dim">Agents, approvals, shared context</div></div>
+          <div className="rounded-sm-t border border-os-border bg-os-bg2 p-3"><span className="font-semibold">Connected tools</span><div className="mt-1 text-os-dim">WordPress, Viator, Zernio, Calendar</div></div>
+          <div className="rounded-sm-t border border-os-border bg-os-bg2 p-3"><span className="font-semibold">n8n bridge</span><div className="mt-1 text-os-dim">Optional webhooks and schedules</div></div>
+        </div>
+      </section>
       <WorkflowMap workflows={workflows} toolLogos={toolLogos} />
     </div>
   );
