@@ -855,3 +855,10 @@ html.conductor-dragging .os-shell {
   color: transparent;
   animation: synth-sweep 1.6s linear infinite;
 }
+.affiliate-studio-page,
+.affiliate-studio-page button,
+.affiliate-studio-page input,
+.affiliate-studio-page select,
+.affiliate-studio-page textarea {
+  font-size: 20px;
+}
