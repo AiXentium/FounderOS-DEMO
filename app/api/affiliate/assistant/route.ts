@@ -5,6 +5,17 @@ import { searchViatorMcp } from '@/lib/connectors/viator-mcp';
 
 export const runtime = 'nodejs';
 
+const AUTOMATED_STAGES = [
+  'research.destination',
+  'research.affiliate-products',
+  'campaign.create',
+  'team.assign',
+  'website.draft',
+  'content.seo-social',
+  'brand.compliance-review',
+  'human.approval',
+] as const;
+
 /** Small, auditable Affiliate Studio operator. It executes only the existing
  * discovery and campaign primitives; it never publishes or books automatically. */
 export async function POST(request: Request) {
@@ -27,12 +38,13 @@ export async function POST(request: Request) {
         name: `${query} — campaign preview`,
         prompt: `Build a review-only affiliate campaign page for ${query}. Use only verified product and source URLs. Include SEO metadata, disclosure, conversion CTAs, and social variations. Do not publish without human approval.`,
         direction: 'affiliate campaign draft',
-        page: {
+      page: {
           query,
           productIds: products.map((p) => p.id),
           team: ['affiliate-strategist', 'marketing-growth', 'brand-guardian', 'website-designer', 'social-publisher', 'research-operator'],
           status: 'draft — requires review',
           approvalRequired: true,
+          workflow: AUTOMATED_STAGES,
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -47,7 +59,7 @@ export async function POST(request: Request) {
     const reply = campaign
       ? `I found ${products.length} live Viator experiences and created a draft campaign. I also prepared a Spain-coast family promotion brief with food, hotels, beach clothing, and seasonal trend sections. Amazon product automation is not connected yet, so I will not invent or import Amazon products. Review the live experiences and add verified SiteStripe links before publishing.`
       : `I found ${products.length} live Viator experiences for “${query}”. Tell me to create the campaign when you want a draft brief.`;
-    return NextResponse.json({ reply, products, campaign, websiteProject, siteBrief, actions: ['viator.search', ...(campaign ? ['affiliate.campaign.create', 'website.project.create', 'team.assign', 'website.section.prepare'] : [])], warnings: ['Amazon product search requires a verified SiteStripe link or Creators API credentials.'] });
+    return NextResponse.json({ reply, products, campaign, websiteProject, siteBrief, workflow: campaign ? { mode: 'automated', stages: AUTOMATED_STAGES, current: 'human.approval', approvalRequired: true } : undefined, actions: ['viator.search', ...(campaign ? ['affiliate.campaign.create', 'website.project.create', 'team.assign', 'website.section.prepare', 'brand.compliance.review'] : [])], warnings: ['Amazon product search requires a verified SiteStripe link or Creators API credentials.'] });
   } catch (error) {
     return NextResponse.json({ reply: 'I could not complete a live network search. Check the Viator connection and try again.', error: error instanceof Error ? error.message : 'network request failed', products: [] }, { status: 502 });
   }
