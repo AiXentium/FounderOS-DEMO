@@ -1,0 +1,11 @@
+[phases.gbrain]
+dependsOn = ["setup"]
+cmds = [
+  "git clone --depth 1 https://github.com/garrytan/gbrain.git /app/gbrain",
+  "cd /app/gbrain && bun install --frozen-lockfile",
+  "cd /app/gbrain && bun run build:all",
+  "mkdir -p /app/bin && cp /app/gbrain/bin/gbrain-linux-x64 /app/bin/gbrain && chmod +x /app/bin/gbrain"
+]
+
+[variables]
+GBRAIN_BIN = "/app/bin/gbrain"
