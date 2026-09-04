@@ -70,6 +70,20 @@ export async function chatWithAgent(
   }
   const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, brainContext), messages: llmMessages, tools });
 
+  // Roster audits are an operational read, not a creative answer. Guarantee
+  // that the response reflects the loaded runtime rather than model memory.
+  if (agentId === 'data-agent' && /(audit|all agents|every agent|each agent|roster|who can you communicate)/i.test(message)) {
+    const auditTool = tools?.find((tool) => tool.name === 'auditRuntimeAgents');
+    if (auditTool) {
+      const audit = await auditTool.execute({}) as { total: number; builtinRuntime: number; agents: Array<{ id: string; name: string; description: string; canRun: boolean; canRespond: boolean; chatTools: string[] }> };
+      const lines = audit.agents.map((entry) => `- ${entry.name} (${entry.id}): ${entry.description} | run=${entry.canRun ? 'yes' : 'no'} respond=${entry.canRespond ? 'yes' : 'no'} tools=${entry.chatTools.join(', ') || 'none'}`);
+      const reply = `Live runtime audit: ${audit.total} agents loaded (${audit.builtinRuntime} builtin runtime agents). These are the actual loaded agents, not seed/mock records:\n${lines.join('\n')}`;
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `auditRuntimeAgents → ${JSON.stringify(audit)}`, toolCalls: [{ name: 'auditRuntimeAgents', args: {}, result: audit }], createdAt: now() });
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+      return { reply, messages: db.agentMessages.byAgent(agentId) };
+    }
+  }
+
   if (result.toolCalls.length) {
     db.agentMessages.insert({
       id: randomUUID(),
