@@ -18,6 +18,7 @@ import { getDb } from '@/lib/data';
 import type { LlmToolSpec } from '@/lib/connectors/llm';
 import type { AgentRunResult, RuntimeAgent } from '@/lib/agents/runtime';
 import { googleCalendarApiStatus } from '@/lib/connectors/gcal';
+import { agencyRuntimeAgents } from '@/lib/agency-catalog';
 
 /**
  * The real agent roster. Every run() does actual work against a live system —
@@ -113,7 +114,7 @@ async function processorConfirmationRun(): Promise<AgentRunResult> {
   };
 }
 
-export const realAgents: RuntimeAgent[] = [
+export const realAgents: RuntimeAgent[] = ([
   // ── Command ──────────────────────────────────────────────────────────
   {
     id: 'conductor',
@@ -551,4 +552,4 @@ export const realAgents: RuntimeAgent[] = [
       };
     },
   },
-];
+] as RuntimeAgent[]).concat(agencyRuntimeAgents());

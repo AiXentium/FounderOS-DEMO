@@ -1,5 +1,6 @@
 import type { FounderDb } from '@/lib/db';
 import { PERSONAS } from '@/lib/personas-seed';
+import { agencyDefinitions, agencySeedAgents } from '@/lib/agency-catalog';
 import type {
   Agent,
   AgentTask,
@@ -53,7 +54,7 @@ const departments: Department[] = [
 // (`instance` records that binding; everything is 'builtin' until then).
 // Worker rows underneath them do one specific task each and sit at the
 // bottom of the hierarchy.
-const agents: Agent[] = [
+const agents: Agent[] = ([
   // ── TECH: AI head ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'conductor',
@@ -464,7 +465,7 @@ const agents: Agent[] = [
     parentId: 'client-roster',
     instance: 'builtin',
   },
-];
+] as Agent[]).concat(agencySeedAgents());
 
 // ── Humans in the process ─────────────────────────────────────────────────────
 // Real heads (Marco, Nadia) plus larp-first seeds for the roles Alex will hire
@@ -523,7 +524,7 @@ const leadMagnets: LeadMagnet[] = [
   },
 ];
 
-const sopTasks: SopTask[] = [
+const sopTasks: SopTask[] = ([
   // TECH
   {
     id: 'sop-conductor', departmentId: 'dept-tech', assigneeKind: 'agent', assigneeId: 'conductor',
@@ -963,7 +964,7 @@ const sopTasks: SopTask[] = [
       'Sign off renewals and hand pricing changes to Sales',
     ],
   },
-];
+] as SopTask[]).concat([{ id: 'sop-calendar-agent', departmentId: 'dept-comms', assigneeKind: 'agent' as const, assigneeId: 'calendar-agent', title: 'Read Google Calendar safely', summary: 'Read live calendar access and report events for operator review.', steps: ['Load the connected Google Calendar account', 'Retrieve the authorized calendar event window', 'Normalize dates, locations, and join links', 'Return only read-only calendar context', 'Record the access result for the operator'] }], agencyDefinitions().map((d) => ({ id: `sop-${d.id}`, departmentId: d.category === 'sales' ? 'dept-sales' : ['engineering', 'integrations', 'spatial-computing', 'game-development'].includes(d.category) ? 'dept-tech' : ['design', 'marketing', 'paid-media'].includes(d.category) ? 'dept-marketing-growth' : 'dept-clients', assigneeKind: 'agent' as const, assigneeId: d.id, title: `Run ${d.name} specialist lane`, summary: `${d.name} reads the shared G-Brain and returns a scoped advisory deliverable.`, steps: [`Load the ${d.name} specialist definition`, 'Retrieve relevant shared G-Brain context', 'Produce a scoped advisory response', 'Record the result for operator review', 'Return the result for operator review'] })));
 
 // Curated from a full-filesystem discovery sweep.
 // status reflects what was VERIFIED on this machine: connected = creds/binary
