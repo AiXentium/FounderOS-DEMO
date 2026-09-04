@@ -5,6 +5,7 @@ import { ExternalLink, RefreshCw } from 'lucide-react';
 
 type Page = { id: number; title?: { rendered?: string }; link?: string; editUrl?: string; isBuiltWithElementor?: boolean };
 type ElementorSelection = { previewUrl: string; editUrl?: string };
+type PageListBody = { result?: { items?: Page[]; totalPages?: number }; error?: string; detail?: string };
 
 export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPageSelected?: (selection: ElementorSelection) => void }) {
   const [pages, setPages] = useState<Page[]>([]);
@@ -16,18 +17,39 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
 
   const loadPages = async () => {
     setStatus('Loading WordPress pages…');
-    const [response, elementorResponse] = await Promise.all([
-      fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
-      fetch('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
-    ]);
-    const body = await response.json();
-    const elementorBody = await elementorResponse.json();
-    if (!response.ok) return setStatus(body.detail || body.error || 'WordPress connection failed');
-    const livePages = body.result?.items || body.result || [];
-    const elementorPages = elementorBody.result?.items || elementorBody.result || [];
-    const editUrls = new Map(elementorPages.map((page: Page) => [String(page.id), page.editUrl]));
-    setPages(livePages.map((page: Page) => ({ ...page, editUrl: editUrls.get(String(page.id)) })));
-    setStatus(`Connected · ${livePages.length} live WordPress pages`);
+    try {
+      const [response, elementorResponse] = await Promise.all([
+        fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
+        fetch('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
+      ]);
+      const body = await response.json() as PageListBody;
+      const elementorBody = await elementorResponse.json() as PageListBody;
+      if (!response.ok) return setStatus(body.detail || body.error || 'WordPress connection failed');
+      if (!elementorResponse.ok) return setStatus(elementorBody.detail || elementorBody.error || 'Elementor connection failed');
+
+      const loadRemainingPages = async (endpoint: string, initial: PageListBody): Promise<Page[]> => {
+        const firstPage = initial.result?.items || [];
+        const totalPages = Math.max(Number(initial.result?.totalPages) || 1, 1);
+        if (totalPages === 1) return firstPage;
+        const remaining = await Promise.all(Array.from({ length: totalPages - 1 }, async (_, index) => {
+          const pageResponse = await fetch(`${endpoint}&page=${index + 2}`);
+          const pageBody = await pageResponse.json() as PageListBody;
+          if (!pageResponse.ok) throw new Error(pageBody.detail || pageBody.error || 'Unable to load all WordPress pages');
+          return pageBody.result?.items || [];
+        }));
+        return [firstPage, ...remaining].flat();
+      };
+
+      const [livePages, elementorPages] = await Promise.all([
+        loadRemainingPages('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100', body),
+        loadRemainingPages('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100', elementorBody),
+      ]);
+      const editUrls = new Map(elementorPages.map((page: Page) => [String(page.id), page.editUrl]));
+      setPages(livePages.map((page: Page) => ({ ...page, editUrl: editUrls.get(String(page.id)) })));
+      setStatus(`Connected · ${livePages.length} live WordPress pages`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Unable to load WordPress pages');
+    }
   };
 
   useEffect(() => { void loadPages(); }, []);
