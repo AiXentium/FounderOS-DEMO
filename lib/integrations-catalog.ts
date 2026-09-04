@@ -80,8 +80,8 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'obsidian', name: 'Notes', tagline: 'Markdown vault', category: 'Storage', connectorId: 'obsidian', envKeys: [] },
 
   // AI & Automation
-  { slug: 'openai', name: 'OpenAI', tagline: 'GPT models & embeddings', category: 'AI & Automation', envKeys: ['OPENAI_API_KEY', 'AI_GATEWAY_API_KEY'] },
-  { slug: 'anthropic', name: 'Anthropic', tagline: 'Claude models', category: 'AI & Automation', popular: true, envKeys: ['AI_GATEWAY_API_KEY'] },
+  { slug: 'openai', name: 'OpenAI', tagline: 'GPT models & embeddings', category: 'AI & Automation', envKeys: ['OPENAI_API_KEY'] },
+  { slug: 'anthropic', name: 'Anthropic', tagline: 'Claude models', category: 'AI & Automation', popular: true, envKeys: ['ANTHROPIC_API_KEY'] },
   { slug: 'zapier', name: 'Zapier', tagline: 'Automate anything', category: 'AI & Automation' },
   { slug: 'make', name: 'Make', tagline: 'Visual workflows', category: 'AI & Automation' },
   { slug: 'n8n', name: 'n8n', tagline: 'Self-hosted automation', category: 'AI & Automation' },
