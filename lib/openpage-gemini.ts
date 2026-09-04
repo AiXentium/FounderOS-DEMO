@@ -1,4 +1,3 @@
-import 'server-only';
 import path from 'node:path';
 import { CRED_FILES, resolveCred } from '@/lib/creds';
 

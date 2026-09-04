@@ -32,6 +32,7 @@ export const KEY_SLOTS: KeySlot[] = [
   { envVar: 'GBRAIN_STORE', label: 'Brain-store path override', group: 'G-Brain' },
   { envVar: 'AI_GATEWAY_API_KEY', label: 'Claude/GPT gateway key', group: 'AI Automation' },
   { envVar: 'OPENAI_API_KEY', label: 'OpenAI API key', group: 'AI Automation' },
+  { envVar: 'GEMINI_API_KEY', label: 'Gemini / Google AI Studio API key', group: 'AI Automation', hint: 'Google AI Studio → Get API key' },
   { envVar: 'ANTHROPIC_API_KEY', label: 'Anthropic API key', group: 'AI Automation' },
   { envVar: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'Google OAuth' },
   { envVar: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'Google OAuth' },

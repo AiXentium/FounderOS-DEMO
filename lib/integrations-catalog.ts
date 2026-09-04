@@ -81,6 +81,7 @@ export const INTEGRATIONS: Integration[] = [
 
   // AI & Automation
   { slug: 'openai', name: 'OpenAI', tagline: 'GPT models & embeddings', category: 'AI & Automation', envKeys: ['OPENAI_API_KEY'] },
+  { slug: 'gemini', name: 'Gemini', tagline: 'Google AI Studio models', category: 'AI & Automation', connectorId: 'gemini', envKeys: ['GEMINI_API_KEY'], popular: true, externalUrl: 'https://aistudio.google.com/app/apikey' },
   { slug: 'anthropic', name: 'Anthropic', tagline: 'Claude models', category: 'AI & Automation', popular: true, envKeys: ['ANTHROPIC_API_KEY'] },
   { slug: 'zapier', name: 'Zapier', tagline: 'Automate anything', category: 'AI & Automation' },
   { slug: 'make', name: 'Make', tagline: 'Visual workflows', category: 'AI & Automation' },
