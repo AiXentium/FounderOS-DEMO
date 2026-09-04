@@ -15,7 +15,7 @@ import {
 export const INTEGRATIONS: Integration[] = [
   // Communication
   { slug: 'slack', name: 'Slack', tagline: 'Channels & DMs', category: 'Communication', connectorId: 'slack', popular: true, envKeys: ['SLACK_BOT_TOKEN'] },
-  { slug: 'gmail', name: 'Gmail', tagline: 'Send & read email', category: 'Communication', connectorId: 'email', popular: true, envKeys: ['INBOX_1_HOST', 'INBOX_1_USER', 'INBOX_1_PASS'] },
+  { slug: 'gmail', name: 'Gmail', tagline: 'Send & read email', category: 'Communication', connectorId: 'google-oauth', oauthProvider: 'google', popular: true, envKeys: [] },
   { slug: 'whatsapp', name: 'WhatsApp', tagline: 'Messages & broadcasts', category: 'Communication', connectorId: 'whatsapp', envKeys: [] },
   { slug: 'discord', name: 'Discord', tagline: 'Servers & channels', category: 'Communication' },
   { slug: 'telegram', name: 'Telegram', tagline: 'Chats & bots', category: 'Communication' },
@@ -25,8 +25,8 @@ export const INTEGRATIONS: Integration[] = [
   // Productivity
   { slug: 'notion', name: 'Notion', tagline: 'Docs & databases', category: 'Productivity', connectorId: 'notion', popular: true, envKeys: ['NOTION_API_KEY'] },
   { slug: 'airtable', name: 'Airtable', tagline: 'Bases & records', category: 'Productivity', popular: true },
-  { slug: 'googlesheets', name: 'Google Sheets', tagline: 'Read & write spreadsheets', category: 'Productivity' },
-  { slug: 'googledocs', name: 'Google Docs', tagline: 'Create & edit documents', category: 'Productivity' },
+  { slug: 'googlesheets', name: 'Google Sheets', tagline: 'Read & write spreadsheets', category: 'Productivity', connectorId: 'google-oauth', oauthProvider: 'google', envKeys: [] },
+  { slug: 'googledocs', name: 'Google Docs', tagline: 'Create & edit documents', category: 'Productivity', connectorId: 'google-oauth', oauthProvider: 'google', envKeys: [] },
   { slug: 'clickup', name: 'ClickUp', tagline: 'Docs, tasks & goals', category: 'Productivity' },
   { slug: 'trello', name: 'Trello', tagline: 'Boards & cards', category: 'Productivity' },
   { slug: 'coda', name: 'Coda', tagline: 'Docs that act like apps', category: 'Productivity' },
@@ -48,7 +48,7 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'gitlab', name: 'GitLab', tagline: 'Repos & pipelines', category: 'Developer' },
 
   // Scheduling
-  { slug: 'googlecalendar', name: 'Google Calendar', tagline: 'Events & availability', category: 'Scheduling', connectorId: 'calendar', popular: true, envKeys: ['INBOX_1_HOST', 'INBOX_1_USER', 'INBOX_1_PASS'] },
+  { slug: 'googlecalendar', name: 'Google Calendar', tagline: 'Events & availability', category: 'Scheduling', connectorId: 'google-oauth', oauthProvider: 'google', popular: true, envKeys: [] },
   { slug: 'calendly', name: 'Calendly', tagline: 'Booking links', category: 'Scheduling' },
   { slug: 'caldotcom', name: 'Cal.com', tagline: 'Open scheduling', category: 'Scheduling' },
   { slug: 'googlemeet', name: 'Google Meet', tagline: 'Video calls', category: 'Scheduling' },
@@ -73,7 +73,7 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'trakyo', name: 'Trakyo', tagline: 'Organic attribution', category: 'Marketing', connectorId: 'trakyo', envKeys: ['TRAKYO_API_KEY'] },
 
   // Storage
-  { slug: 'googledrive', name: 'Google Drive', tagline: 'Files & folders', category: 'Storage' },
+  { slug: 'googledrive', name: 'Google Drive', tagline: 'Files & folders', category: 'Storage', connectorId: 'google-oauth', oauthProvider: 'google', envKeys: [] },
   { slug: 'dropbox', name: 'Dropbox', tagline: 'Sync & share', category: 'Storage' },
   { slug: 'box', name: 'Box', tagline: 'Content cloud', category: 'Storage' },
   { slug: 'onedrive', name: 'OneDrive', tagline: 'Microsoft files', category: 'Storage' },

@@ -33,6 +33,8 @@ export const KEY_SLOTS: KeySlot[] = [
   { envVar: 'AI_GATEWAY_API_KEY', label: 'Claude/GPT gateway key', group: 'AI Automation' },
   { envVar: 'OPENAI_API_KEY', label: 'OpenAI API key', group: 'AI Automation' },
   { envVar: 'ANTHROPIC_API_KEY', label: 'Anthropic API key', group: 'AI Automation' },
+  { envVar: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', group: 'Google OAuth' },
+  { envVar: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', group: 'Google OAuth' },
   { envVar: 'OPENROUTER_API_KEY', label: 'OpenRouter key', group: 'AI Automation' },
   { envVar: 'OMNIROUTE_BASE_URL', label: 'OmniRoute gateway URL', group: 'AI Automation' },
   { envVar: 'OMNIROUTE_API_KEY', label: 'OmniRoute API key', group: 'AI Automation' },

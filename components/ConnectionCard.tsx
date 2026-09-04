@@ -29,6 +29,7 @@ export function ConnectionCard({ entry, guidance }: { entry: CatalogEntry; guida
         connected={entry.connected}
         keySaved={entry.keySaved}
         keys={connectKeysFor(entry)}
+        oauthProvider={entry.oauthProvider}
       guidance={guidance}
       />
     </div>

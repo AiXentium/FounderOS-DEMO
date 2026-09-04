@@ -17,6 +17,7 @@ export function ConnectFlow({
   keySaved,
   keys,
   guidance,
+  oauthProvider,
 }: {
   slug: string;
   connected: boolean;
@@ -24,6 +25,7 @@ export function ConnectFlow({
   keys: string[];
   /** Live connector detail for guidance-only tools (keys.length === 0). */
   guidance?: string;
+  oauthProvider?: 'google';
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -141,6 +143,13 @@ export function ConnectFlow({
             Managed
           </span>
         )
+      ) : oauthProvider === 'google' ? (
+        <a
+          href="/api/google/oauth/start"
+          className="rounded-full border border-os-border-strong px-3 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-os-text transition-colors hover:bg-os-text hover:text-os-bg"
+        >
+          Sign in with Google
+        </a>
       ) : keys.length > 0 ? (
         <button
           type="button"

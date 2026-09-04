@@ -68,6 +68,7 @@ export const IntegrationSchema = z.object({
   category: IntegrationCategorySchema,
   // when set, the catalog entry reflects this real connector's live state
   connectorId: z.string().min(1).optional(),
+  oauthProvider: z.enum(['google']).optional(),
   popular: z.boolean().optional(),
   // env var names the connect flow may write to .env.local for this entry.
   // Omitted = a generic <SLUG>_API_KEY; [] = not key-connectable (guidance only).

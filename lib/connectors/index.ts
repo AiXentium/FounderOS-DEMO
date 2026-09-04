@@ -49,10 +49,17 @@ function royalMcpStatus(): ConnectorStatus {
   };
 }
 
+function googleOAuthStatus(): ConnectorStatus {
+  const env = runtimeEnv();
+  const connected = Boolean(env.GOOGLE_REFRESH_TOKEN);
+  return { id: 'google-oauth', name: 'Google', kind: 'calendar', state: connected ? 'connected' : 'not_configured', detail: connected ? 'One Google account authorized for Gmail, Calendar, Sheets, Docs, and Drive.' : 'Authorize one Google account to connect Google services.' };
+}
+
 const CHECKS: [string, ConnectorStatus['kind'], () => Promise<ConnectorStatus>][] = [
   ['gbrain', 'brain', brainConnectorStatus],
   ['llm', 'orchestration', llmStatus],
   ['royal-mcp', 'cms', async () => royalMcpStatus()],
+  ['google-oauth', 'calendar', async () => googleOAuthStatus()],
   ['whatsapp', 'social', whatsappStatus],
   ['zernio', 'social', zernioStatus],
   ['beehiiv', 'social', () => beehiivStatus(runtimeEnv())],
