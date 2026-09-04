@@ -8,6 +8,8 @@ type LiveSyncOpts = {
   today?: string;
   /** Live follower source; defaults to the Zernio/Late `/v1/accounts` fetch. */
   source?: () => Promise<FollowerMap>;
+  /** Optional legacy/static fallback used when the live source is unavailable. */
+  fallback?: () => FollowerMap;
 };
 
 /**
@@ -25,6 +27,9 @@ export async function syncFromZernioLive(db: FounderDb, opts: LiveSyncOpts = {})
     accounts = await source();
   } catch {
     accounts = {};
+  }
+  if (Object.keys(accounts).length === 0 && opts.fallback) {
+    accounts = opts.fallback();
   }
   if (Object.keys(accounts).length === 0) return 0;
   return syncSocialSnapshots(db, accounts, today);
