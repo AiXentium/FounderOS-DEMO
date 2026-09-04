@@ -87,6 +87,19 @@ export async function chatWithAgent(
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
     return { reply, messages: db.agentMessages.byAgent(agentId) };
   }
+  if (agentId === 'viator-agent' && /(search|find|live).*(viator|activity|activities|tour|barcelona|travel)/i.test(message)) {
+    const searchTool = tools?.find((tool) => tool.name === 'searchLiveViator');
+    if (searchTool) {
+      const query = message.match(/(?:for|in|about|query)\s+(.+)$/i)?.[1]?.trim() || message.replace(/use.*?tool/i, '').trim();
+      const products = await searchTool.execute({ query: query || 'Barcelona travel' });
+      const items = Array.isArray(products) ? products as Array<{ title?: string; name?: string; url?: string; description?: string }> : [];
+      const reply = `Live Viator search completed for "${query || 'Barcelona travel'}" — ${items.length} results:\n${items.slice(0, 10).map((item, index) => `${index + 1}. ${item.title || item.name || 'Untitled'}${item.url ? ` — ${item.url}` : ''}${item.description ? `\n   ${item.description.slice(0, 180)}` : ''}`).join('\n')}`;
+      const call = { name: 'searchLiveViator', args: { query: query || 'Barcelona travel' }, result: products };
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `${call.name} → ${JSON.stringify(products)}`, toolCalls: [call], createdAt: now() });
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+      return { reply, messages: db.agentMessages.byAgent(agentId) };
+    }
+  }
 
   const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, brainContext), messages: llmMessages, tools });
 
