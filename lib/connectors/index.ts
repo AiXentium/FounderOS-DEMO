@@ -37,9 +37,22 @@ async function brainConnectorStatus(): Promise<ConnectorStatus> {
   };
 }
 
+function royalMcpStatus(): ConnectorStatus {
+  const env = runtimeEnv();
+  const configured = Boolean(env.ROYAL_MCP_URL && env.ROYAL_MCP_API_KEY);
+  return {
+    id: 'royal-mcp',
+    name: 'Royal MCP',
+    kind: 'cms',
+    state: configured ? 'connected' : 'not_configured',
+    detail: configured ? 'Royal MCP credentials are configured.' : 'ROYAL_MCP_URL and ROYAL_MCP_API_KEY are required.',
+  };
+}
+
 const CHECKS: [string, ConnectorStatus['kind'], () => Promise<ConnectorStatus>][] = [
   ['gbrain', 'brain', brainConnectorStatus],
   ['llm', 'orchestration', llmStatus],
+  ['royal-mcp', 'cms', async () => royalMcpStatus()],
   ['whatsapp', 'social', whatsappStatus],
   ['zernio', 'social', zernioStatus],
   ['beehiiv', 'social', () => beehiivStatus(runtimeEnv())],
