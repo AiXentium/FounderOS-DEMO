@@ -89,6 +89,14 @@ export async function chatWithAgent(
       return { reply, messages: db.agentMessages.byAgent(agentId) };
   }
 
+  if (agentId === 'data-agent' && /(g[- ]?brain|brain).*(status|active|working|connected|health)|is the brain/i.test(message)) {
+    const status = await getBrainProvider().status();
+    const reply = `Live G-Brain status: ${status.connected ? 'CONNECTED' : 'DISCONNECTED'} — ${status.detail}`;
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `getGBrainStatus → ${JSON.stringify(status)}`, toolCalls: [{ name: 'getGBrainStatus', args: {}, result: status }], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+
   if (result.toolCalls.length) {
     db.agentMessages.insert({
       id: randomUUID(),
