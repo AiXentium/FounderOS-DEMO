@@ -8,6 +8,7 @@
  * AI_GATEWAY_API_KEY ⇒ not_configured, never a fake "connected".
  */
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { CRED_FILES, resolveCred } from '@/lib/creds';
 import type { ConnectorStatus } from '@/lib/connectors/types';
 
@@ -123,28 +124,42 @@ export function getLlmProvider(): LlmProvider {
   return createGatewayProvider();
 }
 
-/** Direct OpenAI provider with native AI SDK tool execution. */
+/** Direct OpenAI provider with explicit Chat Completions function calling. */
 export function createOpenAIProvider(): LlmProvider {
   return { name: 'OpenAI', async chat(req) {
-    const { generateText, tool, stepCountIs } = await import('ai');
-    const { createOpenAI } = await import('@ai-sdk/openai');
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
-    const tools = Object.fromEntries((req.tools ?? []).map((t) => [t.name, tool({ description: t.description, inputSchema: t.parameters, execute: t.execute })]));
-    const result = await generateText({
-      // AI SDK v6 currently expects a v2 model type while the latest provider
-      // package exposes v4; the provider is runtime-compatible here.
-      model: openai.chat(req.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini') as never,
-      system: req.system,
-      messages: req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
-      tools: req.tools?.length ? tools : undefined,
-      stopWhen: stepCountIs(6),
-    });
+    const baseUrl = (process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1').replace(/\/$/, '');
+    const messages: Array<Record<string, unknown>> = [
+      ...(req.system ? [{ role: 'system', content: req.system }] : []),
+      ...req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role, content: m.content })),
+    ];
     const toolCalls: LlmToolCall[] = [];
-    for (const step of result.steps ?? []) for (const call of step.toolCalls ?? []) {
-      const hit = (step.toolResults ?? []).find((item) => item.toolCallId === call.toolCallId);
-      toolCalls.push({ name: call.toolName, args: call.input, result: hit?.output });
+    for (let step = 0; step < 6; step++) {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ''}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: req.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+          messages,
+          ...(req.tools?.length ? { tools: req.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: zodToJsonSchema(t.parameters) } })), tool_choice: 'auto' } : {}),
+        }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}: ${(await response.text()).slice(0, 240)}`);
+      const body = await response.json() as { choices?: Array<{ message?: { content?: string | null; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> } }> };
+      const message = body.choices?.[0]?.message;
+      if (!message) throw new Error('OpenAI returned no message');
+      if (!message.tool_calls?.length) return { text: message.content ?? '', toolCalls };
+      messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: message.tool_calls });
+      for (const call of message.tool_calls) {
+        const spec = req.tools?.find((toolSpec) => toolSpec.name === call.function.name);
+        let result: unknown;
+        try { result = spec ? await spec.execute(JSON.parse(call.function.arguments || '{}')) : { error: `unknown tool ${call.function.name}` }; }
+        catch (error) { result = { error: error instanceof Error ? error.message : String(error) }; }
+        toolCalls.push({ name: call.function.name, args: call.function.arguments, result });
+        messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+      }
     }
-    return { text: result.text, toolCalls };
+    return { text: 'I reached the tool-execution step limit before completing the request.', toolCalls };
   }};
 }
 
