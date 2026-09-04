@@ -128,6 +128,9 @@ export function createFailoverProvider(): LlmProvider {
   return { name: 'failover', async chat(req) {
     const candidates = [
       process.env.OMNIROUTE_BASE_URL && { name: 'OmniRoute', url: `${process.env.OMNIROUTE_BASE_URL.replace(/\/$/, '')}/chat/completions`, key: process.env.OMNIROUTE_API_KEY ?? '', model: process.env.OMNIROUTE_MODEL ?? process.env.AI_MODEL ?? 'local-model' },
+      // Prefer the user's direct OpenAI connection when it is configured.
+      // This keeps G-Brain/agent chat independent of the optional gateway.
+      process.env.OPENAI_API_KEY && { name: 'OpenAI', url: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1/chat/completions', key: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini' },
       process.env.OPENROUTER_API_KEY && { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions', key: process.env.OPENROUTER_API_KEY, model: process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini' },
       process.env.GROQ_API_KEY && { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile' },
       process.env.CEREBRAS_API_KEY && { name: 'Cerebras', url: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: process.env.CEREBRAS_MODEL ?? 'llama-3.3-70b' },
@@ -155,11 +158,14 @@ export function chat(req: LlmChatRequest): Promise<LlmChatResult> {
 }
 
 export async function llmStatus(): Promise<ConnectorStatus> {
-  const base = { id: 'llm', name: 'LLM (Gateway)', kind: 'orchestration' } as const;
+  const base = { id: 'llm', name: 'LLM (OpenAI / Gateway)', kind: 'orchestration' } as const;
   if (process.env.LLM_PROVIDER === 'stub') {
     return { ...base, state: 'connected', detail: 'stub provider active (tests)' };
   }
   const key = resolveGatewayKey();
+  if (process.env.OPENAI_API_KEY) {
+    return { ...base, state: 'connected', detail: `OpenAI · ${process.env.OPENAI_MODEL ?? 'gpt-4o-mini'} · agent failover enabled` };
+  }
   if (!key) {
     return {
       ...base,
