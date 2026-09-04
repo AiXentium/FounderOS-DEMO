@@ -68,6 +68,26 @@ export async function chatWithAgent(
     // The brain connector has its own local fallback; an unavailable brain
     // must never prevent an agent from using its primary connector.
   }
+  const isAudit = agentId === 'data-agent' && /(audit|all agents|every agent|each agent|roster|who can you communicate)/i.test(message);
+  const isBrainStatus = agentId === 'data-agent' && /(g[- ]?brain|brain).*(status|active|working|connected|health)|is the brain/i.test(message);
+
+  // Operational checks must not depend on an LLM provider being available.
+  if (isBrainStatus) {
+    const status = await getBrainProvider().status();
+    const reply = `Live G-Brain status: ${status.connected ? 'CONNECTED' : 'DISCONNECTED'} — ${status.detail}`;
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `getGBrainStatus → ${JSON.stringify(status)}`, toolCalls: [{ name: 'getGBrainStatus', args: {}, result: status }], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+  if (isAudit) {
+    const entries = agents.filter((entry) => entry.id !== 'conductor').map((entry) => ({ id: entry.id, name: entry.name, description: entry.description, canRun: typeof entry.run === 'function', canRespond: typeof entry.respond === 'function', chatTools: entry.chatTools?.().map((tool) => tool.name) ?? [] }));
+    const reply = `Live runtime audit: ${entries.length} agents loaded. These are the actual runtime agents, not seed/mock records:\n${entries.map((entry) => `- ${entry.name} (${entry.id}): ${entry.description} | run=${entry.canRun ? 'yes' : 'no'} respond=${entry.canRespond ? 'yes' : 'no'} tools=${entry.chatTools.join(', ') || 'none'}`).join('\n')}`;
+    const audit = { total: entries.length, agents: entries };
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `auditRuntimeAgents → ${JSON.stringify(audit)}`, toolCalls: [{ name: 'auditRuntimeAgents', args: {}, result: audit }], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+
   const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, brainContext), messages: llmMessages, tools });
 
   // Roster audits are an operational read, not a creative answer. Guarantee
