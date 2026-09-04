@@ -32,10 +32,25 @@ async function pickAgent(routable: RuntimeAgent[], message: string): Promise<str
     'Reply with ONLY that agent id and nothing else. Options:',
     roster,
   ].join('\n');
-  const res = await llmChat({ system, messages: [{ role: 'user', content: message }] });
-  const picked = (res.text.trim().split(/\s+/)[0] ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
-  const found = routable.find((a) => a.id === picked);
-  return (found ?? routable[0]).id;
+  try {
+    const res = await llmChat({ system, messages: [{ role: 'user', content: message }] });
+    const picked = (res.text.trim().split(/\s+/)[0] ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const found = routable.find((a) => a.id === picked);
+    if (found) return found.id;
+  } catch {
+    // Routing must remain usable when an LLM provider is rate-limited or out
+    // of credits. Use a deterministic capability fallback instead of a 500.
+  }
+  const text = message.toLowerCase();
+  const keywords: Array<[string[], string]> = [
+    [['calendar', 'meeting', 'schedule', 'appointment'], 'calendar-agent'],
+    [['email', 'gmail', 'inbox', 'mail'], 'gmail-worker'],
+    [['brain', 'knowledge', 'note', 'memory'], 'data-agent'],
+    [['social', 'instagram', 'facebook', 'post'], 'social-agent'],
+    [['slack'], 'slack-worker'],
+  ];
+  for (const [terms, id] of keywords) if (terms.some((term) => text.includes(term)) && routable.some((a) => a.id === id)) return id;
+  return routable[0]?.id ?? 'conductor';
 }
 
 export async function routeConductorMessage(

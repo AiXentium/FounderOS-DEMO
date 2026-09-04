@@ -46,8 +46,8 @@ export function ConductorChat({ agentNames }: { agentNames: Record<string, strin
       <div className="flex items-center gap-2.5">
         <ConductorEmblem size={38} thinking={sending} />
         <div className="min-w-0">
-          <div className="text-[13px] font-bold tracking-[0.12em]">CONDUCTOR</div>
-          <div className="font-mono text-[10px] text-os-dim">
+          <div className="text-[16px] font-bold tracking-[0.12em]">CONDUCTOR</div>
+          <div className="font-mono text-[14px] leading-relaxed text-os-dim">
             routes to the best-fit agent — or prefix <span className="text-os-muted">@agent-id</span> to pick one
           </div>
         </div>
@@ -58,18 +58,18 @@ export function ConductorChat({ agentNames }: { agentNames: Record<string, strin
           {turns.map((t) =>
             t.role === 'user' ? (
               <div key={t.id} className="text-right">
-                <span className="inline-block max-w-[85%] break-words rounded-md bg-os-surface2 px-2.5 py-1 text-[11.5px] text-os-text">
+                <span className="inline-block max-w-[85%] break-words rounded-md bg-os-surface2 px-2.5 py-1 text-[14px] leading-relaxed text-os-text">
                   {t.content}
                 </span>
               </div>
             ) : (
               <div key={t.id} className="text-left">
                 {t.routedTo && (
-                  <div className="mb-0.5 font-mono text-[9.5px] uppercase tracking-wider text-os-accent">
+                    <div className="mb-0.5 font-mono text-[13px] uppercase tracking-wider text-os-accent">
                     → {agentNames[t.routedTo] ?? t.routedTo}
                   </div>
                 )}
-                <span className="inline-block max-w-[85%] break-words rounded-md bg-os-raised px-2.5 py-1 text-[11.5px] text-os-muted">
+                <span className="inline-block max-w-[85%] break-words rounded-md bg-os-raised px-2.5 py-1 text-[14px] leading-relaxed text-os-muted">
                   {t.content}
                 </span>
               </div>
@@ -85,12 +85,12 @@ export function ConductorChat({ agentNames }: { agentNames: Record<string, strin
           onKeyDown={(e) => e.key === 'Enter' && send()}
           placeholder="Talk to Conductor — it routes you to the right agent"
           disabled={sending}
-          className="min-w-0 flex-1 rounded-full border border-os-border bg-os-bg px-3 py-1.5 text-xs text-os-text placeholder:text-os-dim focus:border-os-border-strong focus:outline-none"
+          className="min-w-0 flex-1 rounded-full border border-os-border bg-os-bg px-3 py-2 text-[14px] text-os-text placeholder:text-os-dim focus:border-os-border-strong focus:outline-none"
         />
         <button
           onClick={send}
           disabled={sending || !input.trim()}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-os-border-strong bg-os-surface2 px-3 py-1.5 text-xs font-semibold text-os-text transition-opacity hover:border-os-dim disabled:opacity-40"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-os-border-strong bg-os-surface2 px-3 py-2 text-[14px] font-semibold text-os-text transition-opacity hover:border-os-dim disabled:opacity-40"
         >
           {sending ? <span className="font-mono text-[11px]">routing…</span> : <Send className="h-3 w-3" />}
         </button>
