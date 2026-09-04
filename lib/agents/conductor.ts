@@ -71,6 +71,18 @@ export async function routeConductorMessage(
     if (auditor) targetId = auditor.id;
   }
 
+  // Requests to bring site content into Website Builder must reach the CMS
+  // specialist. Its chat path executes the real, read-only WordPress import;
+  // leaving this to model routing can send the request to an unrelated
+  // catalog agent that cannot access the CMS connector.
+  const isWordPressContentImport =
+    /(download|import|sync|copy|pull|bring|fetch|retrieve)/i.test(message) &&
+    /(wordpress|content|pages?|posts?|website builder|site)/i.test(message);
+  if (!targetId && isWordPressContentImport) {
+    const cms = routable.find((agent) => agent.id === 'agency-engineering-cms-developer');
+    if (cms) targetId = cms.id;
+  }
+
   // WordPress connection and CMS questions must reach the CMS specialist so
   // its live connector check is available instead of relying on model routing.
   if (!targetId && /(wordpress|wp-json|cms)/i.test(message)) {

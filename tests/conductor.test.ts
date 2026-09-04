@@ -53,6 +53,13 @@ describe('routeConductorMessage (stub)', () => {
     expect(res.reply).toContain('Accounting Controller:');
   });
 
+  test('routes Website Builder content imports to the CMS specialist', async () => {
+    const db = openDb(':memory:');
+    const res = await routeConductorMessage(db, realAgents, 'download all the content so I can work on it in the website builder');
+    expect(res.routedTo).toBe('agency-engineering-cms-developer');
+    expect(res.reply).toMatch(/WordPress content import|Imported .* Website Builder drafts/i);
+  });
+
   test('an unknown @name never throws — falls back to routing', async () => {
     const db = openDb(':memory:');
     const res = await routeConductorMessage(db, realAgents, '@nobody hello');
