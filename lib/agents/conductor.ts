@@ -78,6 +78,14 @@ export async function routeConductorMessage(
     if (cms) targetId = cms.id;
   }
 
+  // Finance requests belong to the reusable Accounting Controller. This rail
+  // keeps readiness and tax/bank limitations grounded in live data instead of
+  // letting a general-purpose model invent an accounting answer.
+  if (!targetId && /(accounting|bookkeep|tax|reconcil|ledger|financial statement|profit and loss|\bp&l\b|bank account|cash flow)/i.test(message)) {
+    const accountant = routable.find((agent) => agent.id === 'accounting-controller');
+    if (accountant) targetId = accountant.id;
+  }
+
   // Broad system-connection questions belong to G-Brain's live connector
   // audit, so the user gets one complete report instead of fixing integrations
   // one at a time through unrelated specialists.

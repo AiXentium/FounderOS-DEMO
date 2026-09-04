@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
+import { syncAccountingControllerActivation } from '@/lib/accounting-controller';
 
 /**
  * App-level singleton. Larp-first, real-ready: every page and API route reads
@@ -30,5 +31,9 @@ export function getDb(): FounderDb {
   ) {
     seedDatabase(instance);
   }
+  // Existing deployments may predate the reusable accounting core. Sync it on
+  // every boot so Business Setup can activate it for the current business
+  // without requiring a destructive reseed or a manual agent-by-agent step.
+  syncAccountingControllerActivation(instance);
   return instance;
 }

@@ -79,6 +79,7 @@ describe('seedDatabase', () => {
       'processor-confirmation',
       'paykit-sales',
       'flexpay-financing',
+      'accounting-controller',
     ]) {
       expect(byId.get(id)).toBe('dept-finance');
     }

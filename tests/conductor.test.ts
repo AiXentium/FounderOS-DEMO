@@ -5,6 +5,7 @@ import path from 'node:path';
 import { openDb } from '@/lib/db';
 import { routeConductorMessage } from '@/lib/agents/conductor';
 import { realAgents } from '@/lib/agents/real';
+import { seedDatabase } from '@/lib/seed';
 
 const prevLlm = process.env.LLM_PROVIDER;
 const prevBrain = process.env.BRAIN_PROVIDER;
@@ -42,6 +43,14 @@ describe('routeConductorMessage (stub)', () => {
     expect(routableIds()).toContain(res.routedTo);
     expect(res.routedTo).not.toBe('conductor');
     expect(res.reply.length).toBeGreaterThan(0);
+  });
+
+  test('routes accounting readiness to the live Accounting Controller', async () => {
+    const db = openDb(':memory:');
+    seedDatabase(db);
+    const res = await routeConductorMessage(db, realAgents, 'is the accounting controller active for this travel agency?');
+    expect(res.routedTo).toBe('accounting-controller');
+    expect(res.reply).toContain('Accounting Controller:');
   });
 
   test('an unknown @name never throws — falls back to routing', async () => {

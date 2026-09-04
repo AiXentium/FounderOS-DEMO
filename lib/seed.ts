@@ -1,6 +1,7 @@
 import type { FounderDb } from '@/lib/db';
 import { PERSONAS } from '@/lib/personas-seed';
 import { agencyDefinitions, agencySeedAgents } from '@/lib/agency-catalog';
+import { ACCOUNTING_CONTROLLER_AGENT } from '@/lib/accounting-controller';
 import type {
   Agent,
   AgentTask,
@@ -465,7 +466,7 @@ const agents: Agent[] = ([
     parentId: 'client-roster',
     instance: 'builtin',
   },
-] as Agent[]).concat(agencySeedAgents());
+] as Agent[]).concat([ACCOUNTING_CONTROLLER_AGENT], agencySeedAgents());
 
 // ── Humans in the process ─────────────────────────────────────────────────────
 // Real heads (Marco, Nadia) plus larp-first seeds for the roles Alex will hire
@@ -897,6 +898,19 @@ const sopTasks: SopTask[] = ([
       'Alert Finances when a processor goes down',
       'Re-check failed processors on a tighter cadence until they recover',
       'Keep the uptime history for the analytics view',
+    ],
+  },
+  {
+    id: 'sop-accounting-controller', departmentId: 'dept-finance', assigneeKind: 'agent', assigneeId: 'accounting-controller',
+    title: 'Run the accounting controller readiness cycle',
+    summary: 'Reconcile configured money sources and report what is ready for close or tax review.',
+    steps: [
+      'Load the active business profile and confirm the accounting scope',
+      'Read configured payment processors and identify the authoritative revenue sources',
+      'Compare available bank statements and ledger rows without inventing missing transactions',
+      'Check reconciliation, close, and control exceptions for the current period',
+      'Check tax profile completeness and label estimates as requiring professional review',
+      'Return a durable readiness report to G-Brain for the operator approval queue',
     ],
   },
   {
@@ -1635,6 +1649,7 @@ const skills: Omit<Skill, 'markdown'>[] = [
   { id: 'skill-dm', name: 'DM management', category: 'Ops', description: 'Handles Instagram and WhatsApp DMs end to end.', ownerAgentId: 'comms-agent', status: 'live', tools: ['dmflow', 'whatsapp'], order: 8 },
   { id: 'skill-retrieval', name: 'Knowledge retrieval', category: 'Ops', description: 'Hybrid search over G-Brain so every agent shares one memory.', ownerAgentId: 'conductor', status: 'live', tools: ['gbrain'], order: 9 },
   { id: 'skill-reconcile', name: 'Payment reconciliation', category: 'Ops', description: 'Matches processor payouts to clients across Stripe and PayKit.', ownerAgentId: null, status: 'planned', tools: ['stripe', 'paykit'], order: 10 },
+  { id: 'skill-accounting-controller', name: 'Accounting controller', category: 'Finance', description: 'Maintains the reusable accounting core: books, reconciliations, close controls, financial reporting, and tax-estimate readiness.', ownerAgentId: 'accounting-controller', status: 'live', tools: ['ledger', 'payments', 'gbrain'], order: 23 },
   { id: 'skill-attribution', name: 'Revenue attribution', category: 'Ops', description: 'Ties content and calls to closed revenue via Trakyo.', ownerAgentId: null, status: 'planned', tools: ['trakyo', 'ghl'], order: 11 },
   { id: 'skill-destination-research', name: 'Destination research', category: 'Marketing', description: 'Builds source-backed destination briefs, seasonal angles, holidays, and audience insights.', ownerAgentId: 'viator-agent', status: 'learning', tools: ['viator', 'gbrain'], order: 12 },
   { id: 'skill-affiliate-campaign', name: 'Affiliate campaign planning', category: 'Marketing', description: 'Maps a destination or audience brief to products, content, channels, disclosures, and measurement.', ownerAgentId: 'viator-agent', status: 'learning', tools: ['viator', 'postly', 'gbrain'], order: 13 },

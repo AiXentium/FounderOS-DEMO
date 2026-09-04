@@ -6,6 +6,7 @@ import type { RuntimeAgent } from '@/lib/agents/runtime';
 import type { LlmToolSpec } from '@/lib/connectors/llm';
 import { wordPressStatus } from '@/lib/connectors/wordpress';
 import { runtimeEnv } from '@/lib/creds';
+import { wordpressImportTool } from '@/lib/wordpress-import';
 
 type AgencyDefinition = { id: string; name: string; category: string; description: string; file: string };
 
@@ -1318,7 +1319,7 @@ function cmsChatTools(): LlmToolSpec[] {
     description: 'Check the live primary WordPress site, REST API, authentication, and available capabilities. Read-only: never changes site content.',
     parameters: z.object({}),
     execute: async () => wordPressStatus(runtimeEnv()),
-  }];
+  }, wordpressImportTool()];
 }
 
 export function agencyRuntimeAgents(): RuntimeAgent[] {

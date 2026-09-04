@@ -14,6 +14,8 @@ import { getBrainProvider } from '@/lib/brain';
 import { wordPressStatus } from '@/lib/connectors/wordpress';
 import { runtimeEnv } from '@/lib/creds';
 import { allConnectorStatuses } from '@/lib/connectors';
+import { syncAccountingControllerActivation } from '@/lib/accounting-controller';
+import { importWordPressContent } from '@/lib/wordpress-import';
 
 export type ChatResult = { reply: string; messages: AgentMessage[] };
 
@@ -24,7 +26,7 @@ export function systemPromptFor(agent: RuntimeAgent, screenContext?: string, bra
     `You are ${agent.name}, an operator agent inside Founder OS.`,
     agent.description,
     'Answer concisely and use your tools to read live data when it helps.',
-    'You are READ-ONLY: never claim to have sent, created, scheduled, or published anything — you can only look things up and report.',
+    'You may execute explicitly requested local-draft imports through a provided tool. Never claim to have changed, published, or deleted external content without a successful tool result and approval.',
   ];
   if (screenContext) {
     lines.push(
@@ -78,11 +80,15 @@ export async function chatWithAgent(
   const isWordPressConnectionCheck = agentId === 'agency-engineering-cms-developer'
     && /(wordpress|wp-json|cms)/i.test(message)
     && /(connect|connected|access|status|health|check|work)/i.test(message);
+  const isWordPressContentImport = ['data-agent', 'agency-engineering-cms-developer'].includes(agentId)
+    && /(download|import|sync|copy|pull|bring)/i.test(message)
+    && /(wordpress|content|pages?|posts?)/i.test(message);
   const isConnectorAudit = agentId === 'data-agent' && (
     (/(connect|connected|connection|connector|integration|tool|working|health|status|audit)/i.test(message)
       && /(all|everything|every|system|tools|connectors|integrations)/i.test(message))
     || /(?:full|complete)\s+(?:connection\s+)?(?:test|check)|full\s+test|what\s+can\s+you\s+connect|all\s+components/i.test(message)
   );
+  const isAccountingStatus = agentId === 'accounting-controller' && /(accounting|bookkeep|tax|reconcil|ledger|financial statement|profit and loss|\bp&l\b|bank account|cash flow|active|working|ready|status|audit)/i.test(message);
 
   // Operational checks must not depend on an LLM provider being available.
   if (isBrainStatus) {
@@ -91,6 +97,21 @@ export async function chatWithAgent(
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `getGBrainStatus → ${JSON.stringify(status)}`, toolCalls: [{ name: 'getGBrainStatus', args: {}, result: status }], createdAt: now() });
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
     return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+  if (isWordPressContentImport) {
+    try {
+      const imported = await importWordPressContent(db);
+      const reply = `${imported.summary} Open Website Builder → Saved project to review and edit each imported item. The import is local and read-only against WordPress.`;
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `importWordPressContent → ${JSON.stringify(imported)}`, toolCalls: [{ name: 'importWordPressContent', args: {}, result: imported }], createdAt: now() });
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+      return { reply, messages: db.agentMessages.byAgent(agentId) };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      const reply = `WordPress content import did not complete: ${detail}. No WordPress content was changed.`;
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `importWordPressContent → ERROR ${detail}`, toolCalls: [{ name: 'importWordPressContent', args: {}, result: { ok: false, error: detail } }], createdAt: now() });
+      db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+      return { reply, messages: db.agentMessages.byAgent(agentId) };
+    }
   }
   if (isAudit) {
     const entries = agents.filter((entry) => entry.id !== 'conductor').map((entry) => ({ id: entry.id, name: entry.name, description: entry.description, canRun: typeof entry.run === 'function', canRespond: typeof entry.respond === 'function', chatTools: entry.chatTools?.().map((tool) => tool.name) ?? [] }));
@@ -125,6 +146,24 @@ export async function chatWithAgent(
     ].filter(Boolean).join('\n');
     const audit = { checkedAt: new Date().toISOString(), total: statuses.length, connected: connected.length, errors: errors.length, notConfigured: notConfigured.length, statuses };
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `auditAllConnectors → ${JSON.stringify(audit)}`, toolCalls: [{ name: 'auditAllConnectors', args: {}, result: audit }], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+  if (isAccountingStatus) {
+    const readiness = syncAccountingControllerActivation(db);
+    const configuredProcessors = readiness.paymentProcessors.filter((processor) => processor.configured).map((processor) => processor.name);
+    const reply = [
+      `Accounting Controller: ${readiness.active ? 'ACTIVE' : 'PLANNED'} for ${readiness.profile.sector === 'travel-agency' ? 'this travel agency' : readiness.profile.businessName}.`,
+      `Shared G-Brain: CONNECTED — ${readiness.brain.detail}`,
+      `Payment processors: ${configuredProcessors.length ? configuredProcessors.join(', ') : 'none configured'}.`,
+      `Bank feed: ${readiness.bankFeed.state.toUpperCase()} — ${readiness.bankFeed.detail}`,
+      `Statement data: ${readiness.statementData.detail} Ledger: ${readiness.ledger.detail}`,
+      `Tax: ${readiness.tax.detail}`,
+      `Travel capabilities: ${readiness.profile.capabilities.filter((capability) => /travel|affiliate|booking|supplier|currency/i.test(capability)).join('; ')}.`,
+      readiness.nextSteps.length ? `Needs attention: ${readiness.nextSteps.join(' ')}` : 'No readiness gaps detected in the configured sources; posting and tax decisions remain approval-gated.',
+    ].join('\n');
+    const call = { name: 'auditAccountingReadiness', args: {}, result: readiness };
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `${call.name} → ${JSON.stringify(readiness)}`, toolCalls: [call], createdAt: now() });
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
     return { reply, messages: db.agentMessages.byAgent(agentId) };
   }

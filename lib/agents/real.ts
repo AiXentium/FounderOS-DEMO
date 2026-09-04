@@ -20,6 +20,8 @@ import type { AgentRunResult, RuntimeAgent } from '@/lib/agents/runtime';
 import { googleCalendarApiStatus } from '@/lib/connectors/gcal';
 import { agencyRuntimeAgents } from '@/lib/agency-catalog';
 import { allConnectorStatuses } from '@/lib/connectors';
+import { accountingControllerRuntime } from '@/lib/accounting-controller';
+import { wordpressImportTool } from '@/lib/wordpress-import';
 
 /**
  * The real agent roster. Every run() does actual work against a live system —
@@ -150,6 +152,8 @@ export const realAgents: RuntimeAgent[] = ([
       }];
     },
   },
+
+  accountingControllerRuntime(),
 
   // ── Comms instance + channel workers ─────────────────────────────────
   {
@@ -438,6 +442,7 @@ export const realAgents: RuntimeAgent[] = ([
             return results.slice(0, 5);
           },
         },
+        wordpressImportTool(),
       ];
     },
   },
