@@ -1,5 +1,7 @@
 import ical from 'node-ical';
 import type { ConnectorStatus } from '@/lib/connectors/types';
+import { googleAccessToken } from '@/lib/google-oauth';
+import { runtimeEnv } from '@/lib/creds';
 
 /**
  * Google Calendar via CalDAV. Reuses the IMAP inbox app passwords (INBOX_*_*):
@@ -283,5 +285,17 @@ export async function calendarStatus(env: Record<string, string | undefined> = p
       detail: `CalDAV read failed: ${err instanceof Error ? err.message : String(err)}`,
       meta: { calendars: accounts.length },
     };
+  }
+}
+
+export async function googleCalendarApiStatus(env = runtimeEnv()): Promise<ConnectorStatus> {
+  try {
+    const token = await googleAccessToken(env);
+    const res = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Google Calendar API ${res.status}`);
+    const body = await res.json() as { items?: unknown[] };
+    return { id: 'calendar', name: 'Calendar', kind: 'calendar', state: 'connected', detail: `OAuth Calendar access live · ${body.items?.length ?? 0} calendar probe returned`, meta: { oauth: 'true' } };
+  } catch (err) {
+    return { id: 'calendar', name: 'Calendar', kind: 'calendar', state: 'error', detail: err instanceof Error ? err.message : String(err), meta: { oauth: 'true' } };
   }
 }

@@ -17,6 +17,7 @@ import { searchViatorMcp } from '@/lib/connectors/viator-mcp';
 import { getDb } from '@/lib/data';
 import type { LlmToolSpec } from '@/lib/connectors/llm';
 import type { AgentRunResult, RuntimeAgent } from '@/lib/agents/runtime';
+import { googleCalendarApiStatus } from '@/lib/connectors/gcal';
 
 /**
  * The real agent roster. Every run() does actual work against a live system —
@@ -159,6 +160,16 @@ export const realAgents: RuntimeAgent[] = [
   { id: 'gmail-worker', name: 'Gmail Worker', description: 'Unread counts and recent mail from up to four IMAP inboxes.', departmentId: 'dept-comms', run: gmailRun },
   { id: 'whatsapp-worker', name: 'WhatsApp Worker', description: 'Local WhatsApp ChatStorage, read-only.', departmentId: 'dept-comms', run: whatsappRun },
   { id: 'slack-worker', name: 'Slack Worker', description: 'Latest messages across joined Slack channels.', departmentId: 'dept-comms', run: slackRun },
+  {
+    id: 'calendar-agent',
+    name: 'Calendar Agent',
+    description: 'Reads Google Calendar through the shared OAuth connection and reports calendar access health.',
+    departmentId: 'dept-comms',
+    async run() {
+      const status = await googleCalendarApiStatus();
+      return { ok: status.state === 'connected', summary: status.detail, data: status.meta };
+    },
+  },
 
   // ── Studio instance + content workers ────────────────────────────────
   {

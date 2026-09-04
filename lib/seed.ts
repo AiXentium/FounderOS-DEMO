@@ -121,6 +121,19 @@ const agents: Agent[] = [
     parentId: 'comms-agent',
     instance: 'builtin',
   },
+  {
+    id: 'calendar-agent',
+    departmentId: 'dept-comms',
+    name: 'Calendar Agent',
+    role: 'Google Calendar Reader',
+    status: 'active',
+    tier: 'worker',
+    description: 'Reads Google Calendar through the shared OAuth connection and reports calendar access health.',
+    model: 'google calendar api',
+    tools: ['calendar'],
+    parentId: 'comms-agent',
+    instance: 'builtin',
+  },
   // ── Marketing/Growth: social/content crew ───────────────────────────
   {
     id: 'social-agent',
