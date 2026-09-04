@@ -299,3 +299,36 @@ export async function googleCalendarApiStatus(env = runtimeEnv()): Promise<Conne
     return { id: 'calendar', name: 'Calendar', kind: 'calendar', state: 'error', detail: err instanceof Error ? err.message : String(err), meta: { oauth: 'true' } };
   }
 }
+
+/** Read the primary Google Calendar through the shared OAuth refresh token. */
+export async function upcomingGoogleOAuthEvents(
+  env = runtimeEnv(),
+  opts: { days?: number; limit?: number; now?: Date } = {},
+): Promise<{ events: CalEvent[]; account: CalAccount }> {
+  const { days = 14, limit = 100, now = new Date() } = opts;
+  const token = await googleAccessToken(env);
+  const account: CalAccount = {
+    user: env.GOOGLE_OAUTH_EMAIL || 'Google account',
+    pass: '',
+    name: env.GOOGLE_OAUTH_EMAIL || 'Google Calendar (OAuth)',
+    color: CAL_COLORS[0],
+  };
+  const timeMin = now.toISOString();
+  const timeMax = new Date(now.getTime() + days * 86_400_000).toISOString();
+  const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
+  url.searchParams.set('timeMin', timeMin);
+  url.searchParams.set('timeMax', timeMax);
+  url.searchParams.set('singleEvents', 'true');
+  url.searchParams.set('orderBy', 'startTime');
+  url.searchParams.set('maxResults', String(limit));
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const body = await res.json() as { items?: Array<{ id?: string; summary?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; location?: string; description?: string; htmlLink?: string }>; error?: { message?: string } };
+  if (!res.ok) throw new Error(body.error?.message || `Google Calendar API ${res.status}`);
+  const events = (body.items ?? []).flatMap((item) => {
+    const start = item.start?.dateTime || (item.start?.date ? `${item.start.date}T00:00:00.000Z` : '');
+    if (!start) return [];
+    const end = item.end?.dateTime || (item.end?.date ? `${item.end.date}T00:00:00.000Z` : null);
+    return [{ id: `${account.user}:${item.id || start}`, account: account.name, color: account.color, title: item.summary || '(no title)', start: new Date(start).toISOString(), end: end ? new Date(end).toISOString() : null, allDay: Boolean(item.start?.date), location: item.location || null, joinUrl: extractJoinUrl({ location: item.location, description: item.description, url: item.htmlLink }) }];
+  });
+  return { events, account };
+}

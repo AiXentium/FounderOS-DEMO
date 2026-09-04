@@ -1,4 +1,4 @@
-import { caldavAccounts, upcomingEvents } from '@/lib/connectors/gcal';
+import { caldavAccounts, upcomingEvents, upcomingGoogleOAuthEvents } from '@/lib/connectors/gcal';
 import type { CalEvent } from '@/lib/connectors/gcal';
 import { PageHeader } from '@/components/PageHeader';
 import { WeekCalendar } from '@/components/WeekCalendar';
@@ -8,7 +8,9 @@ import { CalendarPlanner } from '@/components/CalendarPlanner';
 export const dynamic = 'force-dynamic';
 
 export default async function CalendarPage() {
-  const accounts = caldavAccounts();
+  const caldav = caldavAccounts();
+  const oauth = await upcomingGoogleOAuthEvents().catch(() => null);
+  const accounts = oauth ? [oauth.account] : caldav;
   const nowISO = new Date().toISOString();
 
   // If no accounts configured, show helpful prompt
@@ -23,8 +25,7 @@ export default async function CalendarPage() {
               No calendars configured
             </h2>
             <p className="mb-4 text-[14px] leading-relaxed text-os-muted">
-              Calendar events appear here after a Google Calendar-capable account is configured and its CalDAV read succeeds.
-              Gmail credentials alone do not prove Calendar access.
+              Calendar events appear here after a Google Calendar-capable account is connected through OAuth.
             </p>
             <p className="text-[13px] text-os-dim">
               Go to <span className="font-mono">Connections</span> and configure a Google account with Calendar access
@@ -37,7 +38,7 @@ export default async function CalendarPage() {
   }
 
   // Load events from all configured accounts
-  const allEvents = await upcomingEvents(process.env, { days: 14, limit: 100 }).catch(() => []);
+  const allEvents = oauth?.events ?? await upcomingEvents(process.env, { days: 14, limit: 100 }).catch(() => []);
 
   // Sort by start time
   const sorted = allEvents.sort((a: CalEvent, b: CalEvent) => 
