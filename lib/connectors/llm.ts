@@ -116,10 +116,34 @@ export function createGatewayProvider(model: string = DEFAULT_MODEL): LlmProvide
 }
 
 export function getLlmProvider(): LlmProvider {
+  if (process.env.OPENAI_API_KEY) return createOpenAIProvider();
   if (process.env.LLM_PROVIDER === 'failover' || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || process.env.AI_BASE_URL || process.env.OMNIROUTE_BASE_URL) return createFailoverProvider();
   const name = process.env.LLM_PROVIDER ?? 'gateway';
   if (name === 'stub') return stubLlmProvider;
   return createGatewayProvider();
+}
+
+/** Direct OpenAI provider with native AI SDK tool execution. */
+export function createOpenAIProvider(): LlmProvider {
+  return { name: 'OpenAI', async chat(req) {
+    const { generateText, tool, stepCountIs } = await import('ai');
+    const { createOpenAI } = await import('@ai-sdk/openai');
+    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+    const tools = Object.fromEntries((req.tools ?? []).map((t) => [t.name, tool({ description: t.description, inputSchema: t.parameters, execute: t.execute })]));
+    const result = await generateText({
+      model: openai(req.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini'),
+      system: req.system,
+      messages: req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      tools: req.tools?.length ? tools : undefined,
+      stopWhen: stepCountIs(6),
+    });
+    const toolCalls: LlmToolCall[] = [];
+    for (const step of result.steps ?? []) for (const call of step.toolCalls ?? []) {
+      const hit = (step.toolResults ?? []).find((item) => item.toolCallId === call.toolCallId);
+      toolCalls.push({ name: call.toolName, args: call.input, result: hit?.output });
+    }
+    return { text: result.text, toolCalls };
+  }};
 }
 
 /** OpenAI-compatible failover chain. A provider is skipped on quota, rate-limit,

@@ -22,6 +22,7 @@
     "verify": "tsx scripts/verify.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.58",
     "@notionhq/client": "^5.22.0",
     "@slack/web-api": "^7.16.0",
     "@types/d3-force": "^3.0.10",
