@@ -78,9 +78,11 @@ export async function chatWithAgent(
   const isWordPressConnectionCheck = agentId === 'agency-engineering-cms-developer'
     && /(wordpress|wp-json|cms)/i.test(message)
     && /(connect|connected|access|status|health|check|work)/i.test(message);
-  const isConnectorAudit = agentId === 'data-agent'
-    && /(connect|connected|connection|connector|integration|tool|working|health|status|audit)/i.test(message)
-    && /(all|everything|every|system|tools|connectors|integrations)/i.test(message);
+  const isConnectorAudit = agentId === 'data-agent' && (
+    (/(connect|connected|connection|connector|integration|tool|working|health|status|audit)/i.test(message)
+      && /(all|everything|every|system|tools|connectors|integrations)/i.test(message))
+    || /(?:full|complete)\s+(?:connection\s+)?(?:test|check)|full\s+test|what\s+can\s+you\s+connect|all\s+components/i.test(message)
+  );
 
   // Operational checks must not depend on an LLM provider being available.
   if (isBrainStatus) {
