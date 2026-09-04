@@ -40,6 +40,29 @@ export function initializeAIRotation(envVars: Record<string, string>): RotationS
   const providers: Record<string, LLMProvider> = {}
   const now = Date.now()
 
+  // Direct OpenAI mode: when selected, do not silently rotate requests through
+  // unrelated providers. This is the predictable provider for agent + brain
+  // work; the fallback chain is used only when OpenAI is not configured.
+  if (envVars.OPENAI_API_KEY) {
+    providers['openai'] = {
+      name: 'OpenAI',
+      key: envVars.OPENAI_API_KEY,
+      baseUrl: envVars.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      model: envVars.OPENAI_MODEL || 'gpt-4o-mini',
+      rateLimit: 200,
+      resetTime: 60000,
+      isActive: true,
+      usageCount: 0,
+      lastResetTime: now,
+    }
+    return {
+      currentProvider: 'openai',
+      providers,
+      lastRotation: now,
+      rotationHistory: [{ provider: 'openai', timestamp: now, reason: 'direct OpenAI mode' }],
+    }
+  }
+
   // OpenRouter (Primary)
   if (envVars.OPENROUTER_API_KEY) {
     providers['openrouter'] = {
