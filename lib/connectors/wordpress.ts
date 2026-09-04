@@ -133,19 +133,41 @@ export async function wordPressStatus(
       return status;
     }
 
+    let profileAccess = true;
+    let data: Record<string, unknown> = {};
     if (response.status === 403) {
-      const status: ConnectorStatus = {
-        id: 'wordpress',
-        name: 'WordPress',
-        kind: 'cms',
-        state: 'error',
-        detail: 'Insufficient permissions - user lacks required access',
-      };
-      cache = { at: now, status };
-      return status;
-    }
-
-    if (!response.ok) {
+      // Some valid WordPress roles can edit content but cannot list users.
+      // Validate the capability the connector actually needs instead of
+      // treating the restricted profile endpoint as an authentication failure.
+      const contentResponse = await fetch(`${baseUrl}/wp-json/wp/v2/posts?context=edit&per_page=1`, {
+        headers: { Authorization: authHeader },
+        signal: AbortSignal.timeout(6000),
+        redirect: 'follow',
+      });
+      if (contentResponse.status === 401) {
+        const status: ConnectorStatus = {
+          id: 'wordpress',
+          name: 'WordPress',
+          kind: 'cms',
+          state: 'error',
+          detail: 'Authentication failed - verify username and application password',
+        };
+        cache = { at: now, status };
+        return status;
+      }
+      if (!contentResponse.ok) {
+        const status: ConnectorStatus = {
+          id: 'wordpress',
+          name: 'WordPress',
+          kind: 'cms',
+          state: 'error',
+          detail: 'Insufficient permissions - user lacks authenticated content access',
+        };
+        cache = { at: now, status };
+        return status;
+      }
+      profileAccess = false;
+    } else if (!response.ok) {
       const status: ConnectorStatus = {
         id: 'wordpress',
         name: 'WordPress',
@@ -155,9 +177,9 @@ export async function wordPressStatus(
       };
       cache = { at: now, status };
       return status;
+    } else {
+      data = await response.json() as Record<string, unknown>;
     }
-
-    const data = await response.json() as Record<string, unknown>;
 
     const [abilitiesAvailable, woocommerceAvailable] = await Promise.all([
       checkAbilitiesApi(baseUrl, authHeader),
@@ -169,10 +191,13 @@ export async function wordPressStatus(
       name: 'WordPress',
       kind: 'cms',
       state: 'connected',
-      detail: `Connected as ${(data.name as string) || username}`,
+      detail: profileAccess
+        ? `Connected as ${(data.name as string) || username}`
+        : `Connected with authenticated content access as ${username} (profile endpoint restricted)`,
       meta: {
         siteUrl: baseUrl,
         userId: (data.id as number) || 0,
+        profileAccess: profileAccess ? 1 : 0,
         abilitiesAvailable: abilitiesAvailable ? 1 : 0,
         woocommerceAvailable: woocommerceAvailable ? 1 : 0,
       },

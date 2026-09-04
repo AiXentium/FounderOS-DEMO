@@ -53,7 +53,16 @@ class WordPressProvider {
     });
 
     try {
-      const user = await client.getCurrentUser();
+      // Content access is the capability this provider needs. A user can have
+      // valid editor/author access while WordPress forbids /users/me because
+      // the profile endpoint is restricted to users with list-users access.
+      await client.verifyContentAccess();
+      let user: Awaited<ReturnType<WordPressClient['getCurrentUser']>> | undefined;
+      try {
+        user = await client.getCurrentUser();
+      } catch {
+        // Keep the site connected; the profile endpoint is optional metadata.
+      }
       const hasAbilities = await client.hasAbilitiesApi();
 
       this.sites.set(config.siteId, { config, client });
@@ -67,8 +76,8 @@ class WordPressProvider {
         abilitiesAvailable: hasAbilities,
         woocommerceAvailable: false,
         lastCheckedAt: Date.now(),
-        userId: user.id,
-        userName: user.name,
+        userId: user?.id,
+        userName: user?.name || 'Authenticated WordPress user',
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -76,7 +85,7 @@ class WordPressProvider {
         throw new Error('Authentication failed - invalid credentials');
       }
       if (message.includes('403')) {
-        throw new Error('Insufficient permissions - user lacks required access');
+        throw new Error('Insufficient permissions - user lacks authenticated content access');
       }
       throw new Error(`Failed to register site: ${message}`);
     }
@@ -92,7 +101,13 @@ class WordPressProvider {
 
     for (const [siteId, { config, client }] of this.sites) {
       try {
-        const user = await client.getCurrentUser();
+        await client.verifyContentAccess();
+        let user: Awaited<ReturnType<WordPressClient['getCurrentUser']>> | undefined;
+        try {
+          user = await client.getCurrentUser();
+        } catch {
+          // Profile metadata is optional when the WordPress role cannot list users.
+        }
         const hasAbilities = await client.hasAbilitiesApi();
 
         sites.push({
@@ -104,8 +119,8 @@ class WordPressProvider {
           abilitiesAvailable: hasAbilities,
           woocommerceAvailable: false,
           lastCheckedAt: Date.now(),
-          userId: user.id,
-          userName: user.name,
+          userId: user?.id,
+          userName: user?.name || 'Authenticated WordPress user',
         });
       } catch {
         sites.push({

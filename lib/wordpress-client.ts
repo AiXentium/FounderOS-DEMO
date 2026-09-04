@@ -466,6 +466,12 @@ export class WordPressClient {
     return makeRequest<WordPressUser>(url, this.authHeader, { timeout: this.timeout });
   }
 
+  /** Verify authenticated content access without requiring user-list permission. */
+  async verifyContentAccess(): Promise<void> {
+    const url = `${this.baseUrl}/wp-json/wp/v2/posts?context=edit&per_page=1`;
+    await makeRequest<unknown[]>(url, this.authHeader, { timeout: this.timeout });
+  }
+
   // Abilities API (WordPress 6.9+)
   async hasAbilitiesApi(): Promise<boolean> {
     try {
