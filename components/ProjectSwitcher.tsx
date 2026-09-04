@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Copy, FolderOpen } from 'lucide-react';
 
-type Project = { id: string; name: string; prompt?: string; direction?: string; page?: { title?: string; blocks?: string[]; generated?: boolean; contentHtml?: string; sourceType?: string; sourceUrl?: string } };
+type Project = { id: string; name: string; prompt?: string; direction?: string; page?: { title?: string; blocks?: string[]; generated?: boolean; contentHtml?: string; sourceType?: string; sourceUrl?: string; wordpressId?: number } };
 
 export function ProjectSwitcher({ onLoad }: { onLoad?: (project: Project) => void }) {
   const [projects, setProjects] = useState<Project[]>([]); const [selected, setSelected] = useState(''); const [status, setStatus] = useState('');

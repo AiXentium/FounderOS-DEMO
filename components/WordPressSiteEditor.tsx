@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 
 type Page = { id: number; title?: { rendered?: string }; link?: string; editUrl?: string; isBuiltWithElementor?: boolean };
+type ElementorSelection = { previewUrl: string; editUrl?: string };
 
-export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPageSelected?: (url: string) => void }) {
+export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPageSelected?: (selection: ElementorSelection) => void }) {
   const [pages, setPages] = useState<Page[]>([]);
   const [status, setStatus] = useState('Loading connected site…');
   const [selected, setSelected] = useState<Page | null>(null);
@@ -33,7 +34,7 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
 
   const editPage = async (page: Page) => {
     setSelected(page);
-    if (page.link) onElementorPageSelected?.(page.link);
+    if (page.link) onElementorPageSelected?.({ previewUrl: page.link, editUrl: page.editUrl });
     setShowEmbeddedElementor(false);
     const response = await fetch(`/api/wordpress?operation=getPage&siteId=primary&agent=WebsiteBuilder&id=${page.id}`);
     const body = await response.json();
