@@ -18,14 +18,9 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
   const loadPages = async () => {
     setStatus('Loading WordPress pages…');
     try {
-      const [response, elementorResponse] = await Promise.all([
-        fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
-        fetch('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
-      ]);
+      const response = await fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100');
       const body = await response.json() as PageListBody;
-      const elementorBody = await elementorResponse.json() as PageListBody;
       if (!response.ok) return setStatus(body.detail || body.error || 'WordPress connection failed');
-      if (!elementorResponse.ok) return setStatus(elementorBody.detail || elementorBody.error || 'Elementor connection failed');
 
       const loadRemainingPages = async (endpoint: string, initial: PageListBody): Promise<Page[]> => {
         const firstPage = initial.result?.items || [];
@@ -40,12 +35,11 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
         return [firstPage, ...remaining].flat();
       };
 
-      const [livePages, elementorPages] = await Promise.all([
-        loadRemainingPages('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100', body),
-        loadRemainingPages('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100', elementorBody),
-      ]);
-      const editUrls = new Map(elementorPages.map((page: Page) => [String(page.id), page.editUrl]));
-      setPages(livePages.map((page: Page) => ({ ...page, editUrl: editUrls.get(String(page.id)) })));
+      const livePages = await loadRemainingPages('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100', body);
+      setPages(livePages.map((page: Page) => ({
+        ...page,
+        editUrl: page.editUrl || `https://letstalkmilesandtravel.com/wp-admin/post.php?post=${page.id}&action=elementor`,
+      })));
       setStatus(`Connected · ${livePages.length} live WordPress pages`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Unable to load WordPress pages');
