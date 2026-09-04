@@ -71,6 +71,13 @@ export async function routeConductorMessage(
     if (auditor) targetId = auditor.id;
   }
 
+  // WordPress connection and CMS questions must reach the CMS specialist so
+  // its live connector check is available instead of relying on model routing.
+  if (!targetId && /(wordpress|wp-json|cms)/i.test(message)) {
+    const cms = routable.find((agent) => agent.id === 'agency-engineering-cms-developer');
+    if (cms) targetId = cms.id;
+  }
+
   const at = message.match(AT_PREFIX);
   if (!targetId && at) {
     const explicit = matchAgent(routable, at[1]);

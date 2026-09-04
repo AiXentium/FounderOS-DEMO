@@ -1,7 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
 import type { Agent } from '@/lib/schemas';
 import type { RuntimeAgent } from '@/lib/agents/runtime';
+import type { LlmToolSpec } from '@/lib/connectors/llm';
+import { wordPressStatus } from '@/lib/connectors/wordpress';
+import { runtimeEnv } from '@/lib/creds';
 
 type AgencyDefinition = { id: string; name: string; category: string; description: string; file: string };
 
@@ -1307,4 +1311,25 @@ function definitions(): AgencyDefinition[] { const root = path.join(process.cwd(
 function department(category: string): string { if (['engineering', 'integrations', 'spatial-computing', 'game-development'].includes(category)) return 'dept-tech'; if (['design', 'marketing', 'paid-media'].includes(category)) return 'dept-marketing-growth'; if (category === 'sales') return 'dept-sales'; return 'dept-clients'; }
 export function agencyDefinitions() { return definitions(); }
 export function agencySeedAgents(): Agent[] { return definitions().map((d) => ({ id: d.id, departmentId: department(d.category), name: d.name, role: `${d.category} specialist`, status: 'active' as const, tier: 'specialist' as const, description: `${d.description} Loaded from agency-agents/${d.file} and grounded by shared G-Brain.`, model: 'shared LLM + G-Brain', tools: ['gbrain'], parentId: null, instance: 'builtin' })); }
-export function agencyRuntimeAgents(): RuntimeAgent[] { return definitions().map((d) => ({ id: d.id, name: d.name, description: `${d.description} Agency source: ${d.file}.`, departmentId: department(d.category), async run() { return { ok: true, summary: `${d.name} ready · shared G-Brain grounding enabled`, data: { source: d.file } }; } })); }
+
+function cmsChatTools(): LlmToolSpec[] {
+  return [{
+    name: 'checkWordPressConnection',
+    description: 'Check the live primary WordPress site, REST API, authentication, and available capabilities. Read-only: never changes site content.',
+    parameters: z.object({}),
+    execute: async () => wordPressStatus(runtimeEnv()),
+  }];
+}
+
+export function agencyRuntimeAgents(): RuntimeAgent[] {
+  return definitions().map((d) => ({
+    id: d.id,
+    name: d.name,
+    description: `${d.description} Agency source: ${d.file}.`,
+    departmentId: department(d.category),
+    async run() {
+      return { ok: true, summary: `${d.name} ready · shared G-Brain grounding enabled`, data: { source: d.file } };
+    },
+    ...(d.id === 'agency-engineering-cms-developer' ? { chatTools: cmsChatTools } : {}),
+  }));
+}

@@ -11,6 +11,8 @@ import type { FounderDb } from '@/lib/db';
 import type { RuntimeAgent } from '@/lib/agents/runtime';
 import type { AgentMessage } from '@/lib/schemas';
 import { getBrainProvider } from '@/lib/brain';
+import { wordPressStatus } from '@/lib/connectors/wordpress';
+import { runtimeEnv } from '@/lib/creds';
 
 export type ChatResult = { reply: string; messages: AgentMessage[] };
 
@@ -72,6 +74,9 @@ export async function chatWithAgent(
   }
   const isAudit = agentId === 'data-agent' && /(audit|all agents|every agent|each agent|roster|who can you communicate)/i.test(message);
   const isBrainStatus = agentId === 'data-agent' && /(g[- ]?brain|brain).*(status|active|working|connected|health)|is the brain/i.test(message);
+  const isWordPressConnectionCheck = agentId === 'agency-engineering-cms-developer'
+    && /(wordpress|wp-json|cms)/i.test(message)
+    && /(connect|connected|access|status|health|check|work)/i.test(message);
 
   // Operational checks must not depend on an LLM provider being available.
   if (isBrainStatus) {
@@ -86,6 +91,17 @@ export async function chatWithAgent(
     const reply = `Live runtime audit: ${entries.length} agents loaded. These are the actual runtime agents, not seed/mock records:\n${entries.map((entry) => `- ${entry.name} (${entry.id}): ${entry.description} | run=${entry.canRun ? 'yes' : 'no'} respond=${entry.canRespond ? 'yes' : 'no'} tools=${entry.chatTools.join(', ') || 'none'}`).join('\n')}`;
     const audit = { total: entries.length, agents: entries };
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `auditRuntimeAgents → ${JSON.stringify(audit)}`, toolCalls: [{ name: 'auditRuntimeAgents', args: {}, result: audit }], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+  if (isWordPressConnectionCheck) {
+    const status = await wordPressStatus(runtimeEnv());
+    const siteUrl = typeof status.meta?.siteUrl === 'string' ? ` (${status.meta.siteUrl})` : '';
+    const reply = status.state === 'connected'
+      ? `Live WordPress connection: CONNECTED${siteUrl} — ${status.detail}. I can inspect the site through the WordPress connector. Content edits, deletes, and publishing remain approval-gated.`
+      : `Live WordPress connection: ${status.state.toUpperCase()}${siteUrl} — ${status.detail}. Royal MCP is a separate connector and does not replace WordPress REST permissions.`;
+    const call = { name: 'checkWordPressConnection', args: {}, result: status };
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `${call.name} → ${JSON.stringify(status)}`, toolCalls: [call], createdAt: now() });
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
     return { reply, messages: db.agentMessages.byAgent(agentId) };
   }
