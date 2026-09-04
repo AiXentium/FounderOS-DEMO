@@ -380,6 +380,28 @@ export const realAgents: RuntimeAgent[] = ([
           },
         },
         {
+          name: 'auditRuntimeAgents',
+          description: 'Audit the actual loaded Founder OS runtime roster. Return every agent id, name, role description, and whether it has a real run handler, response handler, or chat tools. Read-only.',
+          parameters: z.object({}),
+          execute: async () => {
+            const audit = realAgents.filter((agent) => agent.id !== 'conductor').map((agent) => ({
+              id: agent.id,
+              name: agent.name,
+              description: agent.description,
+              runtime: 'builtin',
+              canRun: typeof agent.run === 'function',
+              canRespond: typeof agent.respond === 'function',
+              chatTools: agent.chatTools?.().map((tool) => tool.name) ?? [],
+            }));
+            return {
+              total: audit.length,
+              builtinRuntime: audit.filter((agent) => agent.runtime === 'builtin').length,
+              agents: audit,
+              note: 'This is the loaded runtime roster. An agent is not marked live merely because it exists in seed data.',
+            };
+          },
+        },
+        {
           name: 'searchGBrain',
           description:
             'Search the G-Brain knowledge base (brain-store markdown + vector store) and return the top matching notes. Read-only.',
