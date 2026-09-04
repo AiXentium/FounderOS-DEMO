@@ -7,6 +7,7 @@ import { getDb } from '@/lib/data';
 import { PageHeader } from '@/components/PageHeader';
 import { BrainDump } from '@/components/BrainDump';
 import { BrainGraphView } from '@/components/BrainGraphView';
+import { BrainChat } from '@/components/BrainChat';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,7 @@ export default function BrainPage() {
           so the capture slot sits close to the graph and the canvas gets the
           rest of the viewport */}
       <div className="-mt-3 min-h-0 flex-1">
+        <div className="mb-4"><BrainChat /></div>
         <BrainGraphView
           fill
           graph={knowledgeGraph}
