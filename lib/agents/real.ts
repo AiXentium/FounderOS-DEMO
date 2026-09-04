@@ -263,16 +263,6 @@ export const realAgents: RuntimeAgent[] = ([
     chatTools(): LlmToolSpec[] {
       return [
         {
-          name: 'getGBrainStatus',
-          description: 'Check the live G-Brain connection, health score, and markdown memory count. Use this for status or connection questions. Read-only.',
-          parameters: z.object({}),
-          execute: async () => {
-            const provider = createGBrainProvider();
-            const [status, overview] = await Promise.all([provider.status(), provider.overview()]);
-            return { status, store: overview.store, doctor: overview.doctor };
-          },
-        },
-        {
           name: 'searchWebinarRegistrants',
           description:
             "List registrants/attendees for an Launchpad Cohort WebinarJam session (these are leads). Read-only. Needs the webinar's id and schedule id.",
@@ -379,6 +369,16 @@ export const realAgents: RuntimeAgent[] = ([
     },
     chatTools(): LlmToolSpec[] {
       return [
+        {
+          name: 'getGBrainStatus',
+          description: 'Check the live G-Brain connection, health score, and markdown memory count. Use this for status or connection questions. Read-only.',
+          parameters: z.object({}),
+          execute: async () => {
+            const provider = createGBrainProvider();
+            const [status, overview] = await Promise.all([provider.status(), provider.overview()]);
+            return { status, store: overview.store, doctor: overview.doctor };
+          },
+        },
         {
           name: 'searchGBrain',
           description:
