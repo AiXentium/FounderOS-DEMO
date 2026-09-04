@@ -78,6 +78,15 @@ export async function routeConductorMessage(
     if (cms) targetId = cms.id;
   }
 
+  // Broad system-connection questions belong to G-Brain's live connector
+  // audit, so the user gets one complete report instead of fixing integrations
+  // one at a time through unrelated specialists.
+  if (!targetId && /(connect|connected|connection|connector|integration|tool|working|health|status|audit)/i.test(message)
+    && /(all|everything|every|system|tools|connectors|integrations)/i.test(message)) {
+    const auditor = routable.find((agent) => agent.id === 'data-agent');
+    if (auditor) targetId = auditor.id;
+  }
+
   const at = message.match(AT_PREFIX);
   if (!targetId && at) {
     const explicit = matchAgent(routable, at[1]);

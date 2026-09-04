@@ -19,6 +19,7 @@ import type { LlmToolSpec } from '@/lib/connectors/llm';
 import type { AgentRunResult, RuntimeAgent } from '@/lib/agents/runtime';
 import { googleCalendarApiStatus } from '@/lib/connectors/gcal';
 import { agencyRuntimeAgents } from '@/lib/agency-catalog';
+import { allConnectorStatuses } from '@/lib/connectors';
 
 /**
  * The real agent roster. Every run() does actual work against a live system —
@@ -406,6 +407,23 @@ export const realAgents: RuntimeAgent[] = ([
               builtinRuntime: audit.filter((agent) => agent.runtime === 'builtin').length,
               agents: audit,
               note: 'This is the loaded runtime roster. An agent is not marked live merely because it exists in seed data.',
+            };
+          },
+        },
+        {
+          name: 'auditAllConnectors',
+          description: 'Check every registered Founder OS connector in one live pass and return connected, not-configured, and error states with their next setup detail. Read-only.',
+          parameters: z.object({}),
+          execute: async () => {
+            const statuses = await allConnectorStatuses();
+            return {
+              checkedAt: new Date().toISOString(),
+              total: statuses.length,
+              connected: statuses.filter((status) => status.state === 'connected').length,
+              notConfigured: statuses.filter((status) => status.state === 'not_configured').length,
+              errors: statuses.filter((status) => status.state === 'error').length,
+              statuses,
+              note: 'A connected status means the connector health check passed. It does not grant new permissions or publish content.',
             };
           },
         },

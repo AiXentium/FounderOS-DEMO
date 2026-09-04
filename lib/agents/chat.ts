@@ -13,6 +13,7 @@ import type { AgentMessage } from '@/lib/schemas';
 import { getBrainProvider } from '@/lib/brain';
 import { wordPressStatus } from '@/lib/connectors/wordpress';
 import { runtimeEnv } from '@/lib/creds';
+import { allConnectorStatuses } from '@/lib/connectors';
 
 export type ChatResult = { reply: string; messages: AgentMessage[] };
 
@@ -77,6 +78,9 @@ export async function chatWithAgent(
   const isWordPressConnectionCheck = agentId === 'agency-engineering-cms-developer'
     && /(wordpress|wp-json|cms)/i.test(message)
     && /(connect|connected|access|status|health|check|work)/i.test(message);
+  const isConnectorAudit = agentId === 'data-agent'
+    && /(connect|connected|connection|connector|integration|tool|working|health|status|audit)/i.test(message)
+    && /(all|everything|every|system|tools|connectors|integrations)/i.test(message);
 
   // Operational checks must not depend on an LLM provider being available.
   if (isBrainStatus) {
@@ -102,6 +106,23 @@ export async function chatWithAgent(
       : `Live WordPress connection: ${status.state.toUpperCase()}${siteUrl} — ${status.detail}. Royal MCP is a separate connector and does not replace WordPress REST permissions.`;
     const call = { name: 'checkWordPressConnection', args: {}, result: status };
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `${call.name} → ${JSON.stringify(status)}`, toolCalls: [call], createdAt: now() });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
+    return { reply, messages: db.agentMessages.byAgent(agentId) };
+  }
+  if (isConnectorAudit) {
+    const statuses = await allConnectorStatuses();
+    const connected = statuses.filter((status) => status.state === 'connected');
+    const notConfigured = statuses.filter((status) => status.state === 'not_configured');
+    const errors = statuses.filter((status) => status.state === 'error');
+    const reply = [
+      `Live connector audit: ${connected.length}/${statuses.length} connected; ${errors.length} error${errors.length === 1 ? '' : 's'}; ${notConfigured.length} not configured.`,
+      connected.length ? `Connected: ${connected.map((status) => status.name).join(', ')}.` : '',
+      errors.length ? `Needs repair: ${errors.map((status) => `${status.name} — ${status.detail}`).join(' | ')}.` : '',
+      notConfigured.length ? `Needs setup: ${notConfigured.map((status) => `${status.name} — ${status.detail}`).join(' | ')}.` : '',
+      'The Brain can now check the full connector set in one pass; each specialist remains limited to its approved tools and write actions still require approval.',
+    ].filter(Boolean).join('\n');
+    const audit = { checkedAt: new Date().toISOString(), total: statuses.length, connected: connected.length, errors: errors.length, notConfigured: notConfigured.length, statuses };
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'tool', content: `auditAllConnectors → ${JSON.stringify(audit)}`, toolCalls: [{ name: 'auditAllConnectors', args: {}, result: audit }], createdAt: now() });
     db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: reply, toolCalls: [], createdAt: now() });
     return { reply, messages: db.agentMessages.byAgent(agentId) };
   }

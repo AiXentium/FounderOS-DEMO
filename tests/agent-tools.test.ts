@@ -24,6 +24,11 @@ describe('agent chat tools', () => {
     expect(tools.map((t) => t.name)).toContain('searchGBrain');
   });
 
+  test('data-agent exposes a single live audit for all connectors', () => {
+    const dataAgent = realAgents.find((a) => a.id === 'data-agent')!;
+    expect(dataAgent.chatTools!().map((tool) => tool.name)).toContain('auditAllConnectors');
+  });
+
   test('a triggered tool call executes the connector and persists a tool turn', async () => {
     const db = openDb(':memory:');
     const res = await chatWithAgent(db, realAgents, 'data-agent', 'use-tool:searchGBrain revenue split');
