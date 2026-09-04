@@ -8,6 +8,8 @@ import { Badge, SectionHead } from '@/components/terminal';
 type Product = { id: number | string; name: string; source: string; price?: string; commission?: string; url: string; status?: string; trackedUrl?: string; imageUrl?: string };
 type Campaign = { id: string; name: string; platforms?: string[]; status?: string };
 type TeamMember = { id: string; name: string; role: string; responsibilities: string[] };
+type WorkflowRun = { mode: string; stages: string[]; current: string; approvalRequired: boolean };
+type WebsiteProject = { id: string; name: string; direction?: string; page?: { status?: string; approvalRequired?: boolean } };
 
 const initialProducts: Product[] = [];
 
@@ -30,6 +32,8 @@ export default function AffiliateStudioPage() {
   const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const [amazonQuery, setAmazonQuery] = useState('');
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [workflowRun, setWorkflowRun] = useState<WorkflowRun | null>(null);
+  const [websiteProject, setWebsiteProject] = useState<WebsiteProject | null>(null);
   useEffect(() => { fetch('/api/affiliate/products').then(r => r.ok ? r.json() : { products: [] }).then(body => setProducts(body.products ?? [])).catch(() => undefined); fetch('/api/affiliate/campaigns').then(r => r.ok ? r.json() : { campaigns: [] }).then(body => setCampaigns(body.campaigns ?? [])).catch(() => undefined); fetch('/api/affiliate/team').then(r => r.ok ? r.json() : { team: [] }).then(body => setTeam(body.team ?? [])).catch(() => undefined); }, []);
   const active = products.find((p) => String(p.id) === String(selected)) ?? products[0];
   const trackedLink = useMemo(() => active ? (active.trackedUrl || `${active.url}${active.url.includes('?') ? '&' : '?'}utm_source=business-os&utm_medium=social&utm_campaign=affiliate_${active.id}`) : '', [active]);
@@ -62,6 +66,8 @@ export default function AffiliateStudioPage() {
       setAssistantMessages((current) => [...current, { role: 'agent', text: reply + (body.products?.length ? ` Sample ideas: ${body.products.slice(0, 3).map((p: Product) => p.name).join(' · ')}` : '') }]);
       if (body.products?.length) setProducts((current) => [...body.products, ...current]);
       if (body.campaign) setCampaigns((current) => [body.campaign, ...current]);
+      if (body.workflow) setWorkflowRun(body.workflow);
+      if (body.websiteProject) setWebsiteProject(body.websiteProject);
     } catch { setAssistantReply('The agent is unavailable. Check the OS connection and try again.'); }
     finally { setAssistantBusy(false); }
   }
@@ -92,6 +98,7 @@ export default function AffiliateStudioPage() {
           <button disabled={!assistantMessage.trim() || assistantBusy} onClick={() => void runAssistant()} className="rounded-sm-t bg-os-accent px-4 py-2 font-mono text-[10px] font-bold uppercase text-[var(--accent-ink)] disabled:opacity-40">{assistantBusy ? 'Working…' : 'Ask agent'}</button>
         </div>
         <div className="mt-3 space-y-2 rounded-sm-t border border-os-border bg-os-bg2 p-3">{assistantMessages.slice(-6).map((item, index) => <div key={`${item.role}-${index}`} className={`text-[20px] leading-relaxed ${item.role === 'agent' ? 'border-l-2 border-os-accent pl-3 text-os-copy' : 'text-os-dim'}`}><span className="mr-2 font-mono text-[11px] uppercase text-os-accent">{item.role === 'agent' ? 'agent' : 'you'}</span>{item.text}</div>)}</div>
+        {workflowRun && <div className="mt-4 rounded-sm-t border border-[var(--accent-line)] bg-os-accent/5 p-4"><div className="font-mono text-[11px] uppercase tracking-[0.14em] text-os-accent">Automated team run · awaiting your approval</div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{workflowRun.stages.map((stage, index) => <div key={stage} className={`rounded-sm-t border px-3 py-2 font-mono text-[11px] uppercase ${stage === workflowRun.current ? 'border-os-accent text-os-accent' : 'border-os-border text-os-copy'}`}><span className="mr-2">{stage === workflowRun.current ? '●' : '✓'}</span>{stage.replaceAll('.', ' · ')}</div>)}</div>{websiteProject && <div className="mt-4 flex flex-col gap-2 border-t border-os-border pt-3 text-[15px] sm:flex-row sm:items-center sm:justify-between"><div><div className="font-semibold">{websiteProject.name}</div><div className="text-os-dim">Website draft created · {websiteProject.page?.status ?? 'requires review'}</div></div><a href="/website-builder" className="rounded-sm-t border border-os-border px-3 py-2 font-mono text-[11px] uppercase text-os-accent hover:bg-os-surface2">Open website work</a></div>}</div>}
         <div className="mt-3 flex flex-wrap gap-2">{['Find Spain holiday ideas', 'Brainstorm summer travel', 'Create a Lake Como campaign'].map((prompt) => <button key={prompt} onClick={() => { setAssistantMessage(prompt); }} className="rounded-sm-t border border-os-border px-3 py-2 font-mono text-[12px] uppercase text-os-dim hover:bg-os-surface2">{prompt}</button>)}</div>
       </section>
 
