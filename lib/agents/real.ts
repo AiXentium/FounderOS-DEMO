@@ -140,6 +140,14 @@ export const realAgents: RuntimeAgent[] = ([
       const products = await searchViatorMcp('family coastal Spain travel');
       return { ok: products.length > 0, summary: `${products.length} live Viator experiences available for Affiliate Studio research`, data: { products } };
     },
+    chatTools(): LlmToolSpec[] {
+      return [{
+        name: 'searchLiveViator',
+        description: 'Search live Viator experiences for a destination or travel intent. Return actual products and source links; never invent inventory. Read-only.',
+        parameters: z.object({ query: z.string().min(2).describe('destination or travel search query') }),
+        execute: async (args) => searchViatorMcp(typeof args.query === 'string' ? args.query : 'Barcelona travel'),
+      }];
+    },
   },
 
   // ── Comms instance + channel workers ─────────────────────────────────
