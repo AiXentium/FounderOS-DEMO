@@ -133,7 +133,7 @@ export function createOpenAIProvider(): LlmProvider {
     const result = await generateText({
       // AI SDK v6 currently expects a v2 model type while the latest provider
       // package exposes v4; the provider is runtime-compatible here.
-      model: openai(req.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini') as never,
+      model: openai.chat(req.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini') as never,
       system: req.system,
       messages: req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
       tools: req.tools?.length ? tools : undefined,
