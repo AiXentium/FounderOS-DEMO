@@ -6,7 +6,7 @@ import type { RuntimeAgent } from '@/lib/agents/runtime';
 type AgencyDefinition = { id: string; name: string; category: string; description: string; file: string };
 
 // Railway does not initialize Git submodules, so keep a deployable manifest.
-const AGENCY_MANIFEST: AgencyDefinition[] = +[
+const AGENCY_MANIFEST: AgencyDefinition[] = [
   {
     "id": "agency-academic-anthropologist",
     "name": "Anthropologist",
