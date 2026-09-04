@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getDb } from '@/lib/data';
 import { getBrainProvider } from '@/lib/brain';
 import { chat as llmChat } from '@/lib/connectors/llm';
+import { generateWithGemini, openPageGeminiStatus } from '@/lib/openpage-gemini';
 import { OPENPAGE_WORKSPACE, defaultOpenPageDocument, normalizeOpenPageDocument, openPageMemoryText, openPageSlug, renderOpenPageHtml, type OpenPageDocument } from '@/lib/openpage';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
     updatedAt: project.updated_at,
     document: normalizeOpenPageDocument(project.page, project.name),
   }));
-  return NextResponse.json({ ok: true, workspace: OPENPAGE_WORKSPACE, projects, memoryVault: 'G-Brain · openpage/' });
+  return NextResponse.json({ ok: true, workspace: OPENPAGE_WORKSPACE, projects, memoryVault: 'G-Brain · openpage/', ai: openPageGeminiStatus() });
 }
 
 export async function POST(request: Request) {
@@ -68,14 +69,25 @@ export async function POST(request: Request) {
     const brain = await getBrainProvider().search(`openpage ${prompt}`);
     const starter = defaultOpenPageDocument(name);
     const schemaExample = JSON.stringify(starter, null, 2);
+    const system = `You are OpenPage, a structured website design agent inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Preserve schemaVersion "openpage-v1", use 3-12 blocks, and write specific copy from the brief. Never include HTML or markdown. The JSON shape is:\n${schemaExample}`;
+    const userPrompt = `Brief: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}`;
     try {
-      const result = await llmChat({
-        system: `You are OpenPage, a structured website design agent inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Preserve schemaVersion "openpage-v1", use 3-12 blocks, and write specific copy from the brief. Never include HTML or markdown. The JSON shape is:\n${schemaExample}`,
-        messages: [{ role: 'user', content: `Brief: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}` }],
-      });
-      const parsed = parseJsonObject(result.text);
+      let generatedText: string;
+      let source: 'gemini' | 'openai-fallback' = 'gemini';
+      if (openPageGeminiStatus().configured) {
+        try {
+          generatedText = await generateWithGemini({ system, prompt: userPrompt });
+        } catch {
+          source = 'openai-fallback';
+          generatedText = (await llmChat({ system, messages: [{ role: 'user', content: userPrompt }] })).text;
+        }
+      } else {
+        source = 'openai-fallback';
+        generatedText = (await llmChat({ system, messages: [{ role: 'user', content: userPrompt }] })).text;
+      }
+      const parsed = parseJsonObject(generatedText);
       if (!parsed) throw new Error('The live model returned no valid OpenPage JSON.');
-      return NextResponse.json({ ok: true, document: normalizeOpenPageDocument({ ...parsed, name }), source: 'live-llm', brainContext: brain.slice(0, 5) });
+      return NextResponse.json({ ok: true, document: normalizeOpenPageDocument({ ...parsed, name }), source, provider: source === 'gemini' ? 'Gemini' : 'OpenAI/Gateway fallback', brainContext: brain.slice(0, 5) });
     } catch (error) {
       return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error), starter, source: 'starter-available' }, { status: 503 });
     }
