@@ -42,6 +42,7 @@ async function pickAgent(routable: RuntimeAgent[], message: string): Promise<str
     // of credits. Use a deterministic capability fallback instead of a 500.
   }
   const text = message.toLowerCase();
+  if (/(audit|all agents|every agent|each agent|roster|who can you communicate)/.test(text) && routable.some((a) => a.id === 'data-agent')) return 'data-agent';
   const keywords: Array<[string[], string]> = [
     [['calendar', 'meeting', 'schedule', 'appointment'], 'calendar-agent'],
     [['email', 'gmail', 'inbox', 'mail'], 'gmail-worker'],
@@ -63,8 +64,15 @@ export async function routeConductorMessage(
   let targetId: string | undefined;
   let delivered = message;
 
+  // Deterministic safety rail for roster/audit requests. These must reach the
+  // Data Agent's live audit tool and must never be left to model routing.
+  if (/(audit|all agents|every agent|each agent|roster|who can you communicate)/i.test(message)) {
+    const auditor = routable.find((agent) => agent.id === 'data-agent');
+    if (auditor) targetId = auditor.id;
+  }
+
   const at = message.match(AT_PREFIX);
-  if (at) {
+  if (!targetId && at) {
     const explicit = matchAgent(routable, at[1]);
     if (explicit) {
       targetId = explicit.id;
