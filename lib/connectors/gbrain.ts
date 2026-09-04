@@ -26,7 +26,7 @@ export function execTimeoutFor(args: string[]): number {
   return cmd === 'capture' || cmd === 'import' || cmd === 'embed' ? WRITE_TIMEOUT_MS : READ_TIMEOUT_MS;
 }
 
-const defaultExec: ExecFn = (cmd, args, stdin) =>
+const defaultExec = (cmd: string, args: string[], stdin: string | undefined, storePath?: string): Promise<ExecResult> =>
   new Promise((resolve) => {
     const child = execFile(
       cmd,
@@ -34,7 +34,7 @@ const defaultExec: ExecFn = (cmd, args, stdin) =>
       {
         timeout: execTimeoutFor(args),
         maxBuffer: 4 * 1024 * 1024,
-        env: { ...process.env, GBRAIN_DISABLE_DIRECT_POOL: process.env.GBRAIN_DISABLE_DIRECT_POOL ?? '1' },
+        env: { ...process.env, ...(storePath ? { GBRAIN_STORE: storePath } : {}), GBRAIN_DISABLE_DIRECT_POOL: process.env.GBRAIN_DISABLE_DIRECT_POOL ?? '1' },
       },
       (err, stdout, stderr) => {
         resolve({
@@ -171,8 +171,8 @@ function storeFolders(storePath: string): { name: string; files: number }[] {
 }
 
 export function createGBrainProvider(opts: { exec?: ExecFn; storePath?: string } = {}): GBrainProvider {
-  const exec = opts.exec ?? defaultExec;
   const storePath = opts.storePath ?? DEFAULT_STORE;
+  const exec: ExecFn = opts.exec ?? ((cmd, args, stdin) => defaultExec(cmd, args, stdin, storePath));
 
   return {
     name: 'gbrain',

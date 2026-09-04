@@ -35,12 +35,21 @@ if (cmd === 'doctor') {
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', (chunk) => { body += chunk; });
   process.stdin.on('end', () => {
-    const folder = process.env.GBRAIN_CAPTURE_FOLDER || 'inbox';
-    const dir = path.join(store, folder);
+    const typeIndex = process.argv.indexOf('--type');
+    const slugIndex = process.argv.indexOf('--slug');
+    const type = typeIndex >= 0 ? process.argv[typeIndex + 1] : '';
+    const requestedSlug = slugIndex >= 0 ? process.argv[slugIndex + 1] : '';
+    // Keep namespaces physically separate. OpenPage passes an openpage/<slug>
+    // slug; older captures continue to land in inbox (or their requested type).
+    const safeSlug = requestedSlug
+      ? requestedSlug.replace(/\\/g, '/').replace(/^\/+|\.\.+/g, '').replace(/[^a-zA-Z0-9_./-]/g, '-')
+      : '';
+    const relativeFile = safeSlug ? `${safeSlug.replace(/\.md$/i, '')}.md` : `${type || process.env.GBRAIN_CAPTURE_FOLDER || 'inbox'}/capture-${Date.now()}.md`;
+    const dir = path.dirname(path.join(store, relativeFile));
     fs.mkdirSync(dir, { recursive: true });
-    const slug = `capture-${Date.now()}`;
-    fs.writeFileSync(path.join(dir, `${slug}.md`), body, 'utf8');
-    process.stdout.write(JSON.stringify({ slug, content_hash: '' }));
+    const outputFile = path.join(store, relativeFile);
+    fs.writeFileSync(outputFile, body, 'utf8');
+    process.stdout.write(JSON.stringify({ slug: relativeFile.replace(/\\/g, '/').replace(/\.md$/i, ''), content_hash: '' }));
   });
 } else {
   process.stderr.write(`unsupported command: ${cmd}`);

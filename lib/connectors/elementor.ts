@@ -54,15 +54,33 @@ export async function elementorStatus(
 
     const version = await client.getElementorVersion();
 
+    let bridge;
+    try {
+      bridge = await client.getBridgeHealth();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      const status: ConnectorStatus = {
+        id: 'elementor',
+        name: 'Elementor',
+        kind: 'cms',
+        state: 'error',
+        detail: `Elementor ${version || 'unknown'} is available, but the Business OS Elementor Bridge is not ready: ${detail}`,
+        meta: { siteUrl: baseUrl, version: version ? 1 : 0, bridge: 0 },
+      };
+      cache = { at: now, status };
+      return status;
+    }
+
     const status: ConnectorStatus = {
       id: 'elementor',
       name: 'Elementor',
       kind: 'cms',
       state: 'connected',
-      detail: `Elementor ${version || 'unknown version'} detected and ready`,
+      detail: `Elementor ${version || 'unknown version'} + Business OS Bridge ${bridge.version} detected and ready`,
       meta: {
         siteUrl: baseUrl,
         version: version ? 1 : 0,
+        bridge: 1,
       },
     };
     cache = { at: now, status };

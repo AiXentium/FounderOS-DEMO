@@ -47,6 +47,37 @@ export interface ElementorPageData {
   elementor_library_type?: string;
 }
 
+export type ElementorBridgeHealth = {
+  ok: boolean;
+  bridge: string;
+  version: string;
+  elementor_active: boolean;
+  authenticated_user: number;
+  capabilities: {
+    edit_pages: boolean;
+    publish_pages: boolean;
+    upload_files: boolean;
+  };
+};
+
+export type ElementorBridgeChange =
+  | { action: 'replace_text'; search: string; replace: string; expected_count?: number }
+  | { action: 'update_settings'; element_id: string; settings: Record<string, unknown> }
+  | { action: 'insert_element'; parent_id?: string; element: ElementorWidgetData }
+  | { action: 'remove_element'; element_id: string }
+  | { action: 'replace_document'; elements: ElementorWidgetData[] };
+
+export type ElementorBridgeStructure = {
+  id: number;
+  title: string;
+  status: string;
+  link: string;
+  modified: string;
+  elementor_active: boolean;
+  elementor_version?: string | null;
+  elements: ElementorWidgetData[];
+};
+
 function createAuthHeader(username: string, appPassword: string): string {
   const credentials = `${username}:${appPassword}`;
   return `Basic ${Buffer.from(credentials).toString('base64')}`;
@@ -100,6 +131,10 @@ export class ElementorClient {
   private authHeader: string;
   private timeout: number;
   private wordPressBaseUrl: string;
+
+  private get bridgeBaseUrl(): string {
+    return `${this.baseUrl}/wp-json/business-os/v1`;
+  }
 
   constructor(config: {
     baseUrl: string;
@@ -265,6 +300,44 @@ export class ElementorClient {
     }
   }
 
+  /** Check whether the Business OS plugin is installed and the REST user can use it. */
+  async getBridgeHealth(): Promise<ElementorBridgeHealth> {
+    return makeRequest<ElementorBridgeHealth>(`${this.bridgeBaseUrl}/health`, this.authHeader, {
+      timeout: this.timeout,
+    });
+  }
+
+  /** Read the real nested Elementor document, not the rendered HTML preview. */
+  async getElementorStructure(pageId: number): Promise<ElementorBridgeStructure> {
+    return makeRequest<ElementorBridgeStructure>(
+      `${this.bridgeBaseUrl}/elementor/pages/${pageId}/structure`,
+      this.authHeader,
+      { timeout: this.timeout },
+    );
+  }
+
+  /** Apply one bounded, auditable document change through the WordPress bridge. */
+  async applyElementorChange(pageId: number, change: ElementorBridgeChange): Promise<unknown> {
+    return makeRequest<unknown>(
+      `${this.bridgeBaseUrl}/elementor/pages/${pageId}/apply`,
+      this.authHeader,
+      { method: 'POST', body: JSON.stringify(change), timeout: this.timeout },
+    );
+  }
+
+  /** Create a real WordPress draft and optionally initialize its Elementor document. */
+  async createElementorDraft(data: {
+    title: string;
+    content?: string;
+    elements?: ElementorWidgetData[];
+  }): Promise<unknown> {
+    return makeRequest<unknown>(`${this.bridgeBaseUrl}/elementor/pages`, this.authHeader, {
+      method: 'POST',
+      body: JSON.stringify({ ...data, status: 'draft' }),
+      timeout: this.timeout,
+    });
+  }
+
   // Create a new page with Elementor
   async createPage(data: {
     title: string;
@@ -362,12 +435,16 @@ export class ElementorClient {
         status: 'draft',
       });
 
-      // If original was built with Elementor, copy the Elementor data
+      // If original was built with Elementor, copy the real Elementor document
       if (source.isBuiltWithElementor) {
-        const elementorData = await this.getElementorPageData(id);
-        if (elementorData?.elementor_data) {
-          // This would need Elementor's update endpoint
-          // For now, mark as needing manual rebuild
+        try {
+          const document = await this.getElementorStructure(id);
+          await this.applyElementorChange(newPage.id, {
+            action: 'replace_document',
+            elements: document.elements,
+          });
+        } catch {
+          // Preserve the created draft, but do not pretend its Elementor data was copied.
         }
       }
 

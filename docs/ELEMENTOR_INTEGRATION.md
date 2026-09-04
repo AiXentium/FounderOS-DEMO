@@ -1,6 +1,6 @@
 # Elementor Connector Integration
 
-Business OS includes a complete Elementor connector that lets agents manage Elementor-built pages alongside the WordPress connector.
+Business OS includes an Elementor connector that lets agents manage Elementor-built pages alongside the WordPress connector. Full document editing requires the optional **Business OS Elementor Bridge** plugin on the WordPress site.
 
 ## What It Does
 
@@ -16,6 +16,8 @@ The Elementor Connector allows Business OS and its agents to:
 - ✅ Get preview URLs
 - ✅ Detect which pages use Elementor
 - ✅ Access Elementor templates
+- ✅ Inspect the real nested Elementor document (sections, containers, columns, widgets, and settings)
+- ✅ Apply bounded, capability-checked draft changes to Elementor sections and widgets
 
 ## Agent Permissions
 
@@ -42,6 +44,7 @@ The Elementor Connector allows Business OS and its agents to:
    WORDPRESS_USERNAME=your-email@example.com
    WORDPRESS_APP_PASSWORD=xxxx xxxx xxxx xxxx
    ```
+3. For live section/widget editing, install and activate `wordpress-plugin/business-os-bridge` from this repository. The plugin uses the same WordPress Application Password and does not weaken iframe security headers.
 
 ### Verification
 
@@ -53,6 +56,8 @@ The Elementor connector automatically:
 Visit: `http://localhost:4100/connections`
 
 Look for **Elementor** card under **Content Management** → Should show **CONNECTED**
+
+The bridge itself can be checked at `GET /wp-json/business-os/v1/health`. The WordPress REST user must have `edit_pages` and `edit_post` for pages it edits; add `publish_pages` only for an account allowed to publish.
 
 ## Using the API
 
@@ -151,6 +156,24 @@ curl -X POST http://localhost:4100/api/elementor \
 ```
 
 ## Elementor-Specific Operations
+
+### Inspect the real Elementor document
+
+```bash
+curl -X POST http://localhost:4100/api/elementor \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"getElementorStructure","siteId":"main","agent":"WebsiteBuilder","params":{"id":123}}'
+```
+
+### Apply a safe draft edit
+
+The bridge supports `replace_text`, `update_settings`, `insert_element`, `remove_element`, and `replace_document`. Business OS records the operation; publishing remains a separate approval-gated action.
+
+```bash
+curl -X POST http://localhost:4100/api/elementor \
+  -H "Content-Type: application/json" \
+  -d '{"operation":"applyElementorChange","siteId":"main","agent":"WebsiteBuilder","params":{"id":123},"data":{"action":"replace_text","search":"Old headline","replace":"New headline","expected_count":1}}'
+```
 
 ### Check if Elementor is Available
 

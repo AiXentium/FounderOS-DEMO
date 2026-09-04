@@ -25,6 +25,7 @@ export interface ElementorSiteConfig {
   enabled: boolean;
   elementorInstalled?: boolean;
   elementorVersion?: string;
+  bridgeInstalled?: boolean;
 }
 
 export interface ElementorSiteStatus {
@@ -34,6 +35,7 @@ export interface ElementorSiteStatus {
   connected: boolean;
   elementorAvailable: boolean;
   elementorVersion?: string;
+  bridgeAvailable?: boolean;
   lastCheckedAt: number;
   pageCount?: number;
   errorDetail?: string;
@@ -77,13 +79,14 @@ class ElementorProvider {
     try {
       const isAvailable = await client.isElementorAvailable();
       const version = await client.getElementorVersion();
+      const bridge = await client.getBridgeHealth();
 
       if (!isAvailable) {
         throw new Error('Elementor plugin is not installed or not activated');
       }
 
       this.sites.set(config.siteId, {
-        config: { ...config, elementorInstalled: true, elementorVersion: version || undefined },
+        config: { ...config, elementorInstalled: true, elementorVersion: version || undefined, bridgeInstalled: true },
         client,
       });
 
@@ -94,6 +97,7 @@ class ElementorProvider {
         connected: true,
         elementorAvailable: true,
         elementorVersion: version || undefined,
+        bridgeAvailable: bridge.ok,
         lastCheckedAt: Date.now(),
       };
     } catch (error) {
@@ -114,6 +118,7 @@ class ElementorProvider {
       try {
         const isAvailable = await client.isElementorAvailable();
         const version = await client.getElementorVersion();
+        const bridge = isAvailable ? await client.getBridgeHealth() : null;
 
         sites.push({
           siteId,
@@ -122,6 +127,7 @@ class ElementorProvider {
           connected: true,
           elementorAvailable: isAvailable,
           elementorVersion: version || undefined,
+          bridgeAvailable: Boolean(bridge?.ok),
           lastCheckedAt: Date.now(),
         });
       } catch {
@@ -198,6 +204,10 @@ class ElementorProvider {
       'getEditUrl': 'elementor.read',
       'getPreviewUrl': 'elementor.read',
       'listTemplates': 'elementor.templates.access',
+      'getBridgeHealth': 'elementor.read',
+      'getElementorStructure': 'elementor.read',
+      'createElementorDraft': 'elementor.pages.create',
+      'applyElementorChange': 'elementor.pages.edit',
     };
 
     const requiredPermission = permissionMap[operation];

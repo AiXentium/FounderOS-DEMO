@@ -140,6 +140,28 @@ async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextRe
         result = await client.getElementorPageData(params.id as number);
         break;
 
+      case 'getBridgeHealth':
+        result = await client.getBridgeHealth();
+        break;
+
+      case 'getElementorStructure':
+        result = await client.getElementorStructure(params.id as number);
+        break;
+
+      case 'createElementorDraft':
+        result = await client.createElementorDraft({
+          title: (data.title as string) || '',
+          content: (data.content as string) || '',
+          ...(Array.isArray(data.elements) ? { elements: data.elements as any } : {}),
+        });
+        elementorProvider.recordOperation(context, operation, String((result as any)?.id || ''), (data.title as string) || '', 'success');
+        break;
+
+      case 'applyElementorChange':
+        result = await client.applyElementorChange(params.id as number, data as any);
+        elementorProvider.recordOperation(context, operation, String(params.id), '', 'success');
+        break;
+
       default:
         return NextResponse.json({ error: 'Unknown operation' }, { status: 400 });
     }

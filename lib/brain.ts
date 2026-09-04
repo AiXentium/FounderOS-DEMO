@@ -4,7 +4,7 @@
  * with a local brain-store fallback when the database is unreachable.
  * BRAIN_PROVIDER=stub selects the inert provider for tests.
  */
-import { createGBrainProvider } from '@/lib/connectors/gbrain';
+import { createGBrainProvider, type CaptureInput, type CaptureOutcome } from '@/lib/connectors/gbrain';
 
 export type BrainStatus = {
   connected: boolean;
@@ -22,6 +22,7 @@ export interface BrainProvider {
   name: string;
   status(): Promise<BrainStatus>;
   search(query: string): Promise<BrainSearchResult[]>;
+  capture(input: CaptureInput): Promise<CaptureOutcome>;
 }
 
 const stubProvider: BrainProvider = {
@@ -36,6 +37,9 @@ const stubProvider: BrainProvider = {
   },
   async search() {
     return [];
+  },
+  async capture() {
+    return { ok: false, error: 'G-Brain capture is not configured in the stub provider.' };
   },
 };
 

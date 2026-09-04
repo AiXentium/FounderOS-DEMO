@@ -7,7 +7,7 @@ type Project = { id: string; name: string; prompt?: string; direction?: string; 
 
 export function ProjectSwitcher({ onLoad }: { onLoad?: (project: Project) => void }) {
   const [projects, setProjects] = useState<Project[]>([]); const [selected, setSelected] = useState(''); const [status, setStatus] = useState('');
-  const load = async () => { const r = await fetch('/api/website/projects'); if (r.ok) setProjects((await r.json()).projects ?? []); };
+  const load = async () => { const r = await fetch('/api/website/projects?workspace=default'); if (r.ok) setProjects((await r.json()).projects ?? []); };
   useEffect(() => { void load(); }, []);
   const clone = async () => { if (!selected) return; const r = await fetch('/api/website/projects/clone', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: selected }) }); setStatus(r.ok ? 'Project cloned' : 'Clone failed'); await load(); };
   const loadSelected = () => { const project = projects.find(p => p.id === selected); if (project) { onLoad?.(project); setStatus('Project loaded'); } };
