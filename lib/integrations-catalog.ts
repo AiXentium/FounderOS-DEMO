@@ -48,7 +48,7 @@ export const INTEGRATIONS: Integration[] = [
   { slug: 'gitlab', name: 'GitLab', tagline: 'Repos & pipelines', category: 'Developer' },
 
   // Scheduling
-  { slug: 'googlecalendar', name: 'Google Calendar', tagline: 'Events & availability', category: 'Scheduling', connectorId: 'calendar', popular: true, envKeys: [] },
+  { slug: 'googlecalendar', name: 'Google Calendar', tagline: 'Events & availability', category: 'Scheduling', connectorId: 'calendar', popular: true, envKeys: ['INBOX_1_HOST', 'INBOX_1_USER', 'INBOX_1_PASS'] },
   { slug: 'calendly', name: 'Calendly', tagline: 'Booking links', category: 'Scheduling' },
   { slug: 'caldotcom', name: 'Cal.com', tagline: 'Open scheduling', category: 'Scheduling' },
   { slug: 'googlemeet', name: 'Google Meet', tagline: 'Video calls', category: 'Scheduling' },
