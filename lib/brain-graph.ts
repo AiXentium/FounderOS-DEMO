@@ -33,6 +33,7 @@ export const AGENT_BRAIN_SCOPES: Record<string, string[]> = {
   'gmail-worker': ['inbox', 'meetings'],
   'whatsapp-worker': ['inbox', 'people'],
   'slack-worker': ['inbox', 'org'],
+  'calendar-agent': ['meetings', 'people', 'org'],
   'social-agent': ['media', 'writing', 'ideas'],
   'postly-publisher': ['media', 'writing', 'ideas'],
   'adsmith-creative': ['media', 'ideas'],

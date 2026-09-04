@@ -10,12 +10,13 @@ import { chat as llmChat, type LlmMessage } from '@/lib/connectors/llm';
 import type { FounderDb } from '@/lib/db';
 import type { RuntimeAgent } from '@/lib/agents/runtime';
 import type { AgentMessage } from '@/lib/schemas';
+import { getBrainProvider } from '@/lib/brain';
 
 export type ChatResult = { reply: string; messages: AgentMessage[] };
 
 const SCREEN_CONTEXT_CAP = 4000;
 
-export function systemPromptFor(agent: RuntimeAgent, screenContext?: string): string {
+export function systemPromptFor(agent: RuntimeAgent, screenContext?: string, brainContext?: string): string {
   const lines = [
     `You are ${agent.name}, an operator agent inside Founder OS.`,
     agent.description,
@@ -26,6 +27,9 @@ export function systemPromptFor(agent: RuntimeAgent, screenContext?: string): st
     lines.push(
       `The operator is currently looking at this screen — use it as grounding when they say "this", "here", or ask about what they see:\n${screenContext.slice(0, SCREEN_CONTEXT_CAP)}`,
     );
+  }
+  if (brainContext) {
+    lines.push(`Relevant shared G-Brain notes for this request (read-only grounding):\n${brainContext.slice(0, SCREEN_CONTEXT_CAP)}`);
   }
   return lines.join('\n');
 }
@@ -53,7 +57,18 @@ export async function chatWithAgent(
   const llmMessages: LlmMessage[] = history.map((m) => ({ role: m.role, content: m.content }));
   const tools = agent.chatTools?.();
 
-  const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext), messages: llmMessages, tools });
+  let brainContext = '';
+  try {
+    const notes = await getBrainProvider().search(message);
+    brainContext = notes
+      .slice(0, 5)
+      .map((note) => `${note.title}: ${note.snippet}`)
+      .join('\n');
+  } catch {
+    // The brain connector has its own local fallback; an unavailable brain
+    // must never prevent an agent from using its primary connector.
+  }
+  const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, brainContext), messages: llmMessages, tools });
 
   if (result.toolCalls.length) {
     db.agentMessages.insert({
