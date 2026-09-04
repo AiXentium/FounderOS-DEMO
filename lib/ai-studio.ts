@@ -1,11 +1,18 @@
+import { openPageGeminiStatus } from '@/lib/openpage-gemini';
+
 export function aiMode(): 'demo' | 'openai-compatible' {
   return process.env.OPENAI_API_KEY || process.env.AI_BASE_URL || process.env.AI_GATEWAY_API_KEY || process.env.OMNIROUTE_BASE_URL || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || process.env.CEREBRAS_API_KEY || process.env.TOGETHER_API_KEY || process.env.MISTRAL_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.FIREWORKS_API_KEY || process.env.OLLAMA_BASE_URL ? 'openai-compatible' : 'demo';
 }
 
 export function aiProviderStatus() {
+  const gemini = openPageGeminiStatus();
   return {
     mode: aiMode(),
     model: process.env.AI_MODEL ?? 'local-demo-design-engine',
+    providers: {
+      openai: { configured: Boolean(process.env.OPENAI_API_KEY), model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini' },
+      gemini: { configured: gemini.configured, model: gemini.model, provider: 'Google AI Studio' },
+    },
     canva: process.env.CANVA_CLIENT_ID ? 'configured' : 'optional connector not configured',
     capabilities: ['website generation', 'brand voice', 'design critique', 'SEO copy', 'social repurposing', 'image prompts', 'Canva-ready export'],
   };
