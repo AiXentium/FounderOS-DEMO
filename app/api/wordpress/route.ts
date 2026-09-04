@@ -214,12 +214,18 @@ export async function GET(req: NextRequest) {
   const siteId = url.searchParams.get('siteId');
   const agent = url.searchParams.get('agent');
   const id = url.searchParams.get('id');
+  const page = url.searchParams.get('page');
+  const perPage = url.searchParams.get('per_page');
 
   const body: ApiRequest = {
     operation: operation || '',
     siteId: siteId || undefined,
     agent: agent || undefined,
-    params: id ? { id: Number(id) } : {},
+    params: {
+      ...(id ? { id: Number(id) } : {}),
+      ...(page ? { page: Number(page) } : {}),
+      ...(perPage ? { per_page: Number(perPage) } : {}),
+    },
   };
 
   return handleRequest(req, body);

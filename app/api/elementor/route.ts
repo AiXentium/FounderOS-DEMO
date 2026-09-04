@@ -162,11 +162,19 @@ export async function GET(req: NextRequest) {
   const operation = url.searchParams.get('operation');
   const siteId = url.searchParams.get('siteId');
   const agent = url.searchParams.get('agent');
+  const page = url.searchParams.get('page');
+  const perPage = url.searchParams.get('per_page');
+  const elementorOnly = url.searchParams.get('elementorOnly');
 
   const body: ApiRequest = {
     operation: operation || '',
     siteId: siteId || undefined,
     agent: agent || undefined,
+    params: {
+      ...(page ? { page: Number(page) } : {}),
+      ...(perPage ? { per_page: Number(perPage) } : {}),
+      ...(elementorOnly ? { elementorOnly: elementorOnly === 'true' } : {}),
+    },
   };
 
   return handleRequest(req, body);

@@ -17,8 +17,8 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
   const loadPages = async () => {
     setStatus('Loading WordPress pages…');
     const [response, elementorResponse] = await Promise.all([
-      fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder'),
-      fetch('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder'),
+      fetch('/api/wordpress?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
+      fetch('/api/elementor?operation=listPages&siteId=primary&agent=WebsiteBuilder&per_page=100'),
     ]);
     const body = await response.json();
     const elementorBody = await elementorResponse.json();
@@ -27,7 +27,7 @@ export function WordPressSiteEditor({ onElementorPageSelected }: { onElementorPa
     const elementorPages = elementorBody.result?.items || elementorBody.result || [];
     const editUrls = new Map(elementorPages.map((page: Page) => [String(page.id), page.editUrl]));
     setPages(livePages.map((page: Page) => ({ ...page, editUrl: editUrls.get(String(page.id)) })));
-    setStatus('Connected · live WordPress pages');
+    setStatus(`Connected · ${livePages.length} live WordPress pages`);
   };
 
   useEffect(() => { void loadPages(); }, []);
