@@ -60,6 +60,13 @@ describe('routeConductorMessage (stub)', () => {
     expect(res.reply).toMatch(/WordPress content import|Imported .* Website Builder drafts/i);
   });
 
+  test('routes builder wording to the CMS specialist instead of an unrelated catalog agent', async () => {
+    const db = openDb(':memory:');
+    const res = await routeConductorMessage(db, realAgents, 'download all the content from the website and save it to a builder');
+    expect(res.routedTo).toBe('agency-engineering-cms-developer');
+    expect(res.reply).toMatch(/WordPress content import|Imported .* Website Builder drafts/i);
+  });
+
   test('an unknown @name never throws — falls back to routing', async () => {
     const db = openDb(':memory:');
     const res = await routeConductorMessage(db, realAgents, '@nobody hello');

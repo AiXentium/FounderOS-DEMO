@@ -77,7 +77,7 @@ export async function routeConductorMessage(
   // catalog agent that cannot access the CMS connector.
   const isWordPressContentImport =
     /(download|import|sync|copy|pull|bring|fetch|retrieve)/i.test(message) &&
-    /(wordpress|content|pages?|posts?|website builder|site)/i.test(message);
+    /(wordpress|content|pages?|posts?|website builder|site|builder|drafts?)/i.test(message);
   if (!targetId && isWordPressContentImport) {
     const cms = routable.find((agent) => agent.id === 'agency-engineering-cms-developer');
     if (cms) targetId = cms.id;
