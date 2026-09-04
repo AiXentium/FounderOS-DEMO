@@ -39,7 +39,7 @@ export async function chatWithAgent(
   agents: RuntimeAgent[],
   agentId: string,
   message: string,
-  opts: { screenContext?: string } = {},
+  opts: { screenContext?: string; brainChatId?: string } = {},
 ): Promise<ChatResult> {
   const agent = agents.find((a) => a.id === agentId);
   if (!agent) throw new Error(`unknown agent: ${agentId}`);
@@ -53,8 +53,10 @@ export async function chatWithAgent(
   // (a bare {role:'tool'} string isn't a valid v6 tool-result part) — so on
   // follow-up turns the model sees the assistant's prose, not raw tool output.
   // Fine for v1 read-only chat; revisit if multi-turn tool reasoning is needed.
-  const history = db.agentMessages.byAgent(agentId);
-  const llmMessages: LlmMessage[] = history.map((m) => ({ role: m.role, content: m.content }));
+  const history = opts.brainChatId
+    ? db.brainChats.messages(opts.brainChatId).map((m) => ({ role: m.role, content: m.content })).concat({ role: 'user' as const, content: message })
+    : db.agentMessages.byAgent(agentId).map((m) => ({ role: m.role, content: m.content }));
+  const llmMessages: LlmMessage[] = history;
   const tools = agent.chatTools?.();
 
   let brainContext = '';

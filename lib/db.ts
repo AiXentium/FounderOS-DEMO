@@ -4,6 +4,8 @@ import { runMigrations } from '@/lib/migrations';
 import {
   AgentCronSchema,
   AgentMessageSchema,
+  BrainChatSchema,
+  BrainChatMessageSchema,
   AgentRunSchema,
   AgentSchema,
   AgentTaskSchema,
@@ -36,6 +38,8 @@ import {
   type Agent,
   type AgentCron,
   type AgentMessage,
+  type BrainChat,
+  type BrainChatMessage,
   type AgentRun,
   type AgentTask,
   type Broadcast,
@@ -155,6 +159,23 @@ CREATE TABLE IF NOT EXISTS agent_messages (
   tool_calls TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS brain_chats (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS brain_chat_messages (
+  id TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL REFERENCES brain_chats(id),
+  role TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  routed_to TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_brain_chats_status_updated ON brain_chats(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_brain_chat_messages_chat_created ON brain_chat_messages(chat_id, created_at ASC);
 CREATE TABLE IF NOT EXISTS broadcasts (
   id TEXT PRIMARY KEY,
   message TEXT NOT NULL,
@@ -698,6 +719,72 @@ export function openDb(path: string) {
         .prepare('SELECT * FROM agent_messages ORDER BY created_at DESC, rowid DESC LIMIT ?')
         .all(limit)
         .map(rowToMessage);
+    },
+  };
+
+  const rowToBrainChat = (r: any): BrainChat =>
+    BrainChatSchema.parse({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    });
+
+  const rowToBrainChatMessage = (r: any): BrainChatMessage =>
+    BrainChatMessageSchema.parse({
+      id: r.id,
+      chatId: r.chat_id,
+      role: r.role,
+      content: r.content,
+      routedTo: r.routed_to ?? null,
+      createdAt: r.created_at,
+    });
+
+  const brainChats = {
+    all(includeArchived = true): BrainChat[] {
+      const sql = includeArchived
+        ? 'SELECT * FROM brain_chats ORDER BY updated_at DESC, rowid DESC'
+        : "SELECT * FROM brain_chats WHERE status = 'active' ORDER BY updated_at DESC, rowid DESC";
+      return db.prepare(sql).all().map(rowToBrainChat);
+    },
+    byId(id: string): BrainChat | null {
+      const row = db.prepare('SELECT * FROM brain_chats WHERE id = ?').get(id);
+      return row ? rowToBrainChat(row) : null;
+    },
+    insert(chat: BrainChat): void {
+      BrainChatSchema.parse(chat);
+      db.prepare(
+        'INSERT OR REPLACE INTO brain_chats (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      ).run(chat.id, chat.title, chat.status, chat.createdAt, chat.updatedAt);
+    },
+    rename(id: string, title: string, updatedAt: string): void {
+      db.prepare('UPDATE brain_chats SET title = ?, updated_at = ? WHERE id = ?').run(title, updatedAt, id);
+    },
+    touch(id: string, updatedAt: string): void {
+      db.prepare('UPDATE brain_chats SET updated_at = ? WHERE id = ?').run(updatedAt, id);
+    },
+    archive(id: string, updatedAt: string): void {
+      db.prepare("UPDATE brain_chats SET status = 'archived', updated_at = ? WHERE id = ?").run(updatedAt, id);
+    },
+    unarchive(id: string, updatedAt: string): void {
+      db.prepare("UPDATE brain_chats SET status = 'active', updated_at = ? WHERE id = ?").run(updatedAt, id);
+    },
+    clearMessages(id: string, updatedAt: string): void {
+      db.prepare('DELETE FROM brain_chat_messages WHERE chat_id = ?').run(id);
+      db.prepare("UPDATE brain_chats SET title = 'New chat', updated_at = ? WHERE id = ?").run(updatedAt, id);
+    },
+    messages(id: string): BrainChatMessage[] {
+      return db
+        .prepare('SELECT * FROM brain_chat_messages WHERE chat_id = ? ORDER BY created_at ASC, rowid ASC')
+        .all(id)
+        .map(rowToBrainChatMessage);
+    },
+    insertMessage(message: BrainChatMessage): void {
+      BrainChatMessageSchema.parse(message);
+      db.prepare(
+        'INSERT OR REPLACE INTO brain_chat_messages (id, chat_id, role, content, routed_to, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(message.id, message.chatId, message.role, message.content, message.routedTo, message.createdAt);
     },
   };
 
@@ -1272,6 +1359,7 @@ export function openDb(path: string) {
     phases,
     agentRuns,
     agentMessages,
+    brainChats,
     agentTasks,
     agentCrons,
     broadcasts,

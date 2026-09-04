@@ -172,6 +172,23 @@ export const AgentMessageSchema = z.object({
   createdAt: z.string().min(1),
 });
 
+export const BrainChatSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  status: z.enum(['active', 'archived']),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export const BrainChatMessageSchema = z.object({
+  id: z.string().min(1),
+  chatId: z.string().min(1),
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  routedTo: z.string().nullable().default(null),
+  createdAt: z.string().min(1),
+});
+
 export const ActivityEventSchema = z.object({
   kind: z.enum(['run', 'message', 'broadcast']),
   agentId: z.string().min(1),
@@ -577,6 +594,8 @@ export type AgentRun = z.infer<typeof AgentRunSchema>;
 export type AgentMessage = z.infer<typeof AgentMessageSchema>;
 export type AgentToolCall = z.infer<typeof AgentToolCallSchema>;
 export type AgentMessageRole = z.infer<typeof AgentMessageRoleSchema>;
+export type BrainChat = z.infer<typeof BrainChatSchema>;
+export type BrainChatMessage = z.infer<typeof BrainChatMessageSchema>;
 export type ActivityEvent = z.infer<typeof ActivityEventSchema>;
 export type BrainGraphNode = z.infer<typeof BrainGraphNodeSchema>;
 export type BrainGraphEdge = z.infer<typeof BrainGraphEdgeSchema>;

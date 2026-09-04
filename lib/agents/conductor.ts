@@ -58,7 +58,7 @@ export async function routeConductorMessage(
   db: FounderDb,
   agents: RuntimeAgent[],
   message: string,
-  opts: { screenContext?: string } = {},
+  opts: { screenContext?: string; brainChatId?: string } = {},
 ): Promise<ConductorResult> {
   const routable = agents.filter((a) => a.id !== 'conductor');
   let targetId: string | undefined;

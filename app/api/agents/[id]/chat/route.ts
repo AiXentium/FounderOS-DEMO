@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
 import { realAgents } from '@/lib/agents/real';
@@ -11,10 +12,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   let message = '';
   let screenContext: string | undefined;
+  let brainChatId: string | undefined;
   try {
-    const body = (await req.json()) as { message?: unknown; context?: unknown };
+    const body = (await req.json()) as { message?: unknown; context?: unknown; chatId?: unknown };
     message = typeof body.message === 'string' ? body.message.trim() : '';
     screenContext = typeof body.context === 'string' && body.context.trim() ? body.context.slice(0, 4000) : undefined;
+    brainChatId = typeof body.chatId === 'string' && body.chatId.trim() ? body.chatId.trim() : undefined;
   } catch {
     // fall through to the empty-message rejection
   }
@@ -31,9 +34,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
+    const db = getDb();
+    if (brainChatId) {
+      const chat = db.brainChats.byId(brainChatId);
+      if (!chat || chat.status !== 'active') {
+        return NextResponse.json({ error: 'active brain chat not found' }, { status: 404 });
+      }
+    }
     const result = isConductor
-      ? await routeConductorMessage(getDb(), realAgents, message, { screenContext })
-      : await chatWithAgent(getDb(), realAgents, id, message, { screenContext });
+      ? await routeConductorMessage(db, realAgents, message, { screenContext, brainChatId })
+      : { ...(await chatWithAgent(db, realAgents, id, message, { screenContext, brainChatId })), routedTo: id };
+    if (brainChatId) {
+      const chat = db.brainChats.byId(brainChatId);
+      if (!chat || chat.status !== 'active') {
+        return NextResponse.json({ error: 'active brain chat not found' }, { status: 404 });
+      }
+      const createdAt = new Date().toISOString();
+      const existingMessages = db.brainChats.messages(brainChatId);
+      db.brainChats.insertMessage({ id: randomUUID(), chatId: brainChatId, role: 'user', content: message, routedTo: null, createdAt });
+      db.brainChats.insertMessage({ id: randomUUID(), chatId: brainChatId, role: 'assistant', content: result.reply, routedTo: result.routedTo, createdAt: new Date().toISOString() });
+      if (existingMessages.length === 0) {
+        const title = message.replace(/\s+/g, ' ').slice(0, 64) || 'New chat';
+        db.brainChats.rename(brainChatId, title, new Date().toISOString());
+      } else {
+        db.brainChats.touch(brainChatId, new Date().toISOString());
+      }
+      return NextResponse.json({ ...result, brainChatId, brainMessages: db.brainChats.messages(brainChatId) });
+    }
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
