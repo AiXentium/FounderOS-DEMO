@@ -10,6 +10,7 @@ import type { SocialPost } from '@/lib/schemas';
 // component never imports server-only lib code.
 const PLATFORMS: { id: SocialPost['platforms'][number]; label: string }[] = [
   { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
   { id: 'tiktok', label: 'TikTok' },
   { id: 'twitter', label: 'Twitter / X' },
   { id: 'youtube', label: 'YouTube' },
@@ -28,6 +29,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(['instagram', 'tiktok']));
   const [mediaUrl, setMediaUrl] = useState('');
   const [scheduledFor, setScheduledFor] = useState('');
+  const [publishNow, setPublishNow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
           platforms: [...selected],
           mediaUrl: mediaUrl.trim() || null,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
+          publishNow,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -61,6 +64,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
       setCaption('');
       setMediaUrl('');
       setScheduledFor('');
+      setPublishNow(false);
       router.refresh(); // refresh the Social agent's queue count elsewhere
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -83,7 +87,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
         <textarea
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Write a caption — this queues for the Zernio publishing agent…"
+          placeholder="Write a caption — queue it for approval or publish it live…"
           rows={4}
           className="w-full resize-none rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2.5 text-[13px] leading-relaxed text-os-text outline-none placeholder:text-os-dim focus:border-os-border-strong"
         />
@@ -127,15 +131,13 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
           </label>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <span className="font-mono text-[10px] text-os-dim">
-            Queues only — the Social agent publishes on its next run.
-          </span>
+          <label className="flex items-center gap-2 font-mono text-[10px] text-os-dim"><input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} className="accent-[var(--accent)]" /> Publish immediately through Zernio</label>
           <button
             onClick={submit}
             disabled={busy}
             className="flex items-center gap-2 whitespace-nowrap rounded-sm-t border border-os-accent bg-os-accent px-3.5 py-[7px] text-[12.5px] font-semibold text-os-ink transition-all hover:shadow-[var(--glow)] disabled:opacity-45"
           >
-            {busy ? <span className="font-mono text-[11px]">queuing…</span> : <><Send className="h-[13px] w-[13px]" /> Queue post</>}
+            {busy ? <span className="font-mono text-[11px]">sending…</span> : <><Send className="h-[13px] w-[13px]" /> {publishNow ? 'Publish now' : scheduledFor ? 'Schedule live' : 'Queue draft'}</>}
           </button>
         </div>
         {error && <p className="mt-2 font-mono text-[11px] text-os-err">{error}</p>}

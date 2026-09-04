@@ -16,6 +16,7 @@ import {
 
 export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   instagram: 'Instagram',
+  facebook: 'Facebook',
   tiktok: 'TikTok',
   twitter: 'Twitter / X',
   youtube: 'YouTube',
@@ -25,6 +26,7 @@ export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
 // Brand-ish line colors for the pop-out charts (distinct, not theme-tied).
 export const PLATFORM_COLORS: Record<SocialPlatform, string> = {
   instagram: '#e1306c',
+  facebook: '#1877f2',
   tiktok: '#25f4ee',
   twitter: '#1d9bf0',
   youtube: '#ff4d4d',
@@ -256,6 +258,7 @@ function unitHash(s: string): number {
 // lands (the publish queue is the real, wired path).
 const POSTING_PROFILE: Record<SocialPlatform, { freq: number; max: number; weekdayBias: number }> = {
   instagram: { freq: 0.72, max: 2, weekdayBias: 0.08 },
+  facebook: { freq: 0.45, max: 2, weekdayBias: 0.12 },
   tiktok: { freq: 0.8, max: 3, weekdayBias: 0.04 },
   twitter: { freq: 0.88, max: 3, weekdayBias: 0.06 },
   youtube: { freq: 0.16, max: 1, weekdayBias: 0.05 },

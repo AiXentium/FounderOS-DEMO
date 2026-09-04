@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Instagram, Linkedin, Mail, Music2, Twitter, Youtube, type LucideIcon } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Mail, Music2, Twitter, Youtube, type LucideIcon } from 'lucide-react';
 import { getDb } from '@/lib/data';
 import {
   audienceGrowth,
@@ -12,7 +12,7 @@ import {
   PLATFORM_LABELS,
 } from '@/lib/social';
 import { syncFromZernioLive } from '@/lib/social-live';
-import { zernioRecentPosts, zernioPostDays } from '@/lib/connectors/zernio';
+import { zernioRecentPosts, zernioPostDays, zernioLiveAccountDetails } from '@/lib/connectors/zernio';
 import { buildEmailList, syncBeehiivEmail } from '@/lib/email-list';
 import type { SocialPlatform } from '@/lib/schemas';
 import { PageHeader } from '@/components/PageHeader';
@@ -22,11 +22,13 @@ import { SocialStatStrip } from '@/components/SocialStatStrip';
 import { AudienceConsistencyLazy } from '@/components/AudienceConsistencyLazy';
 import { AudiencePie } from '@/components/AudiencePie';
 import { PostComposer } from '@/components/PostComposer';
+import { SocialAccountConnections } from '@/components/SocialAccountConnections';
 
 export const dynamic = 'force-dynamic';
 
 const PLATFORM_ICONS: Record<SocialPlatform, LucideIcon> = {
   instagram: Instagram,
+  facebook: Facebook,
   tiktok: Music2,
   twitter: Twitter,
   youtube: Youtube,
@@ -85,6 +87,7 @@ export default async function SocialPage() {
   // behind Late's paid analytics add-on, so live posts show the post link in its
   // place — never invented numbers. Empty history remains explicitly empty.
   const livePosts = await zernioRecentPosts(5);
+  const socialAccounts = await zernioLiveAccountDetails();
   const recentLive = livePosts.length > 0;
 
   const total = audienceTotal(db);
@@ -103,8 +106,10 @@ export default async function SocialPage() {
       <PageHeader
         eyebrow="audience"
         title="Social"
-        right={<Badge tone="ok">● zernio live</Badge>}
+        right={<Badge tone={socialAccounts.length ? 'ok' : 'warn'}>{socialAccounts.length ? '● publishing ready' : '○ accounts needed'}</Badge>}
       />
+
+      <SocialAccountConnections initialAccounts={socialAccounts} />
 
       {/* Every account on the first screen — compact row, one cell per channel.
           Click through for the platform detail. */}

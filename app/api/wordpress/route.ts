@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { wordPressProvider } from '@/lib/wordpress-provider';
 import type { WordPressAgentContext } from '@/lib/wordpress-provider';
+import { runtimeEnv } from '@/lib/creds';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextRe
   // environment, so Website Builder and agents can use the connector without
   // exposing credentials to the browser or requiring an in-memory setup step.
   if (siteId === 'primary' && !wordPressProvider.getSite(siteId)) {
-    const { WORDPRESS_URL: siteUrl, WORDPRESS_USERNAME: username, WORDPRESS_APP_PASSWORD: appPassword } = process.env;
+    const { WORDPRESS_URL: siteUrl, WORDPRESS_USERNAME: username, WORDPRESS_APP_PASSWORD: appPassword } = runtimeEnv();
     if (siteUrl && username && appPassword) {
       try {
         await wordPressProvider.registerSite({

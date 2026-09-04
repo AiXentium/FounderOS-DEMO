@@ -288,7 +288,7 @@ export const AgentCronSchema = z.object({
   createdAt: z.string().min(1),
 });
 
-export const SocialPlatformSchema = z.enum(['instagram', 'tiktok', 'twitter', 'youtube', 'linkedin']);
+export const SocialPlatformSchema = z.enum(['instagram', 'facebook', 'tiktok', 'twitter', 'youtube', 'linkedin']);
 
 export const SocialAccountSchema = z.object({
   platform: SocialPlatformSchema,

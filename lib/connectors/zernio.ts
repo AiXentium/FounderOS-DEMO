@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { CRED_FILES, resolveCred } from '@/lib/creds';
 import type { ConnectorStatus } from '@/lib/connectors/types';
 
@@ -35,6 +36,163 @@ export function zernioKey(): string | undefined {
 // (with page fan_count as a fallback for Facebook-style accounts).
 
 type FollowerMap = Record<string, { handle?: string; followers?: number }>;
+
+export type ZernioAccount = {
+  id: string;
+  platform: string;
+  username?: string;
+  displayName?: string;
+  profileUrl?: string;
+  isActive: boolean;
+  status?: string;
+  profileId?: string;
+  followers?: number;
+};
+
+type ZernioApiError = { error?: string; code?: string; message?: string };
+
+function apiBaseUrl(): string {
+  const config = readConfig();
+  // Zernio is the canonical provider. Keep the legacy config override so an
+  // existing private gateway can still be used without changing the UI.
+  return (config.v1Url ?? 'https://zernio.com/api/v1').replace(/\/$/, '');
+}
+
+async function zernioRequest<T>(pathName: string, init: RequestInit = {}): Promise<T> {
+  const key = zernioKey();
+  if (!key) throw new Error('ZERNIO_API_KEY is not configured');
+  const response = await fetch(`${apiBaseUrl()}${pathName}`, {
+    ...init,
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      authorization: `Bearer ${key}`,
+      ...init.headers,
+    },
+    signal: init.signal ?? AbortSignal.timeout(10_000),
+  });
+  const body = await response.json().catch(() => ({})) as T & ZernioApiError;
+  if (!response.ok) {
+    const detail = body.error || body.message || `Zernio API HTTP ${response.status}`;
+    const error = new Error(detail) as Error & { status?: number; code?: string };
+    error.status = response.status;
+    error.code = body.code;
+    throw error;
+  }
+  return body as T;
+}
+
+function accountId(value: unknown): string | undefined {
+  if (typeof value === 'string' && value) return value;
+  if (value && typeof value === 'object' && typeof (value as { _id?: unknown })._id === 'string') return (value as { _id: string })._id;
+  return undefined;
+}
+
+function parseAccountDetails(raw: unknown): ZernioAccount[] {
+  const accounts = (raw as { accounts?: unknown })?.accounts;
+  if (!Array.isArray(accounts)) return [];
+  return accounts.flatMap((entry) => {
+    const a = (entry ?? {}) as Record<string, unknown>;
+    const id = accountId(a._id ?? a.id ?? a.accountId);
+    const platform = typeof a.platform === 'string' ? a.platform.toLowerCase() : '';
+    if (!id || !platform) return [];
+    const metadata = (a.metadata ?? {}) as Record<string, unknown>;
+    const profileData = (metadata.profileData ?? {}) as Record<string, unknown>;
+    const followerValue = profileData.followersCount ?? metadata.followersCount ?? a.followers;
+    return [{
+      id,
+      platform,
+      username: typeof a.username === 'string' ? a.username : undefined,
+      displayName: typeof a.displayName === 'string' ? a.displayName : undefined,
+      profileUrl: typeof a.profileUrl === 'string' ? a.profileUrl : undefined,
+      isActive: a.isActive !== false,
+      status: typeof a.status === 'string' ? a.status : undefined,
+      profileId: accountId(a.profileId),
+      followers: typeof followerValue === 'number' && Number.isFinite(followerValue) ? followerValue : undefined,
+    }];
+  });
+}
+
+let accountDetailsCache: { at: number; data: ZernioAccount[] } | null = null;
+
+/** Connected account records, including the provider account IDs required for
+ * real Instagram/Facebook publishing. IDs are never guessed or seeded. */
+export async function zernioLiveAccountDetails(force = false): Promise<ZernioAccount[]> {
+  const now = Date.now();
+  if (!force && accountDetailsCache && now - accountDetailsCache.at < LIVE_TTL_MS) return accountDetailsCache.data;
+  try {
+    const data = await zernioRequest<{ accounts?: unknown[] }>('/accounts');
+    const accounts = parseAccountDetails(data);
+    accountDetailsCache = { at: now, data: accounts };
+    return accounts;
+  } catch {
+    return accountDetailsCache?.data ?? [];
+  }
+}
+
+export type ZernioPublishInput = {
+  caption: string;
+  platforms: string[];
+  mediaUrl?: string | null;
+  publishNow?: boolean;
+  scheduledFor?: string | null;
+  timezone?: string;
+};
+
+/** Publish or schedule through Zernio's official unified posts endpoint. The
+ * API requires the real connected account ID for each platform, so a missing
+ * Instagram/Facebook OAuth account fails with an actionable message. */
+export async function publishThroughZernio(input: ZernioPublishInput): Promise<unknown> {
+  const requested = [...new Set(input.platforms.map((platform) => platform.toLowerCase()))];
+  const accounts = await zernioLiveAccountDetails(true);
+  const targets = requested.map((platform) => {
+    const account = accounts.find((candidate) => candidate.platform === platform && candidate.isActive && candidate.status !== 'disconnected');
+    return { platform, account };
+  });
+  const missing = targets.filter((target) => !target.account).map((target) => target.platform);
+  if (missing.length > 0) {
+    throw new Error(`No connected Zernio account for ${missing.join(', ')}. Connect the account with OAuth, then retry.`);
+  }
+
+  const body: Record<string, unknown> = {
+    content: input.caption,
+    platforms: targets.map(({ platform, account }) => ({ platform, accountId: account!.id })),
+    timezone: input.timezone ?? 'America/New_York',
+    crosspostingEnabled: true,
+  };
+  if (input.mediaUrl) body.mediaItems = [{ type: 'image', url: input.mediaUrl }];
+  if (input.publishNow) body.publishNow = true;
+  else if (input.scheduledFor) body.scheduledFor = input.scheduledFor;
+  else body.isDraft = true;
+
+  return zernioRequest('/posts', {
+    method: 'POST',
+    headers: { 'x-request-id': randomUUID() },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function zernioAccountConnectUrl(
+  platform: 'instagram' | 'facebook',
+  redirectUrl?: string,
+): Promise<string> {
+  const profiles = await zernioRequest<{ profiles?: Array<{ _id?: string }> }>('/profiles');
+  let profileId = profiles.profiles?.find((profile) => typeof profile._id === 'string')?._id;
+  if (!profileId) {
+    const created = await zernioRequest<{ profile?: { _id?: string } }>('/profiles', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Lets Talk Miles and Travel', description: 'Business OS social publishing profile' }),
+    });
+    profileId = created.profile?._id;
+  }
+  if (!profileId) throw new Error('Zernio returned no publishing profile ID');
+  const query = new URLSearchParams({ profileId });
+  if (redirectUrl) query.set('redirect_url', redirectUrl);
+  const response = await zernioRequest<{ authUrl?: string; data?: { authUrl?: string } }>(`/connect/${platform}?${query.toString()}`);
+  const authUrl = response.authUrl ?? response.data?.authUrl;
+  if (!authUrl) throw new Error(`Zernio returned no ${platform} OAuth URL`);
+  return authUrl;
+}
 
 function pickFollowers(account: unknown): number | undefined {
   const a = (account ?? {}) as Record<string, any>;
@@ -212,8 +370,6 @@ export async function zernioRecentPosts(limit = 6): Promise<ZernioPost[]> {
 
 export async function zernioStatus(): Promise<ConnectorStatus> {
   const key = zernioKey();
-  const config = readConfig();
-  const accounts = Object.entries(config.accounts ?? {});
   if (!key) {
     return {
       id: 'zernio',
@@ -223,20 +379,27 @@ export async function zernioStatus(): Promise<ConnectorStatus> {
       detail: 'ZERNIO_API_KEY not found in env, ~/.config/social/.env, or knowledge/.env.agents.',
     };
   }
-  const followers = accounts.reduce((sum, [, a]) => sum + (a.followers ?? 0), 0);
   try {
-    const res = await fetch(`${config.v1Url ?? 'https://zernio.com/api/v1'}/accounts`, {
-      headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const liveAccounts = await zernioLiveAccountDetails(true);
+    if (liveAccounts.length === 0) {
+      return {
+        id: 'zernio',
+        name: 'Zernio (Social)',
+        kind: 'social',
+        state: 'not_configured',
+        detail: 'Zernio API key is valid, but no connected social accounts were returned. Connect Instagram and Facebook with OAuth before publishing.',
+        meta: { platforms: 0, followers: 0 },
+      };
+    }
+    const livePlatformCount = new Set(liveAccounts.map((account) => account.platform)).size;
+    const liveFollowers = liveAccounts.reduce((sum, account) => sum + (account.followers ?? 0), 0);
     return {
       id: 'zernio',
       name: 'Zernio (Social)',
       kind: 'social',
       state: 'connected',
-      detail: `${accounts.length} platforms (@founderos.ai) · ${followers.toLocaleString('en-US')} total followers`,
-      meta: { platforms: accounts.length, followers },
+      detail: `${livePlatformCount} live platform${livePlatformCount === 1 ? '' : 's'} · ${liveFollowers.toLocaleString('en-US')} total followers · publishing ready`,
+      meta: { platforms: livePlatformCount, followers: liveFollowers, accounts: liveAccounts.length },
     };
   } catch (err) {
     return {
@@ -245,7 +408,7 @@ export async function zernioStatus(): Promise<ConnectorStatus> {
       kind: 'social',
       state: 'error',
       detail: `Key found but API check failed: ${err instanceof Error ? err.message : String(err)}`,
-      meta: { platforms: accounts.length },
+      meta: { platforms: accountDetailsCache?.data.length ?? 0 },
     };
   }
 }

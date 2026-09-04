@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Instagram, Linkedin, Music2, Twitter, Youtube, type LucideIcon } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Music2, Twitter, Youtube, type LucideIcon } from 'lucide-react';
 import { getDb } from '@/lib/data';
 import { buildSocialDashboard, syncFromZernioConfig, audienceGrowthPct, PLATFORM_LABELS } from '@/lib/social';
 import { agentRunVolume, runsWithin } from '@/lib/analytics';
@@ -21,6 +21,7 @@ export const dynamic = 'force-dynamic';
 
 const PLATFORM_ICONS: Record<SocialPlatform, LucideIcon> = {
   instagram: Instagram,
+  facebook: Facebook,
   tiktok: Music2,
   twitter: Twitter,
   youtube: Youtube,
