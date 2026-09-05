@@ -315,7 +315,13 @@ export async function POST(request: Request) {
       const blueprintPage = blueprint.pages.find((item) => item.path === page.path) ?? fallbackSiteBlueprint(analysis).pages[0];
       return { path: page.path, title: page.title, imageCount: page.images.length, document: sitePageDocument(analysis, page, blueprintPage) };
     });
-    return NextResponse.json({ ok: true, documents, provider: 'Approved source blueprint', memoryVault: 'G-Brain · openpage/' });
+    const memory = await getBrainProvider().capture({
+      title: `OpenPage Blueprint · ${analysis.siteName}`,
+      text: `Approved whole-site blueprint for ${analysis.sourceUrl}\nPages: ${blueprint.pages.map((page) => `${page.path} — ${page.role}`).join('; ')}\nDirection: ${blueprint.direction}\nPrinciples:\n${blueprint.principles.map((item) => `- ${item}`).join('\n')}\nReal assets found: ${blueprint.realAssets.length}`,
+      type: 'openpage-blueprint',
+      slug: `openpage/blueprints/${analysis.siteName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 55)}`,
+    });
+    return NextResponse.json({ ok: true, documents, provider: 'Approved source blueprint', memory, memoryVault: 'G-Brain · openpage/' });
   }
 
   if (action === 'save-template') {
