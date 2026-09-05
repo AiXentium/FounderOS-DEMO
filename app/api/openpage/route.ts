@@ -4,9 +4,12 @@ import { z } from 'zod';
 import { getDb } from '@/lib/data';
 import { getBrainProvider } from '@/lib/brain';
 import { chat as llmChat } from '@/lib/connectors/llm';
+import { runtimeEnv } from '@/lib/creds';
 import { generateWithGemini, openPageGeminiStatus } from '@/lib/openpage-gemini';
 import { OPENPAGE_TEMPLATE_WORKSPACE, OPENPAGE_WORKSPACE, defaultOpenPageDocument, normalizeOpenPageDocument, openPageMemoryText, openPageSlug, renderOpenPageHtml, type OpenPageDocument } from '@/lib/openpage';
 import { scrapeWebsite, type ScrapedSiteAnalysis } from '@/lib/openpage-scraper';
+import { wordPressProvider } from '@/lib/wordpress-provider';
+import type { WordPressPage, WordPressPost } from '@/lib/wordpress-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,8 +44,9 @@ function templateDocument(analysis: ScrapedSiteAnalysis): OpenPageDocument {
     theme: { ...starter.theme, background: analysis.brand.backgroundColor, text: analysis.brand.textColor, accent: analysis.brand.accentColor, displayFont, bodyFont },
     metadata: { purpose: 'Preserve the source brand while improving clarity, hierarchy, and conversion.', audience: 'Visitors to the imported website.', source: `OpenPage website scan · ${analysis.sourceUrl}` },
     blocks: [
-      { id: 'imported-nav', type: 'navbar', label: 'Imported navigation', props: { brand: analysis.siteName, links: analysis.layout.navLabels.length ? analysis.layout.navLabels : ['Home', 'About', 'Contact'] } },
+      { id: 'imported-nav', type: 'navbar', label: 'Imported navigation', props: { brand: analysis.siteName, logoUrl: analysis.brand.logoUrl, links: analysis.layout.navLabels.length ? analysis.layout.navLabels : ['Home', 'About', 'Contact'] } },
       { id: 'imported-hero', type: 'hero', label: 'Imported hero', props: { eyebrow: 'IMPORTED BRAND SYSTEM', headline: first?.headings[0] || first?.title || analysis.siteName, subheadline: first?.description || first?.text || 'A cleaner, more useful version of the original site.', cta: 'Explore', secondaryCta: 'Learn more' } },
+      ...(analysis.brand.ogImageUrl || first?.images[0] ? [{ id: 'imported-image', type: 'image' as const, label: 'Imported lead image', props: { src: analysis.brand.ogImageUrl || first?.images[0], alt: `${analysis.siteName} visual`, caption: 'Imported visual direction from the source site.' } }] : []),
       { id: 'imported-features', type: 'features', label: 'Imported content map', props: { heading: 'Organize the site around what visitors need.', items: pageHeadings.length ? pageHeadings : analysis.pages.slice(0, 3).map((page) => page.title) } },
       { id: 'imported-content', type: 'content', label: 'Source content', props: { eyebrow: 'SOURCE CONTENT', heading: 'Keep the point of view. Remove the friction.', body: first?.text || 'The source content is ready for an editorial redesign.' } },
       { id: 'imported-stats', type: 'stats', label: 'Scan signals', props: { items: [{ value: String(analysis.pagesScanned), label: 'pages scanned' }, { value: String(analysis.layout.imageCount), label: 'images found' }, { value: String(colors.length), label: 'brand colors' }] } },
@@ -63,6 +67,48 @@ function parseJsonObject(text: string): Record<string, unknown> | undefined {
   } catch { return undefined; }
 }
 
+async function getPrimaryWordPressClient() {
+  const env = runtimeEnv();
+  if (!wordPressProvider.getSite('primary') && env.WORDPRESS_URL && env.WORDPRESS_USERNAME && env.WORDPRESS_APP_PASSWORD) {
+    await wordPressProvider.registerSite({ siteId: 'primary', siteName: 'Primary WordPress site', siteUrl: env.WORDPRESS_URL, username: env.WORDPRESS_USERNAME, appPassword: env.WORDPRESS_APP_PASSWORD, enabled: true });
+  }
+  const client = wordPressProvider.getSite('primary');
+  if (!client) throw new Error('WordPress is not configured. Add WORDPRESS_URL, WORDPRESS_USERNAME, and WORDPRESS_APP_PASSWORD to the server environment.');
+  return { client, siteUrl: env.WORDPRESS_URL || '' };
+}
+
+async function listAllWordPressContent<T extends { id: number }>(list: (page: number) => Promise<{ items: T[]; totalPages: number }>) {
+  const items: T[] = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const result = await list(page);
+    items.push(...result.items);
+    if (!result.items.length || page >= Math.max(result.totalPages, 1)) break;
+  }
+  return items;
+}
+
+function plainText(html: string) {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#039;|&#39;/gi, "'").replace(/\s+/g, ' ').trim();
+}
+
+function wordpressDocument(item: WordPressPage | WordPressPost, siteUrl: string): OpenPageDocument {
+  const title = plainText(item.title?.rendered || item.slug || `WordPress ${item.id}`);
+  const body = plainText(item.content?.rendered || item.excerpt?.rendered || 'This WordPress page is ready to refine in the OpenPage editor.');
+  const starter = defaultOpenPageDocument(title);
+  return normalizeOpenPageDocument({
+    ...starter,
+    name: title,
+    description: body.slice(0, 280) || starter.description,
+    metadata: { ...starter.metadata, purpose: `Edit the WordPress ${item.type} “${title}” in OpenPage.`, source: `WordPress import · ${siteUrl}${item.link || ''}` },
+    blocks: [
+      { id: 'wp-nav', type: 'navbar', label: 'WordPress navigation', props: { brand: siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''), links: ['Home', 'About', 'Contact'] } },
+      { id: 'wp-hero', type: 'hero', label: `${item.type === 'post' ? 'Post' : 'Page'} hero`, props: { eyebrow: item.type === 'post' ? 'WORDPRESS POST' : 'WORDPRESS PAGE', headline: title, subheadline: body.slice(0, 420) || 'A WordPress page ready for a clearer, more useful design.', cta: 'Read more', secondaryCta: 'Explore' } },
+      { id: 'wp-content', type: 'content', label: 'Imported WordPress content', props: { eyebrow: 'IMPORTED CONTENT', heading: title, body: body || 'Add the page copy here, then ask OpenPage AI to improve the structure.' } },
+      { id: 'wp-footer', type: 'footer', label: 'WordPress footer', props: { text: `${siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')} · OpenPage draft` } },
+    ],
+  }, title);
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const action = url.searchParams.get('action') ?? 'projects';
@@ -75,6 +121,38 @@ export async function GET(request: Request) {
   if (action === 'templates') {
     const templates = db.websiteProjects.all(OPENPAGE_TEMPLATE_WORKSPACE).map((project: any) => ({ id: project.id, name: project.name, updatedAt: project.updated_at, document: normalizeOpenPageDocument(project.page, project.name) }));
     return NextResponse.json({ ok: true, workspace: OPENPAGE_TEMPLATE_WORKSPACE, templates, memoryVault: 'G-Brain · openpage/templates/' });
+  }
+  if (action === 'site-pages') {
+    try {
+      const { client, siteUrl } = await getPrimaryWordPressClient();
+      const [pages, posts] = await Promise.all([
+        listAllWordPressContent((page) => client.listPages({ page, per_page: 100 })),
+        listAllWordPressContent((page) => client.listPosts({ page, per_page: 100 })),
+      ]);
+      const pageNodes = pages.map((page) => ({ id: `page-${page.id}`, wpId: page.id, kind: 'page' as const, title: plainText(page.title?.rendered || page.slug), slug: page.slug, url: page.link, status: page.status, parent: page.parent, children: [] as unknown[] }));
+      const roots: typeof pageNodes = [];
+      for (const node of pageNodes) {
+        const parent = pageNodes.find((candidate) => candidate.wpId === node.parent);
+        if (parent) parent.children.push(node);
+        else roots.push(node);
+      }
+      const postNodes = posts.map((post) => ({ id: `post-${post.id}`, wpId: post.id, kind: 'post' as const, title: plainText(post.title?.rendered || post.slug), slug: post.slug, url: post.link, status: post.status, parent: 0, children: [] as unknown[] }));
+      return NextResponse.json({ ok: true, siteUrl, nodes: [{ id: 'wordpress-pages', title: 'Pages', kind: 'folder', children: roots }, { id: 'wordpress-posts', title: 'Blog posts', kind: 'folder', children: postNodes }], counts: { pages: pages.length, posts: posts.length } });
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 502 });
+    }
+  }
+  if (action === 'site-page') {
+    const id = Number(url.searchParams.get('id'));
+    const kind = url.searchParams.get('kind') === 'post' ? 'post' : 'page';
+    if (!Number.isInteger(id) || id < 1) return NextResponse.json({ ok: false, error: 'A valid WordPress page id is required.' }, { status: 400 });
+    try {
+      const { client, siteUrl } = await getPrimaryWordPressClient();
+      const item = kind === 'post' ? await client.getPost(id) : await client.getPage(id);
+      return NextResponse.json({ ok: true, kind, item, document: wordpressDocument(item, siteUrl) });
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 502 });
+    }
   }
   const projects = db.websiteProjects.all(OPENPAGE_WORKSPACE).map((project: any) => ({
     id: project.id,

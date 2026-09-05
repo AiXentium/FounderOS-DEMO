@@ -5,8 +5,11 @@ import {
   ArrowDown,
   ArrowUp,
   Brain,
+  ChevronDown,
+  ChevronRight,
   Download,
   ExternalLink,
+  Image as ImageIcon,
   Github,
   Grid2X2,
   Layers3,
@@ -19,6 +22,7 @@ import {
   Smartphone,
   Sparkles,
   Tablet,
+  Upload,
   Wand2,
   X,
 } from "lucide-react";
@@ -35,6 +39,23 @@ type Project = {
   prompt?: string;
   updatedAt?: string;
   document: OpenPageDocument;
+};
+type SiteTreeNode = {
+  id: string;
+  wpId?: number;
+  kind: "folder" | "page" | "post";
+  title: string;
+  slug?: string;
+  url?: string;
+  status?: string;
+  children?: SiteTreeNode[];
+};
+type Asset = {
+  name: string;
+  storageName: string;
+  folder: string;
+  size: number;
+  url: string;
 };
 type BrainResult = { title: string; snippet: string; source?: string };
 type AiStatus = {
@@ -327,7 +348,16 @@ function Canvas({ document }: { document: OpenPageDocument }) {
       <div className="mx-auto max-w-5xl px-7 py-6">
         {nav && (
           <div className="flex flex-wrap items-center justify-between gap-4 pb-8 text-[10px] font-bold uppercase tracking-[.16em]">
-            <span>{value(nav, "brand", document.name)}</span>
+            <div className="flex items-center gap-3">
+              {typeof nav.props.logoUrl === "string" && nav.props.logoUrl && (
+                <img
+                  src={nav.props.logoUrl}
+                  alt={value(nav, "brand", document.name)}
+                  className="h-9 w-auto max-w-28 object-contain"
+                />
+              )}
+              <span>{value(nav, "brand", document.name)}</span>
+            </div>
             <div className="flex flex-wrap gap-4 opacity-70">
               {(Array.isArray(nav.props.links)
                 ? (nav.props.links as string[])
@@ -428,6 +458,21 @@ function Canvas({ document }: { document: OpenPageDocument }) {
             </p>
           </section>
         )}
+        {document.blocks
+          .filter((item) => item.type === "image")
+          .map((image) => (
+            <figure key={image.id} className="border-t py-10" style={{ borderColor: `${t.text}22` }}>
+              {typeof image.props.src === "string" && image.props.src && (
+                <img
+                  src={image.props.src}
+                  alt={value(image, "alt", image.label)}
+                  className="max-h-[560px] w-full object-cover"
+                  style={{ borderRadius: t.radius }}
+                />
+              )}
+              {value(image, "caption") && <figcaption className="mt-3 text-xs opacity-60">{value(image, "caption")}</figcaption>}
+            </figure>
+          ))}
         {stats && (
           <div
             className="grid gap-5 border-y py-7 md:grid-cols-3"
@@ -477,6 +522,58 @@ function Canvas({ document }: { document: OpenPageDocument }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SiteTree({
+  nodes,
+  open,
+  onToggle,
+  onSelect,
+}: {
+  nodes: SiteTreeNode[];
+  open: Record<string, boolean>;
+  onToggle: (id: string) => void;
+  onSelect: (node: SiteTreeNode) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      {nodes.map((node) => {
+        const hasChildren = Boolean(node.children?.length);
+        const expanded = open[node.id] ?? false;
+        return (
+          <div key={node.id}>
+            <div className="flex items-center gap-1">
+              {hasChildren ? (
+                <button
+                  type="button"
+                  aria-label={`${expanded ? "Collapse" : "Expand"} ${node.title}`}
+                  onClick={() => onToggle(node.id)}
+                  className="rounded p-1 text-[#71717a] hover:text-white"
+                >
+                  {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </button>
+              ) : <span className="w-5" />}
+              <button
+                type="button"
+                onClick={() => (hasChildren ? onToggle(node.id) : onSelect(node))}
+                className={`min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-left text-xs ${node.kind === "folder" ? "font-semibold text-[#e4e4e7]" : "text-[#a1a1aa] hover:bg-[#19191b] hover:text-white"}`}
+                title={node.url ?? node.title}
+              >
+                <span className="mr-1.5 text-[10px] text-[#84cc72]">{node.kind === "folder" ? "▾" : node.kind === "post" ? "◌" : "□"}</span>
+                {node.title}
+              </button>
+              {node.kind !== "folder" && <span className="text-[9px] uppercase text-[#52525b]">{node.status}</span>}
+            </div>
+            {hasChildren && expanded && (
+              <div className="ml-3 border-l border-white/10 pl-2">
+                <SiteTree nodes={node.children ?? []} open={open} onToggle={onToggle} onSelect={onSelect} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -542,6 +639,11 @@ export function OpenPageBuilder({
   const [analysis, setAnalysis] = useState<ScrapedSiteAnalysis | null>(null);
   const [selectedScrapedPath, setSelectedScrapedPath] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [siteTree, setSiteTree] = useState<SiteTreeNode[]>([]);
+  const [siteTreeOpen, setSiteTreeOpen] = useState<Record<string, boolean>>({});
+  const [siteTreeStatus, setSiteTreeStatus] = useState("");
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assetStatus, setAssetStatus] = useState("");
   const [copilotInput, setCopilotInput] = useState("");
   const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
     {
@@ -561,6 +663,8 @@ export function OpenPageBuilder({
   useEffect(() => {
     void loadProjects();
     void loadBrain("OpenPage");
+    void loadAssets();
+    if (initialView === "editor") void loadSiteTree();
     if (initialView !== "editor") return;
     try {
       const cached = globalThis.localStorage.getItem(
@@ -589,6 +693,65 @@ export function OpenPageBuilder({
       setProjects(payload.projects ?? []);
       setAi(payload.ai ?? null);
     }
+  }
+  async function loadAssets() {
+    const response = await fetch("/api/assets");
+    if (response.ok) setAssets((await response.json()).assets ?? []);
+  }
+  async function loadSiteTree() {
+    setSiteTreeStatus("Connecting to WordPress and reading the complete page tree…");
+    const response = await fetch("/api/openpage?action=site-pages");
+    const payload = (await response.json().catch(() => null)) as { ok?: boolean; nodes?: SiteTreeNode[]; counts?: { pages: number; posts: number }; error?: string } | null;
+    if (payload?.ok && payload.nodes) {
+      setSiteTree(payload.nodes);
+      setSiteTreeOpen({ "wordpress-pages": true, "wordpress-posts": true });
+      setSiteTreeStatus(`${payload.counts?.pages ?? 0} pages · ${payload.counts?.posts ?? 0} posts connected`);
+    } else setSiteTreeStatus(`WordPress tree unavailable: ${payload?.error ?? "connection failed"}`);
+  }
+  async function openSiteNode(node: SiteTreeNode) {
+    if (!node.wpId || node.kind === "folder") return;
+    setBusy(true);
+    setStatus(`Loading ${node.kind} into the OpenPage editor…`);
+    const response = await fetch(`/api/openpage?action=site-page&kind=${node.kind}&id=${node.wpId}`);
+    const payload = (await response.json().catch(() => null)) as { ok?: boolean; document?: OpenPageDocument; error?: string } | null;
+    if (payload?.ok && payload.document) {
+      setDocument(payload.document);
+      setSelectedProject("");
+      setBrief(`Improve the WordPress ${node.kind} “${node.title}” while preserving its brand and content.`);
+      setStatus(`${node.title} loaded · local OpenPage draft · WordPress unchanged`);
+    } else setStatus(`Could not load ${node.title}: ${payload?.error ?? "connection failed"}`);
+    setBusy(false);
+  }
+  function toggleSiteTree(id: string) {
+    setSiteTreeOpen((current) => ({ ...current, [id]: !current[id] }));
+  }
+  async function uploadAssets(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    setBusy(true);
+    setAssetStatus(`Uploading ${fileList.length} asset${fileList.length === 1 ? "" : "s"}…`);
+    for (const file of Array.from(fileList)) {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("folder", "openpage");
+      const response = await fetch("/api/assets", { method: "POST", body: form });
+      if (!response.ok) setAssetStatus(`Upload failed for ${file.name}`);
+    }
+    await loadAssets();
+    setAssetStatus("Assets ready in the OpenPage library.");
+    setBusy(false);
+  }
+  function addImageBlock(asset: Asset) {
+    const next: OpenPageBlock = { id: crypto.randomUUID(), type: "image", label: asset.name, props: { src: asset.url, alt: asset.name.replace(/\.[^.]+$/, ""), caption: "" } };
+    setDocument((current) => ({ ...current, blocks: [...current.blocks, next], updatedAt: new Date().toISOString() }));
+    setSelectedBlock(next.id);
+    setStatus(`${asset.name} added to the live preview`);
+  }
+  function setAsLogo(asset: Asset) {
+    const nav = document.blocks.find((item) => item.type === "navbar");
+    if (!nav) return;
+    replaceBlock(setProp(nav, "logoUrl", asset.url));
+    setSelectedBlock(nav.id);
+    setStatus(`${asset.name} set as the site logo in the live preview`);
   }
   async function loadBrain(query: string) {
     const response = await fetch(
@@ -1406,6 +1569,23 @@ export function OpenPageBuilder({
                 </button>
               </div>
             </div>
+            <section className="mt-6 border-t border-white/10 pt-5" aria-label="WordPress site pages">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-[10px] uppercase tracking-[.16em] text-[#71717a]">Site pages</div>
+                <span className="text-[9px] uppercase tracking-wide text-[#52525b]">WordPress</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#71717a]">Open a page or post here and edit it as a separate local draft. The source site stays unchanged until you approve a publish action.</p>
+              <button type="button" className={`${buttonClass} mt-3 w-full justify-center`} onClick={() => void loadSiteTree()} disabled={busy}>
+                <Layers3 className="h-3 w-3" />
+                {siteTree.length ? "Refresh site tree" : "Connect site pages"}
+              </button>
+              {siteTreeStatus && <p className="mt-2 text-[10px] leading-relaxed text-[#a1a1aa]">{siteTreeStatus}</p>}
+              {siteTree.length > 0 && (
+                <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-white/10 bg-[#101112] p-2">
+                  <SiteTree nodes={siteTree} open={siteTreeOpen} onToggle={toggleSiteTree} onSelect={(node) => void openSiteNode(node)} />
+                </div>
+              )}
+            </section>
             <div className="mt-8 grid grid-cols-3 gap-1">
               <button
                 aria-label="Desktop"
@@ -1573,6 +1753,32 @@ export function OpenPageBuilder({
                 </button>
               </div>
             </section>
+            <section aria-label="OpenPage asset library" className="mb-6 rounded-xl border border-white/10 bg-[#101112] p-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#a1a1aa]"><ImageIcon className="h-3.5 w-3.5 text-[#84cc72]" /> Logo &amp; images</div>
+                <span className="text-[10px] text-[#71717a]">{assets.length} ready</span>
+              </div>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-xs text-[#a1a1aa] hover:border-[#84cc72] hover:text-[#e4e4e7]">
+                <Upload className="h-3.5 w-3.5" /> Upload assets
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={(event) => { void uploadAssets(event.target.files); event.currentTarget.value = ""; }} />
+              </label>
+              {assetStatus && <p className="mt-2 text-[10px] leading-relaxed text-[#71717a]">{assetStatus}</p>}
+              {assets.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {assets.slice(0, 12).map((asset) => (
+                    <div key={asset.storageName} className="group relative overflow-hidden rounded-lg border border-white/10 bg-[#0b0c0d]">
+                      <img src={asset.url} alt={asset.name} className="h-16 w-full object-cover" />
+                      <div className="truncate px-1.5 py-1 text-[9px] text-[#a1a1aa]" title={asset.name}>{asset.name}</div>
+                      <div className="absolute inset-x-1 bottom-7 hidden gap-1 group-hover:flex">
+                        <button type="button" onClick={() => addImageBlock(asset)} className="flex-1 rounded bg-[#84cc72] px-1 py-1 text-[8px] font-bold text-[#10200e]">Add image</button>
+                        <button type="button" onClick={() => setAsLogo(asset)} className="rounded bg-[#242127] px-1 py-1 text-[8px] font-bold text-white">Logo</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-[10px] leading-relaxed text-[#71717a]">Upload a logo or image, then hover its thumbnail to add it to the page or use it in the navigation.</p>
+            </section>
             <div className="mb-5 flex items-center gap-6 border-b border-white/10 text-xs uppercase tracking-[.16em]">
               <span className="border-b-2 border-[#84cc72] pb-3 text-white">
                 Properties
@@ -1628,6 +1834,49 @@ export function OpenPageBuilder({
                         className={inputClass}
                       />
                     ))}
+                  </div>
+                )}
+                {currentBlock.type === "navbar" && (
+                  <div className="mt-4 space-y-2">
+                    <input
+                      aria-label="logoUrl"
+                      value={value(currentBlock, "logoUrl")}
+                      onChange={(event) => replaceBlock(setProp(currentBlock, "logoUrl", event.target.value))}
+                      placeholder="Logo URL (or use an uploaded asset)"
+                      className={inputClass}
+                    />
+                    <input
+                      aria-label="brand"
+                      value={value(currentBlock, "brand")}
+                      onChange={(event) => replaceBlock(setProp(currentBlock, "brand", event.target.value))}
+                      placeholder="Brand name"
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+                {currentBlock.type === "image" && (
+                  <div className="mt-4 space-y-2">
+                    <input
+                      aria-label="imageSource"
+                      value={value(currentBlock, "src")}
+                      onChange={(event) => replaceBlock(setProp(currentBlock, "src", event.target.value))}
+                      placeholder="Image URL"
+                      className={inputClass}
+                    />
+                    <input
+                      aria-label="imageAlt"
+                      value={value(currentBlock, "alt")}
+                      onChange={(event) => replaceBlock(setProp(currentBlock, "alt", event.target.value))}
+                      placeholder="Accessible image description"
+                      className={inputClass}
+                    />
+                    <input
+                      aria-label="imageCaption"
+                      value={value(currentBlock, "caption")}
+                      onChange={(event) => replaceBlock(setProp(currentBlock, "caption", event.target.value))}
+                      placeholder="Caption (optional)"
+                      className={inputClass}
+                    />
                   </div>
                 )}
                 <button
