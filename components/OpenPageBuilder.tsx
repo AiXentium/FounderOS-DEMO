@@ -18,7 +18,6 @@ import {
   Play,
   Plus,
   Save,
-  Settings2,
   Smartphone,
   Sparkles,
   Tablet,
@@ -114,7 +113,7 @@ function OpenPageSettings({ ai }: { ai: AiStatus | null }) {
   return (
     <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
       <header className="border-b border-white/10 bg-[#0b0c0d]">
-        <div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm">
+        <div className="flex w-full items-center gap-7 px-5 py-3 text-sm">
           <a
             href="/openpage"
             className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
@@ -140,13 +139,6 @@ function OpenPageSettings({ ai }: { ai: AiStatus | null }) {
               <PenLine className="h-3.5 w-3.5" />
               Editor
             </a>
-            <a
-              href="/openpage/settings"
-              className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-              Settings
-            </a>
           </nav>
           <a
             href="https://github.com/buildingopen/openpage"
@@ -161,7 +153,7 @@ function OpenPageSettings({ ai }: { ai: AiStatus | null }) {
       </header>
       <main
         id="openpage-settings"
-        className="mx-auto grid max-w-6xl gap-8 px-5 pb-20 pt-8 md:grid-cols-[180px_minmax(0,1fr)] md:pt-12"
+        className="grid w-full gap-8 px-5 pb-20 pt-8 md:grid-cols-[180px_minmax(0,1fr)] md:pt-12"
       >
         <aside className="space-y-1">
           {tabs.map((tab) => (
@@ -174,7 +166,7 @@ function OpenPageSettings({ ai }: { ai: AiStatus | null }) {
             </button>
           ))}
         </aside>
-        <section className="max-w-2xl">
+        <section className="w-full">
           <h1 className="text-2xl font-semibold tracking-[-.03em]">
             {section === "general"
               ? "General"
@@ -1066,7 +1058,7 @@ export function OpenPageBuilder({
     return (
       <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
         <header className="border-b border-white/10 bg-[#0b0c0d]">
-          <div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm">
+          <div className="flex w-full items-center gap-7 px-5 py-3 text-sm">
             <button
               onClick={() => setView("dashboard")}
               className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
@@ -1092,13 +1084,6 @@ export function OpenPageBuilder({
                 <PenLine className="h-3.5 w-3.5" />
                 Editor
               </a>
-              <a
-                href="/openpage/settings"
-                className="flex items-center gap-2 pb-2 hover:text-white"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-                Settings
-              </a>
             </nav>
             <a
               href="https://github.com/buildingopen/openpage"
@@ -1113,7 +1098,7 @@ export function OpenPageBuilder({
         </header>
         <main
           id="openpage-dashboard"
-          className="mx-auto max-w-4xl px-5 pb-20 pt-16 sm:pt-20"
+          className="w-full px-5 pb-20 pt-16 sm:pt-20"
         >
           <div className="text-center">
             <h1 className="text-4xl font-semibold tracking-[-.04em] sm:text-5xl">
@@ -1450,7 +1435,7 @@ export function OpenPageBuilder({
     return (
       <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
         <header className="border-b border-white/10 bg-[#0b0c0d]">
-          <div className="mx-auto flex max-w-[1600px] items-center gap-7 px-5 py-3 text-sm">
+          <div className="flex w-full items-center gap-7 px-5 py-3 text-sm">
             <a
               href="/openpage"
               className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
@@ -1475,13 +1460,6 @@ export function OpenPageBuilder({
               >
                 <PenLine className="h-3.5 w-3.5" />
                 Editor
-              </a>
-              <a
-                href="/openpage/settings"
-                className="flex items-center gap-2 pb-2 hover:text-white"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-                Settings
               </a>
             </nav>
             <a
@@ -1670,7 +1648,7 @@ export function OpenPageBuilder({
               </pre>
             ) : (
               <div
-                className={`mx-auto overflow-hidden rounded-2xl border border-white/10 bg-[#19191b] shadow-2xl transition-all ${viewport === "mobile" ? "max-w-[390px]" : viewport === "tablet" ? "max-w-[760px]" : "max-w-[1120px]"}`}
+                className={`mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-[#19191b] shadow-2xl transition-all ${viewport === "mobile" ? "max-w-[390px]" : viewport === "tablet" ? "max-w-[760px]" : "max-w-none"}`}
               >
                 <Canvas document={document} />
               </div>
