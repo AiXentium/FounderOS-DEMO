@@ -13,6 +13,7 @@ import {
   Github,
   Grid2X2,
   Layers3,
+  Maximize2,
   Monitor,
   PenLine,
   Play,
@@ -23,6 +24,7 @@ import {
   Tablet,
   Upload,
   Wand2,
+  Minimize2,
   X,
 } from "lucide-react";
 import {
@@ -631,6 +633,7 @@ export function OpenPageBuilder({
   const [analysis, setAnalysis] = useState<ScrapedSiteAnalysis | null>(null);
   const [selectedScrapedPath, setSelectedScrapedPath] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [sourcePreviewExpanded, setSourcePreviewExpanded] = useState(false);
   const [siteTree, setSiteTree] = useState<SiteTreeNode[]>([]);
   const [siteTreeOpen, setSiteTreeOpen] = useState<Record<string, boolean>>({});
   const [siteTreeStatus, setSiteTreeStatus] = useState("");
@@ -1168,6 +1171,40 @@ export function OpenPageBuilder({
               </button>
             </div>
           </section>
+          <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="OpenPage templates">
+            {templates.map((template) => (
+              <button
+                key={template.name}
+                onClick={() => startTemplate(template.name, template.brief)}
+                className="group rounded-xl border border-white/15 bg-[#101112] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-[#151718]"
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="text-base text-[#84cc72]">{template.icon}</span>
+                  {template.name}
+                </div>
+                <p className="mt-3 min-h-8 text-xs leading-relaxed text-[#71717a]">
+                  {template.description}
+                </p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs text-[#71717a]">
+                  ◌ {template.blocks} blocks
+                </div>
+              </button>
+            ))}
+          </section>
+          <div className="mt-3 text-center text-xs text-[#71717a]">
+            or{" "}
+            <button
+              onClick={() =>
+                startTemplate(
+                  "OpenPage blank draft",
+                  "Create a clean, flexible website draft from this brief.",
+                )
+              }
+              className="text-[#a1a1aa] underline decoration-white/20 underline-offset-4 hover:text-white"
+            >
+              start blank
+            </button>
+          </div>
           <section className="mt-5 rounded-2xl border border-[#84cc72]/30 bg-[#0d120e] p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -1310,31 +1347,42 @@ export function OpenPageBuilder({
                     </div>
                   </div>
                   <div className="overflow-hidden rounded-xl border border-white/10 bg-[#101112]">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-                      <span className="text-[10px] uppercase tracking-wide text-[#71717a]">
-                        Source preview ·{" "}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+                        <span className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                          Source preview ·{" "}
                         {analysis.pages.find(
                           (page) => page.path === selectedScrapedPath,
                         )?.path ??
                           analysis.pages[0]?.path ??
                           "/"}
                       </span>
-                      {analysis.pages[0] && (
-                        <a
-                          href={
-                            (
-                              analysis.pages.find(
-                                (page) => page.path === selectedScrapedPath,
-                              ) ?? analysis.pages[0]
-                            ).url
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[10px] text-[#a6e896] hover:underline"
+                      <div className="flex items-center gap-3">
+                        {analysis.pages[0] && (
+                          <a
+                            href={
+                              (
+                                analysis.pages.find(
+                                  (page) => page.path === selectedScrapedPath,
+                                ) ?? analysis.pages[0]
+                              ).url
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-[#a6e896] hover:underline"
+                          >
+                            Open page ↗
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSourcePreviewExpanded((current) => !current)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-2.5 py-1.5 text-[10px] uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72] hover:text-[#a6e896]"
+                          aria-label={sourcePreviewExpanded ? "Collapse source preview" : "Expand source preview"}
                         >
-                          Open page ↗
-                        </a>
-                      )}
+                          {sourcePreviewExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                          {sourcePreviewExpanded ? "Collapse" : "Expand"}
+                        </button>
+                      </div>
                     </div>
                     {analysis.pages.find(
                       (page) => page.path === selectedScrapedPath,
@@ -1350,7 +1398,7 @@ export function OpenPageBuilder({
                         }
                         sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin"
                         referrerPolicy="no-referrer"
-                        className="h-[420px] w-full bg-white"
+                        className={`w-full bg-white ${sourcePreviewExpanded ? "h-[calc(100vh-11rem)] min-h-[720px]" : "h-[560px] sm:h-[680px] lg:h-[760px]"}`}
                       />
                     ) : (
                       <div className="flex h-[420px] items-center justify-center px-5 text-center text-xs text-[#71717a]">
@@ -1366,42 +1414,6 @@ export function OpenPageBuilder({
               </div>
             )}
           </section>
-          <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {templates.map((template) => (
-              <button
-                key={template.name}
-                onClick={() => startTemplate(template.name, template.brief)}
-                className="group rounded-xl border border-white/15 bg-[#101112] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-[#151718]"
-              >
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="text-base text-[#84cc72]">
-                    {template.icon}
-                  </span>
-                  {template.name}
-                </div>
-                <p className="mt-3 min-h-8 text-xs leading-relaxed text-[#71717a]">
-                  {template.description}
-                </p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs text-[#71717a]">
-                  ◌ {template.blocks} blocks
-                </div>
-              </button>
-            ))}
-          </section>
-          <div className="mt-4 text-center text-xs text-[#71717a]">
-            or{" "}
-            <button
-              onClick={() =>
-                startTemplate(
-                  "OpenPage blank draft",
-                  "Create a clean, flexible website draft from this brief.",
-                )
-              }
-              className="text-[#a1a1aa] underline decoration-white/20 underline-offset-4 hover:text-white"
-            >
-              start blank
-            </button>
-          </div>
           <div className="mt-3 text-center text-xs text-[#52525b]">
             Using Gemini for live generation.{" "}
             <a
