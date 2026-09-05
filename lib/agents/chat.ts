@@ -27,7 +27,6 @@ export function systemPromptFor(agent: RuntimeAgent, screenContext?: string, bra
     agent.description,
     'Answer concisely and use your tools to read live data when it helps.',
     'You may execute explicitly requested local-draft imports through a provided tool. Never claim to have changed, published, or deleted external content without a successful tool result and approval.',
-    'OpenPage is a separate JSON workspace. Use its tools for real draft work, save its memory under the openpage/ G-Brain namespace, and never imply an OpenPage draft was published to WordPress unless the WordPress connector reports a successful approved action.',
   ];
   if (screenContext) {
     lines.push(

@@ -39,8 +39,8 @@ if (cmd === 'doctor') {
     const slugIndex = process.argv.indexOf('--slug');
     const type = typeIndex >= 0 ? process.argv[typeIndex + 1] : '';
     const requestedSlug = slugIndex >= 0 ? process.argv[slugIndex + 1] : '';
-    // Keep namespaces physically separate. OpenPage passes an openpage/<slug>
-    // slug; older captures continue to land in inbox (or their requested type).
+    // Keep captured notes in their requested namespace; older captures continue
+    // to land in inbox (or their requested type).
     const safeSlug = requestedSlug
       ? requestedSlug.replace(/\\/g, '/').replace(/^\/+|\.\.+/g, '').replace(/[^a-zA-Z0-9_./-]/g, '-')
       : '';

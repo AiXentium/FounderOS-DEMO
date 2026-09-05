@@ -24,7 +24,6 @@ import {
   Layers,
   Link2,
   PanelsTopLeft,
-  Blocks,
   Activity,
   Calendar,
   Settings,
@@ -43,7 +42,6 @@ export const NAV_OPERATE: NavItem[] = [
   { href: '/content', label: 'Content', icon: Clapperboard },
   { href: '/finances', label: 'Finances', icon: Wallet },
   { href: '/setup', label: 'Business Setup', icon: Sparkles },
-  { href: '/openpage', label: 'OpenPage Lab', icon: Blocks },
 ];
 
 // The agent workforce: the roster and the org chart that maps how they report.

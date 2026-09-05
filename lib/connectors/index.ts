@@ -21,7 +21,6 @@ import { trakyoStatus } from '@/lib/connectors/trakyo';
 import { metaAdsStatus } from '@/lib/connectors/meta-ads';
 import { ghlStatus } from '@/lib/connectors/ghl';
 import { viatorStatus } from '@/lib/connectors/viator';
-import { openPageGeminiStatus } from '@/lib/openpage-gemini';
 import { getBrainProvider } from '@/lib/brain';
 import { resolveManychatKey, runtimeEnv } from '@/lib/creds';
 import type { ConnectorStatus } from '@/lib/connectors/types';
@@ -57,14 +56,16 @@ function googleOAuthStatus(): ConnectorStatus {
 }
 
 function geminiStatus(): ConnectorStatus {
-  const status = openPageGeminiStatus();
+  const env = runtimeEnv();
+  const configured = Boolean(env.GEMINI_API_KEY);
+  const model = env.GEMINI_MODEL ?? 'gemini-flash-latest';
   return {
     id: 'gemini',
     name: 'Gemini / Google AI Studio',
     kind: 'orchestration',
-    state: status.configured ? 'connected' : 'not_configured',
-    detail: status.configured ? `Gemini is live for OpenPage generation (${status.model}).` : 'Set GEMINI_API_KEY to enable Gemini generation.',
-    meta: { provider: status.provider, model: status.model },
+    state: configured ? 'connected' : 'not_configured',
+    detail: configured ? `Gemini is configured as an optional provider (${model}).` : 'Gemini is not configured. Add GEMINI_API_KEY to enable it.',
+    meta: { provider: 'gemini', model },
   };
 }
 

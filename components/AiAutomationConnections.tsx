@@ -5,7 +5,7 @@ import { ExternalLink, Sparkles } from 'lucide-react';
 const providers = [
   { name: 'Claude', detail: 'Open Claude in a secure browser tab. Use the API key only if you want server-side agents.', url: 'https://claude.ai/', key: 'AI_GATEWAY_API_KEY' },
   { name: 'ChatGPT', detail: 'Open ChatGPT in a secure browser tab. ChatGPT subscriptions and API access remain separate.', url: 'https://chatgpt.com/', key: 'OPENAI_API_KEY' },
-  { name: 'Gemini / Google AI Studio', detail: 'Use Gemini for OpenPage generation and future agent workflows. Create or manage the API key in Google AI Studio.', url: 'https://aistudio.google.com/app/apikey', key: 'GEMINI_API_KEY' },
+  { name: 'Gemini / Google AI Studio', detail: 'Optional provider for AI workflows and agent tasks.', url: 'https://aistudio.google.com/app/apikey', key: 'GEMINI_API_KEY' },
   { name: 'Free / local AI', detail: 'Ollama, LM Studio, FreeLLM-compatible, or any OpenAI-compatible endpoint.', url: 'https://ollama.com/', key: 'AI_BASE_URL' },
 ];
 

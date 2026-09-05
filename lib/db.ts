@@ -1105,8 +1105,8 @@ export function openDb(path: string) {
   };
 
   const websiteProjects = {
-    all(workspaceId?: string) { const rows = db.prepare('SELECT * FROM website_projects ORDER BY updated_at DESC').all(); return rows.map((r: any) => ({ ...r, page: JSON.parse(r.page_json) })).filter((r: any) => !workspaceId || r.page.workspaceId === workspaceId || (!r.page.workspaceId && workspaceId === 'default')); },
-    save(project: { id: string; name: string; prompt: string; direction: string; page: unknown; workspaceId?: string; createdAt: string; updatedAt: string }) { db.prepare(`INSERT OR REPLACE INTO website_projects (id, name, prompt, direction, page_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(project.id, project.name, project.prompt, project.direction, JSON.stringify({ ...(project.page as object), workspaceId: project.workspaceId ?? 'default' }), project.createdAt, project.updatedAt); },
+    all(workspaceId = 'default') { const rows = db.prepare('SELECT * FROM website_projects ORDER BY updated_at DESC').all(); return rows.map((r: any) => ({ ...r, page: JSON.parse(r.page_json) })).filter((r: any) => r.page.workspaceId === workspaceId || (!r.page.workspaceId && workspaceId === 'default')); },
+    save(project: { id: string; name: string; prompt: string; direction: string; page: unknown; createdAt: string; updatedAt: string }) { db.prepare(`INSERT OR REPLACE INTO website_projects (id, name, prompt, direction, page_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(project.id, project.name, project.prompt, project.direction, JSON.stringify({ ...(project.page as object), workspaceId: 'default' }), project.createdAt, project.updatedAt); },
   };
 
   const workspaces = {

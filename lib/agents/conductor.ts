@@ -90,14 +90,6 @@ export async function routeConductorMessage(
     if (cms) targetId = cms.id;
   }
 
-  // OpenPage is a separate native JSON workspace, but its real operator tools
-  // live on the CMS/website specialist so the Conductor can manage it without
-  // mixing drafts into the existing Website Builder workspace.
-  if (!targetId && /(openpage|open page|website builder|landing page|page design|structured page)/i.test(message)) {
-    const cms = routable.find((agent) => agent.id === 'agency-engineering-cms-developer');
-    if (cms) targetId = cms.id;
-  }
-
   // Finance requests belong to the reusable Accounting Controller. This rail
   // keeps readiness and tax/bank limitations grounded in live data instead of
   // letting a general-purpose model invent an accounting answer.

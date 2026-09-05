@@ -8,7 +8,6 @@ import { wordPressStatus } from '@/lib/connectors/wordpress';
 import { runtimeEnv } from '@/lib/creds';
 import { wordpressImportTool } from '@/lib/wordpress-import';
 import { elementorBridgeTools, wordpressContentTools } from '@/lib/wordpress-tools';
-import { openPageTools } from '@/lib/openpage-tools';
 
 type AgencyDefinition = { id: string; name: string; category: string; description: string; file: string };
 
@@ -1321,7 +1320,7 @@ function cmsChatTools(): LlmToolSpec[] {
     description: 'Check the live primary WordPress site, REST API, authentication, and available capabilities. Read-only: never changes site content.',
     parameters: z.object({}),
     execute: async () => wordPressStatus(runtimeEnv()),
-  }, wordpressImportTool(), ...wordpressContentTools(), ...elementorBridgeTools(), ...openPageTools()];
+  }, wordpressImportTool(), ...wordpressContentTools(), ...elementorBridgeTools()];
 }
 
 export function agencyRuntimeAgents(): RuntimeAgent[] {
