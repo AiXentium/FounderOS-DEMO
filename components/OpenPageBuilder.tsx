@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Brain,
+  Check,
   ChevronDown,
   ChevronRight,
   Download,
@@ -14,6 +15,7 @@ import {
   Grid2X2,
   Layers3,
   Maximize2,
+  Map as MapIcon,
   Monitor,
   PenLine,
   Play,
@@ -39,6 +41,27 @@ type Project = {
   name: string;
   prompt?: string;
   updatedAt?: string;
+  document: OpenPageDocument;
+};
+type SiteBlueprintPage = {
+  path: string;
+  title: string;
+  role: string;
+  sections: string[];
+  imageUrls: string[];
+};
+type SiteBlueprint = {
+  siteName: string;
+  sourceUrl: string;
+  direction: string;
+  principles: string[];
+  pages: SiteBlueprintPage[];
+  realAssets: string[];
+};
+type SiteDraft = {
+  path: string;
+  title: string;
+  imageCount: number;
   document: OpenPageDocument;
 };
 type SiteTreeNode = {
@@ -79,6 +102,7 @@ type CopilotMessage = {
 };
 
 const OPENPAGE_PREVIEW_CACHE_KEY = "business-os.openpage.latest-preview";
+const OPENPAGE_SITE_DRAFTS_KEY = "business-os.openpage.site-drafts";
 
 const inputClass =
   "w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent";
@@ -631,6 +655,9 @@ export function OpenPageBuilder({
     "https://letstalkmilesandtravel.com/",
   );
   const [analysis, setAnalysis] = useState<ScrapedSiteAnalysis | null>(null);
+  const [blueprint, setBlueprint] = useState<SiteBlueprint | null>(null);
+  const [siteDrafts, setSiteDrafts] = useState<SiteDraft[]>([]);
+  const [blueprintApproved, setBlueprintApproved] = useState(false);
   const [selectedScrapedPath, setSelectedScrapedPath] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
   const [sourcePreviewExpanded, setSourcePreviewExpanded] = useState(false);
@@ -938,7 +965,7 @@ export function OpenPageBuilder({
       const response = await fetch("/api/openpage", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "scrape", url: sourceUrl, maxPages: 8 }),
+        body: JSON.stringify({ action: "scrape", url: sourceUrl, maxPages: 12 }),
       });
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
@@ -946,11 +973,14 @@ export function OpenPageBuilder({
         error?: string;
       } | null;
       if (payload?.ok && payload.analysis) {
-        setAnalysis(payload.analysis);
-        setSelectedScrapedPath(payload.analysis.pages[0]?.path ?? "");
-        setStatus(
-          `Scan complete · ${payload.analysis.pagesScanned} pages analyzed · ready for redesign`,
-        );
+        const nextAnalysis = payload.analysis;
+        setAnalysis(nextAnalysis);
+        setBlueprint(null);
+        setSiteDrafts([]);
+        setBlueprintApproved(false);
+        setSelectedScrapedPath(nextAnalysis.pages[0]?.path ?? "");
+        setStatus(`Scan complete · ${nextAnalysis.pagesScanned} pages analyzed · preparing the whole-site visual blueprint…`);
+        await createBlueprint(nextAnalysis);
       } else
         setStatus(
           `Scan failed: ${payload?.error ?? "the server returned no analysis"}`,
@@ -962,6 +992,57 @@ export function OpenPageBuilder({
     } finally {
       setBusy(false);
     }
+  }
+  async function createBlueprint(nextAnalysis = analysis) {
+    if (!nextAnalysis) return;
+    try {
+      const response = await fetch("/api/openpage", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "blueprint", analysis: nextAnalysis }),
+      });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; blueprint?: SiteBlueprint; error?: string } | null;
+      if (payload?.ok && payload.blueprint) {
+        setBlueprint(payload.blueprint);
+        setStatus(`Blueprint ready · ${payload.blueprint.pages.length} real site pages mapped · review before approval`);
+      } else setStatus(`Blueprint unavailable: ${payload?.error ?? "the server returned no blueprint"}`);
+    } catch (error) {
+      setStatus(`Blueprint unavailable: ${error instanceof Error ? error.message : "network error"}`);
+    }
+  }
+  async function approveBlueprint() {
+    if (!analysis || !blueprint) return;
+    setBusy(true);
+    setStatus("Blueprint approved · preparing a reviewable draft for every scanned page…");
+    try {
+      const response = await fetch("/api/openpage", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "generate-site", analysis, blueprint }),
+      });
+      const payload = (await response.json().catch(() => null)) as { ok?: boolean; documents?: SiteDraft[]; error?: string } | null;
+      if (payload?.ok && payload.documents?.length) {
+        setSiteDrafts(payload.documents);
+        setBlueprintApproved(true);
+        try { globalThis.localStorage.setItem(OPENPAGE_SITE_DRAFTS_KEY, JSON.stringify(payload.documents)); } catch { /* Drafts remain available in this session. */ }
+        setStatus(`Full-site draft ready · ${payload.documents.length} real pages prepared · nothing published`);
+      } else setStatus(`Full-site draft unavailable: ${payload?.error ?? "the server returned no pages"}`);
+    } catch (error) {
+      setStatus(`Full-site draft unavailable: ${error instanceof Error ? error.message : "network error"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function openSiteDraft(draft: SiteDraft) {
+    setDocument(draft.document);
+    setBrief(`Refine the real source page ${draft.path} while preserving its approved blueprint and brand identity.`);
+    setSelectedProject("");
+    setSelectedBlock("");
+    setStatus(`${draft.title} loaded · full-site draft · WordPress unchanged`);
+    try {
+      globalThis.localStorage.setItem(OPENPAGE_PREVIEW_CACHE_KEY, JSON.stringify({ document: draft.document, brief: `Refine the real source page ${draft.path}.`, analysis: analysis ?? undefined, savedAt: new Date().toISOString() } satisfies OpenPagePreviewCache));
+    } catch { /* The current editor still opens if storage is unavailable. */ }
+    setView("editor");
   }
   async function createRedesign() {
     if (!analysis) return;
@@ -1240,6 +1321,102 @@ export function OpenPageBuilder({
             </div>
             {analysis && (
               <div className="mt-5 space-y-4">
+                {blueprint && (
+                  <section className="rounded-2xl border border-sky-400/50 bg-[#07111f] p-5 shadow-[0_0_55px_rgba(56,189,248,.08)]" aria-label="Whole-site visual blueprint">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-sky-100">
+                          <MapIcon className="h-4 w-4 text-sky-300" />
+                          AI whole-site visual blueprint
+                        </div>
+                        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-sky-100/65">
+                          {blueprint.direction} Review the structure, real images, and page tree before OpenPage prepares any redesign drafts.
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-sky-300/40 px-2.5 py-1 text-[10px] uppercase tracking-wide text-sky-200">
+                        {blueprint.pages.length} real pages mapped
+                      </span>
+                    </div>
+                    <div className="mt-5 grid gap-3 lg:grid-cols-[1.15fr_1fr]">
+                      <div className="rounded-xl border border-sky-300/20 bg-[#0b1a2b] p-4">
+                        <div className="text-[10px] uppercase tracking-[.16em] text-sky-200/70">Proposed experience</div>
+                        <div className="mt-4 space-y-3">
+                          {blueprint.principles.slice(0, 4).map((principle, index) => (
+                            <div key={principle} className="flex gap-3 text-xs leading-relaxed text-sky-50/80">
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-sky-300/40 text-[10px] text-sky-200">{index + 1}</span>
+                              <span>{principle}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-sky-300/20 bg-[#0b1a2b] p-4">
+                        <div className="flex items-center justify-between text-[10px] uppercase tracking-[.16em] text-sky-200/70">
+                          <span>Real source imagery</span>
+                          <span>{blueprint.realAssets.length} found</span>
+                        </div>
+                        {blueprint.realAssets.length ? (
+                          <div className="mt-3 grid grid-cols-4 gap-2">
+                            {blueprint.realAssets.slice(0, 8).map((imageUrl) => (
+                              <img key={imageUrl} src={imageUrl} alt="Real image from the approved source scan" className="h-14 w-full rounded-lg border border-sky-300/20 object-cover" loading="lazy" />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-xs text-sky-50/60">No source images were found. Upload real travel photography in the editor before publishing.</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-5 border-t border-sky-300/20 pt-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="text-[10px] uppercase tracking-[.16em] text-sky-200/70">Site map and page-by-page direction</div>
+                        <span className="text-[10px] text-sky-100/50">No changes made to WordPress</span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {blueprint.pages.map((page, index) => (
+                          <div key={page.path} className="rounded-xl border border-sky-300/20 bg-[#0b1a2b] p-3">
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] text-sky-300">{String(index + 1).padStart(2, "0")}</span>
+                              <div className="min-w-0">
+                                <div className="truncate text-xs font-semibold text-sky-50">{page.title}</div>
+                                <div className="mt-1 truncate font-mono text-[10px] text-sky-100/45">{page.path}</div>
+                              </div>
+                            </div>
+                            <div className="mt-3 text-[10px] uppercase tracking-wide text-sky-200/60">{page.role}</div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {page.sections.slice(0, 4).map((section) => <span key={section} className="rounded-full border border-sky-300/20 px-2 py-1 text-[10px] text-sky-50/65">{section}</span>)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                      <button disabled={busy || blueprintApproved} onClick={() => void approveBlueprint()} className="inline-flex items-center gap-2 rounded-xl bg-sky-300 px-4 py-2.5 text-sm font-semibold text-[#07111f] hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50">
+                        <Check className="h-4 w-4" />
+                        {blueprintApproved ? "Blueprint approved" : "Approve blueprint & prepare full site"}
+                      </button>
+                      <button disabled={busy} onClick={() => void createBlueprint()} className="rounded-xl border border-sky-300/30 px-4 py-2.5 text-xs text-sky-100/75 hover:border-sky-200 hover:text-sky-50 disabled:opacity-50">Regenerate blueprint</button>
+                    </div>
+                  </section>
+                )}
+                {siteDrafts.length > 0 && (
+                  <section className="rounded-2xl border border-[#84cc72]/30 bg-[#0d120e] p-5" aria-label="Full-site redesign drafts">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-[#e4e4e7]">Full-site redesign drafts</div>
+                        <p className="mt-1 text-xs text-[#8a8f8a]">Each draft uses the scanned page structure and real source imagery. Open one to refine it in the editor.</p>
+                      </div>
+                      <span className="rounded-full border border-[#84cc72]/30 px-2.5 py-1 text-[10px] uppercase tracking-wide text-[#84cc72]">Review before publish</span>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {siteDrafts.map((draft) => (
+                        <button key={draft.path} onClick={() => openSiteDraft(draft)} className="rounded-xl border border-white/10 bg-[#101112] p-3 text-left hover:border-[#84cc72]/60">
+                          <div className="truncate text-xs font-semibold text-[#e4e4e7]">{draft.title}</div>
+                          <div className="mt-1 truncate font-mono text-[10px] text-[#71717a]">{draft.path}</div>
+                          <div className="mt-3 flex items-center justify-between text-[10px] text-[#8a8f8a]"><span>{draft.imageCount} real images</span><span className="text-[#a6e896]">Open in editor ↗</span></div>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-white/10 bg-[#101112] p-3">
                     <div className="text-[10px] uppercase tracking-wide text-[#71717a]">

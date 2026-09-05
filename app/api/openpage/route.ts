@@ -56,6 +56,112 @@ function templateDocument(analysis: ScrapedSiteAnalysis): OpenPageDocument {
   }, `${analysis.siteName} template`);
 }
 
+type SiteBlueprintPage = {
+  path: string;
+  title: string;
+  role: string;
+  sections: string[];
+  imageUrls: string[];
+};
+
+type SiteBlueprint = {
+  siteName: string;
+  sourceUrl: string;
+  direction: string;
+  principles: string[];
+  pages: SiteBlueprintPage[];
+  realAssets: string[];
+};
+
+function pageRole(page: ScrapedSiteAnalysis['pages'][number], index: number): string {
+  const value = `${page.path} ${page.title}`.toLowerCase();
+  if (index === 0 || value === '/' || /home|travel original/.test(value)) return 'Primary entry point';
+  if (/blog|article|post|news|guide/.test(value)) return 'Editorial or guide content';
+  if (/about|contact|team|me/.test(value)) return 'Trust and relationship';
+  if (/point|mile|credit|card/.test(value)) return 'Core travel resource';
+  return 'Supporting site page';
+}
+
+function fallbackSiteBlueprint(analysis: ScrapedSiteAnalysis): SiteBlueprint {
+  const pages = analysis.pages.map((page, index) => ({
+    path: page.path,
+    title: page.title,
+    role: pageRole(page, index),
+    sections: page.headings.slice(0, 6).length
+      ? page.headings.slice(0, 6)
+      : ['Navigation', 'Primary content', 'Next step', 'Footer'],
+    imageUrls: page.images.slice(0, 6),
+  }));
+  const realAssets = [...new Set([
+    analysis.brand.logoUrl,
+    analysis.brand.ogImageUrl,
+    ...analysis.pages.flatMap((page) => page.images),
+  ].filter(Boolean))].slice(0, 24);
+  return {
+    siteName: analysis.siteName,
+    sourceUrl: analysis.sourceUrl,
+    direction: 'A clearer, image-led travel system that preserves the scanned brand identity and content hierarchy.',
+    principles: [
+      'Keep the existing brand colors, logo, typography direction, and recognizable navigation.',
+      'Give every page one clear promise, readable sections, and a visible next step.',
+      'Use only images found in the approved source scan or assets uploaded by the user.',
+    ],
+    pages,
+    realAssets,
+  };
+}
+
+function normalizeSiteBlueprint(value: unknown, analysis: ScrapedSiteAnalysis): SiteBlueprint {
+  const fallback = fallbackSiteBlueprint(analysis);
+  const input = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const rawPages = Array.isArray(input.pages) ? input.pages : [];
+  const pages = fallback.pages.map((sourcePage) => {
+    const generated = rawPages.find((item) => item && typeof item === 'object' && (item as Record<string, unknown>).path === sourcePage.path) as Record<string, unknown> | undefined;
+    const sections = Array.isArray(generated?.sections) ? generated.sections.filter((item): item is string => typeof item === 'string' && !!item.trim()).slice(0, 8) : sourcePage.sections;
+    return {
+      ...sourcePage,
+      role: typeof generated?.role === 'string' && generated.role.trim() ? generated.role.trim() : sourcePage.role,
+      sections: sections.length ? sections : sourcePage.sections,
+      // Never allow the model to invent image URLs. These come from the source scan only.
+      imageUrls: sourcePage.imageUrls,
+    };
+  });
+  const principles = Array.isArray(input.principles) ? input.principles.filter((item): item is string => typeof item === 'string' && !!item.trim()).slice(0, 5) : fallback.principles;
+  return {
+    ...fallback,
+    direction: typeof input.direction === 'string' && input.direction.trim() ? input.direction.trim() : fallback.direction,
+    principles: principles.length ? principles : fallback.principles,
+    pages,
+    realAssets: fallback.realAssets,
+  };
+}
+
+function sitePageDocument(analysis: ScrapedSiteAnalysis, page: ScrapedSiteAnalysis['pages'][number], blueprintPage: SiteBlueprintPage): OpenPageDocument {
+  const starter = defaultOpenPageDocument(page.title);
+  const imageUrl = page.images[0] || analysis.brand.ogImageUrl || analysis.brand.logoUrl;
+  const navigation = analysis.layout.navLabels.length ? analysis.layout.navLabels : ['Home', 'Guides', 'About', 'Contact'];
+  return normalizeOpenPageDocument({
+    ...starter,
+    name: `${analysis.siteName} · ${page.title}`,
+    description: page.description || page.text.slice(0, 280),
+    theme: { ...starter.theme, background: analysis.brand.backgroundColor, text: analysis.brand.textColor, accent: analysis.brand.accentColor },
+    metadata: {
+      purpose: `Redesign the real source page ${page.path} with a clearer travel experience.`,
+      audience: 'Travelers using the source website.',
+      source: `OpenPage full-site blueprint · ${analysis.sourceUrl}${page.path}`,
+    },
+    blocks: [
+      { id: 'site-nav', type: 'navbar', label: 'Source navigation', props: { brand: analysis.siteName, logoUrl: analysis.brand.logoUrl, links: navigation } },
+      { id: 'site-hero', type: 'hero', label: `${blueprintPage.role} hero`, props: { eyebrow: `${analysis.siteName} · ${blueprintPage.role.toUpperCase()}`, headline: page.headings[0] || page.title, subheadline: page.description || page.text.slice(0, 420) || `Explore ${page.title} with a cleaner, more useful structure.`, cta: 'Explore the guide', secondaryCta: 'See what is next' } },
+      ...(imageUrl ? [{ id: 'site-image', type: 'image' as const, label: 'Real source image', props: { src: imageUrl, alt: `${page.title} from ${analysis.siteName}`, caption: 'Real image from the approved source scan.' } }] : []),
+      { id: 'site-content', type: 'content', label: 'Source content', props: { eyebrow: 'SOURCE CONTENT', heading: page.headings[1] || page.title, body: page.text || page.description || 'Source content ready for editorial refinement.' } },
+      { id: 'site-features', type: 'features', label: 'Page sections', props: { heading: 'A clearer way to explore this page.', items: blueprintPage.sections.slice(0, 6) } },
+      { id: 'site-cta', type: 'cta', label: 'Next step', props: { heading: 'Keep planning with confidence.', body: 'Review this page draft, ask OpenPage AI for changes, and approve it when it is ready.', cta: 'Continue exploring' } },
+      { id: 'site-footer', type: 'footer', label: 'Source footer', props: { text: `${analysis.siteName} · ${page.path} · OpenPage draft` } },
+    ],
+  }, `${analysis.siteName} · ${page.title}`);
+}
+
 function parseJsonObject(text: string): Record<string, unknown> | undefined {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text;
   const start = fenced.indexOf('{');
@@ -181,6 +287,35 @@ export async function POST(request: Request) {
     } catch (error) {
       return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 422 });
     }
+  }
+
+  if (action === 'blueprint') {
+    const analysis = asScrapedAnalysis(body?.analysis);
+    if (!analysis) return NextResponse.json({ ok: false, error: 'A completed website scan is required before creating a blueprint.' }, { status: 400 });
+    const fallback = fallbackSiteBlueprint(analysis);
+    const system = `You are OpenPage's visual website architect. Return ONLY valid JSON with this shape: {"direction":"string","principles":["string"],"pages":[{"path":"string","role":"string","sections":["string"]}]}. Create a clear, blue-print-style plan for the ENTIRE scanned website, not one landing page. Keep every supplied path exactly once. Use the real page titles and headings as the basis for the plan. Do not invent pages, fake copy, stock images, or image URLs. Preserve the source brand and recommend a cleaner travel-site hierarchy. The source scan is authoritative:\n${JSON.stringify({ siteName: analysis.siteName, sourceUrl: analysis.sourceUrl, brand: analysis.brand, layout: analysis.layout, pages: analysis.pages.map((page) => ({ path: page.path, title: page.title, headings: page.headings.slice(0, 8), imageCount: page.images.length })) })}`;
+    try {
+      let generatedText = '';
+      if (openPageGeminiStatus().configured) {
+        try { generatedText = await generateWithGemini({ system, prompt: `Prepare the approval blueprint for ${analysis.siteName}.` }); } catch { generatedText = ''; }
+      }
+      const parsed = generatedText ? parseJsonObject(generatedText) : undefined;
+      const blueprint = normalizeSiteBlueprint(parsed, analysis);
+      return NextResponse.json({ ok: true, blueprint, provider: parsed ? 'Gemini' : 'Source scan blueprint', memoryVault: 'G-Brain · openpage/' });
+    } catch (error) {
+      return NextResponse.json({ ok: true, blueprint: fallback, provider: 'Source scan blueprint', warning: error instanceof Error ? error.message : String(error), memoryVault: 'G-Brain · openpage/' });
+    }
+  }
+
+  if (action === 'generate-site') {
+    const analysis = asScrapedAnalysis(body?.analysis);
+    if (!analysis) return NextResponse.json({ ok: false, error: 'A completed website scan is required before preparing a full-site redesign.' }, { status: 400 });
+    const blueprint = normalizeSiteBlueprint(body?.blueprint, analysis);
+    const documents = analysis.pages.map((page) => {
+      const blueprintPage = blueprint.pages.find((item) => item.path === page.path) ?? fallbackSiteBlueprint(analysis).pages[0];
+      return { path: page.path, title: page.title, imageCount: page.images.length, document: sitePageDocument(analysis, page, blueprintPage) };
+    });
+    return NextResponse.json({ ok: true, documents, provider: 'Approved source blueprint', memoryVault: 'G-Brain · openpage/' });
   }
 
   if (action === 'save-template') {
