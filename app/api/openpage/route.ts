@@ -125,13 +125,13 @@ export async function POST(request: Request) {
   if (action === 'generate') {
     const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
     if (!prompt) return NextResponse.json({ ok: false, error: 'Add a brief before generating.' }, { status: 400 });
-    const name = typeof body?.name === 'string' && body.name.trim() ? body.name.trim() : 'OpenPage AI draft';
-    const brain = await getBrainProvider().search(`openpage ${prompt}`);
-    const starter = defaultOpenPageDocument(name);
-    const schemaExample = JSON.stringify(starter, null, 2);
-    const system = `You are OpenPage, a structured website design agent inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Preserve schemaVersion "openpage-v1", use 3-12 blocks, and write specific copy from the brief. Never include HTML or markdown. The JSON shape is:\n${schemaExample}`;
     const sourceAnalysis = asScrapedAnalysis(body?.analysis);
-    const sourceContext = sourceAnalysis ? `\n\nSource website analysis (preserve the brand, improve the experience):\n${JSON.stringify({ sourceUrl: sourceAnalysis.sourceUrl, siteName: sourceAnalysis.siteName, brand: sourceAnalysis.brand, layout: sourceAnalysis.layout, pages: sourceAnalysis.pages.map((page) => ({ path: page.path, title: page.title, description: page.description, headings: page.headings, text: page.text })), suggestions: sourceAnalysis.suggestions })}` : '';
+    const name = typeof body?.name === 'string' && body.name.trim() ? body.name.trim() : sourceAnalysis ? `${sourceAnalysis.siteName} · Cleaner redesign` : 'OpenPage AI draft';
+    const brain = await getBrainProvider().search(`openpage ${prompt}`);
+    const starter = sourceAnalysis ? normalizeOpenPageDocument({ ...templateDocument(sourceAnalysis), name }, name) : defaultOpenPageDocument(name);
+    const schemaExample = JSON.stringify(starter, null, 2);
+    const system = `You are OpenPage, a structured website design agent inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Preserve schemaVersion "openpage-v1", use 3-12 blocks, and write a complete new page—not an explanation. When source analysis is provided, use the imported seed as the baseline: preserve the source brand colors, typography direction, navigation intent, recognizable content themes, and real page titles while improving hierarchy, readability, accessibility, responsiveness, and conversion flow. Do not discard the source-specific content for generic filler. Never include HTML or markdown. The JSON shape is:\n${schemaExample}`;
+    const sourceContext = sourceAnalysis ? `\n\nSource website analysis (preserve the brand, improve the experience):\n${JSON.stringify({ sourceUrl: sourceAnalysis.sourceUrl, siteName: sourceAnalysis.siteName, brand: sourceAnalysis.brand, layout: sourceAnalysis.layout, pages: sourceAnalysis.pages.map((page) => ({ path: page.path, title: page.title, description: page.description.slice(0, 600), headings: page.headings.slice(0, 8), text: page.text.slice(0, 1400) })), suggestions: sourceAnalysis.suggestions })}\n\nImported seed to improve (return the full replacement document):\n${JSON.stringify(starter)}` : '';
     const userPrompt = `Brief: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}${sourceContext}`;
     try {
       let generatedText: string;
@@ -148,9 +148,13 @@ export async function POST(request: Request) {
         generatedText = (await llmChat({ system, messages: [{ role: 'user', content: userPrompt }] })).text;
       }
       const parsed = parseJsonObject(generatedText);
-      if (!parsed) throw new Error('The live model returned no valid OpenPage JSON.');
+      if (!parsed) {
+        if (sourceAnalysis) return NextResponse.json({ ok: true, document: starter, source: 'brand-preserving-fallback', provider: 'Imported scan fallback', warning: 'The live model returned no valid document, so OpenPage prepared a branded redesign from the scan.' });
+        throw new Error('The live model returned no valid OpenPage JSON.');
+      }
       return NextResponse.json({ ok: true, document: normalizeOpenPageDocument({ ...parsed, name }), source, provider: source === 'gemini' ? 'Gemini' : 'OpenAI/Gateway fallback', brainContext: brain.slice(0, 5) });
     } catch (error) {
+      if (sourceAnalysis) return NextResponse.json({ ok: true, document: starter, source: 'brand-preserving-fallback', provider: 'Imported scan fallback', warning: `Live AI was unavailable (${error instanceof Error ? error.message : String(error)}), so OpenPage prepared a branded redesign from the scan.` });
       return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error), starter, source: 'starter-available' }, { status: 503 });
     }
   }

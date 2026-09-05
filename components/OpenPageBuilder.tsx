@@ -87,9 +87,39 @@ export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: O
   function moveBlock(direction: -1 | 1) { if (!currentBlock) return; setDocument((current) => { const index = current.blocks.findIndex((item) => item.id === currentBlock.id); const target = index + direction; if (index < 0 || target < 0 || target >= current.blocks.length) return current; const blocks = [...current.blocks]; [blocks[index], blocks[target]] = [blocks[target], blocks[index]]; return { ...current, blocks }; }); }
   function removeBlock() { if (!currentBlock || document.blocks.length <= 1) return; setDocument((current) => ({ ...current, blocks: current.blocks.filter((item) => item.id !== currentBlock.id) })); setSelectedBlock(''); }
   function addBlock() { const next: OpenPageBlock = { id: crypto.randomUUID(), type: 'content', label: 'New content', props: { eyebrow: 'NEW BLOCK', heading: 'A new idea to shape.', body: 'Ask an agent to develop this section from the shared brief.' } }; setDocument((current) => ({ ...current, blocks: [...current.blocks, next] })); setSelectedBlock(next.id); }
-  async function generate(nextBrief = brief) { setBusy(true); setStatus('Asking the live model for OpenPage JSON…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'generate', prompt: nextBrief, name: document.name, analysis }) }); const payload = await response.json(); if (payload.ok) { setDocument(payload.document); setStatus(analysis ? 'Redesign draft received · brand preserved · review before saving' : 'Live AI draft received · review before saving'); setView('editor'); } else setStatus(`Live AI unavailable: ${payload.error ?? 'unknown error'} · starter remains available`); setBusy(false); }
-  async function scanWebsite() { setBusy(true); setTemplateSaved(false); setStatus('Scanning public pages, brand styles, and layout signals…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'scrape', url: sourceUrl, maxPages: 8 }) }); const payload = await response.json(); if (payload.ok) { setAnalysis(payload.analysis); setSelectedScrapedPath(payload.analysis.pages[0]?.path ?? ''); setStatus(`Scan complete · ${payload.analysis.pagesScanned} pages analyzed · ready for redesign`); } else setStatus(`Scan failed: ${payload.error ?? 'unknown error'}`); setBusy(false); }
-  async function createRedesign() { if (!analysis) return; const redesignBrief = `Recreate and improve the website from ${analysis.sourceUrl}. Preserve its recognizable brand identity, logo direction, colors, typography direction, content themes, and navigation intent. Make the layout cleaner, more responsive, accessible, scannable, and conversion-ready. Use these improvement suggestions: ${analysis.suggestions.join(' ')}. Create a polished OpenPage redesign for ${analysis.siteName}.`; setBrief(redesignBrief); await generate(redesignBrief); }
+  async function generate(nextBrief = brief, nextName = document.name) {
+    setBusy(true);
+    setStatus('Asking the live model for a complete OpenPage redesign…');
+    try {
+      const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'generate', prompt: nextBrief, name: nextName, analysis }) });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; document?: OpenPageDocument; source?: string; warning?: string; error?: string } | null;
+      if (payload?.ok && payload.document) {
+        setDocument(payload.document);
+        setStatus(payload.source === 'brand-preserving-fallback' ? `Redesign preview ready · ${payload.warning ?? 'built from the scanned brand and page content'}` : analysis ? 'Redesign preview ready · brand and source content preserved · review before saving' : 'Live AI preview ready · review before saving');
+        setView('editor');
+      } else setStatus(`Redesign unavailable: ${payload?.error ?? 'the server returned no usable page'} · scan remains available`);
+    } catch (error) {
+      setStatus(`Redesign unavailable: ${error instanceof Error ? error.message : 'network error'} · scan remains available`);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function scanWebsite() {
+    setBusy(true);
+    setTemplateSaved(false);
+    setStatus('Scanning public pages, brand styles, and layout signals…');
+    try {
+      const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'scrape', url: sourceUrl, maxPages: 8 }) });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; analysis?: ScrapedSiteAnalysis; error?: string } | null;
+      if (payload?.ok && payload.analysis) { setAnalysis(payload.analysis); setSelectedScrapedPath(payload.analysis.pages[0]?.path ?? ''); setStatus(`Scan complete · ${payload.analysis.pagesScanned} pages analyzed · ready for redesign`); }
+      else setStatus(`Scan failed: ${payload?.error ?? 'the server returned no analysis'}`);
+    } catch (error) {
+      setStatus(`Scan failed: ${error instanceof Error ? error.message : 'network error'}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function createRedesign() { if (!analysis) return; const redesignBrief = `Create a complete cleaner replacement for the scanned website. Use the real page titles, headings, and content themes from the scan. Preserve the recognizable brand identity, logo direction, colors, typography direction, navigation intent, and strongest calls to action. Improve hierarchy, whitespace, mobile responsiveness, accessibility, scannability, and conversion flow. Do not return an explanation or generic travel filler; return the full OpenPage JSON document for ${analysis.siteName}.`; setBrief(redesignBrief); await generate(redesignBrief, `${analysis.siteName} · Cleaner redesign`); }
   async function save() { setBusy(true); setStatus('Saving draft and capturing OpenPage memory…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save', id: selectedProject || undefined, name: document.name, prompt: brief, document, sourceAnalysis: analysis }) }); const payload = await response.json(); if (payload.ok) { setSelectedProject(payload.project.id); setStatus(payload.memory?.ok ? 'Saved · G-Brain captured in openpage/' : `Saved · memory capture needs attention: ${payload.memory?.error ?? 'unknown error'}`); await loadProjects(); await loadBrain(document.name); } else setStatus(`Save failed: ${payload.error ?? 'unknown error'}`); setBusy(false); }
   async function saveTemplate() { if (!analysis) return; setBusy(true); setStatus('Saving brand system and suggestions to the template vault…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save-template', analysis }) }); const payload = await response.json(); if (payload.ok) { setTemplateSaved(true); setStatus(payload.memory?.ok ? 'Reusable template saved · G-Brain captured in openpage/templates/' : 'Reusable template saved · memory capture needs attention'); } else setStatus(`Template save failed: ${payload.error ?? 'unknown error'}`); setBusy(false); }
   async function loadSelected() { const project = projects.find((item) => item.id === selectedProject); if (project) { setDocument(project.document); setBrief(project.prompt ?? ''); setStatus('Loaded from OpenPage workspace'); await loadBrain(project.name); } }
