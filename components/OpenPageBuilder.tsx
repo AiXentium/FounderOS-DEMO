@@ -523,9 +523,7 @@ export function OpenPageBuilder({
   const [document, setDocument] = useState<OpenPageDocument>(() =>
     defaultOpenPageDocument(),
   );
-  const [brief, setBrief] = useState(
-    "Create a Barcelona travel affiliate landing page for people who want smart itineraries, local food, and bookable experiences. Keep it editorial, useful, and conversion-ready.",
-  );
+  const [brief, setBrief] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedBlock, setSelectedBlock] = useState("");
@@ -580,6 +578,9 @@ export function OpenPageBuilder({
       globalThis.localStorage.removeItem(OPENPAGE_PREVIEW_CACHE_KEY);
     }
   }, [initialView]);
+  useEffect(() => {
+    if (view === "dashboard") setBrief("");
+  }, [view]);
 
   async function loadProjects() {
     const response = await fetch("/api/openpage");
@@ -964,7 +965,7 @@ export function OpenPageBuilder({
               aria-label="OpenPage brief"
               value={brief}
               onChange={(event) => setBrief(event.target.value)}
-              placeholder="A landing page for a modern fitness app with dark theme…"
+              placeholder="Describe the page, idea, or campaign you want OpenPage to build…"
               className="min-h-28 w-full resize-none bg-transparent px-2 py-1 text-sm leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#52525b]"
             />
             <div className="flex flex-wrap items-center gap-2">
