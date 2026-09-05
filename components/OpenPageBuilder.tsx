@@ -942,7 +942,18 @@ export function OpenPageBuilder({
       const response = await fetch("/api/openpage", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "edit", prompt, document, analysis }),
+          body: JSON.stringify({
+            action: "edit",
+            prompt,
+            document,
+            analysis,
+            selectedBlock: currentBlock ?? null,
+            siteTree,
+            history: copilotMessages.slice(-8).map((message) => ({
+              role: message.role,
+              content: message.content,
+            })),
+          }),
       });
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
@@ -1722,7 +1733,7 @@ export function OpenPageBuilder({
             </a>
           </div>
         </header>
-        <div className="grid min-h-[calc(100vh-7rem)] xl:grid-cols-[280px_minmax(0,1fr)_340px]">
+        <div className="grid min-h-[calc(100vh-7rem)] xl:grid-cols-[280px_minmax(0,1fr)_360px]">
           <aside className="border-r border-white/10 bg-[#0d0e0f] p-4">
             <div className="mb-4 flex items-center gap-5 border-b border-white/10 text-xs uppercase tracking-[.16em]">
               <span className="border-b-2 border-[#84cc72] pb-3 text-white">
@@ -1912,7 +1923,7 @@ export function OpenPageBuilder({
           <aside className="border-l border-white/10 bg-[#0d0e0f] p-4">
             <section
               aria-label="OpenPage AI copilot"
-              className="mb-6 rounded-xl border border-[#84cc72]/35 bg-[#101512] p-3"
+              className="mb-6 rounded-xl border border-[#84cc72]/35 bg-[#101512] p-4"
             >
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[.16em] text-[#a6e896]">
@@ -1923,13 +1934,13 @@ export function OpenPageBuilder({
                 </span>
               </div>
               <div
-                className="max-h-52 space-y-2 overflow-auto pr-1"
+                className="max-h-64 space-y-2 overflow-auto pr-1"
                 aria-live="polite"
               >
                 {copilotMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "ml-4 bg-[#242127] text-[#e4e4e7]" : "mr-2 border border-white/10 bg-[#0b0c0d] text-[#a1a1aa]"}`}
+                    className={`rounded-lg px-3 py-2.5 text-[15px] leading-6 whitespace-pre-wrap ${message.role === "user" ? "ml-4 bg-[#242127] text-[#e4e4e7]" : "mr-2 border border-white/10 bg-[#0b0c0d] text-[#a1a1aa]"}`}
                   >
                     <div className="mb-1 text-[10px] uppercase tracking-[.14em] text-[#a1a1aa]">
                       {message.role === "user" ? "You" : "OpenPage AI"}
@@ -1950,13 +1961,13 @@ export function OpenPageBuilder({
                   value={copilotInput}
                   onChange={(event) => setCopilotInput(event.target.value)}
                   placeholder="Make the hero clearer, add a Barcelona itinerary section, or redo this version…"
-                  rows={3}
-                  className="w-full resize-y rounded-lg border border-white/15 bg-[#0b0c0d] px-3 py-2 text-sm leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#71717a] focus:border-[#84cc72]"
+                  rows={4}
+                  className="w-full resize-y rounded-lg border border-white/15 bg-[#0b0c0d] px-3 py-2.5 text-[15px] leading-6 text-[#e4e4e7] outline-none placeholder:text-[#71717a] focus:border-[#84cc72]"
                 />
                 <button
                   type="submit"
                   disabled={busy || !copilotInput.trim()}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#84cc72] px-3 py-2 text-xs font-semibold text-[#10200e] hover:bg-[#9ae68a] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#84cc72] px-3 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Apply to live preview
                 </button>
@@ -1966,7 +1977,7 @@ export function OpenPageBuilder({
                   type="button"
                   disabled={busy}
                   onClick={() => void askCopilot("Redo this page as a stronger, cleaner version while preserving the current brand and content.")}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                  className="rounded-lg border border-white/10 px-2 py-2.5 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
                 >
                   Redo version
                 </button>
@@ -1974,7 +1985,7 @@ export function OpenPageBuilder({
                   type="button"
                   disabled={busy}
                   onClick={() => void askCopilot("Improve the conversion flow and calls to action without changing the brand identity.")}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                  className="rounded-lg border border-white/10 px-2 py-2.5 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
                 >
                   Improve CTA
                 </button>

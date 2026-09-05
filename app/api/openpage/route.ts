@@ -30,6 +30,31 @@ function asScrapedAnalysis(value: unknown): ScrapedSiteAnalysis | undefined {
   return input as ScrapedSiteAnalysis;
 }
 
+function compactEditorTree(value: unknown, depth = 0): Array<Record<string, unknown>> {
+  if (!Array.isArray(value) || depth > 3) return [];
+  return value.slice(0, 100).flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const node = item as Record<string, unknown>;
+    return [{
+      kind: typeof node.kind === 'string' ? node.kind : undefined,
+      title: typeof node.title === 'string' ? node.title : undefined,
+      slug: typeof node.slug === 'string' ? node.slug : undefined,
+      status: typeof node.status === 'string' ? node.status : undefined,
+      children: compactEditorTree(node.children, depth + 1),
+    }];
+  });
+}
+
+function compactCopilotHistory(value: unknown): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (!Array.isArray(value)) return [];
+  return value.slice(-8).flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const entry = item as Record<string, unknown>;
+    const role = entry.role === 'assistant' ? 'assistant' : entry.role === 'user' ? 'user' : undefined;
+    return role && typeof entry.content === 'string' ? [{ role, content: entry.content.slice(0, 1200) }] : [];
+  });
+}
+
 function templateDocument(analysis: ScrapedSiteAnalysis): OpenPageDocument {
   const starter = defaultOpenPageDocument(`${analysis.siteName} · Imported style template`);
   const first = analysis.pages[0];
@@ -348,9 +373,24 @@ export async function POST(request: Request) {
     const current = normalizeOpenPageDocument(body.document);
     const sourceAnalysis = asScrapedAnalysis(body.analysis);
     const brain = await getBrainProvider().search(`openpage ${prompt}`);
-    const system = `You are the OpenPage AI copilot inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Apply the user's requested change to the current document and return the COMPLETE replacement document, never an explanation or a partial patch. Preserve schemaVersion "openpage-v1". Keep existing content, brand colors, typography, navigation, and structure unless the user asks to change them. If the user asks to redo, rethink, refresh, or try another version, create a genuinely different but coherent version while preserving the site's identity. Keep 3-12 useful blocks, accessible copy, responsive hierarchy, and clear conversion flow. Write all visible copy as complete natural sentences with normal spacing, punctuation, and paragraph breaks. Never concatenate labels, phrases, or thoughts into a clump. Never include HTML or markdown. The current document schema is:\n${JSON.stringify(current, null, 2)}`;
-    const sourceContext = sourceAnalysis ? `\n\nScanned source brand to preserve:\n${JSON.stringify({ siteName: sourceAnalysis.siteName, sourceUrl: sourceAnalysis.sourceUrl, brand: sourceAnalysis.brand, layout: sourceAnalysis.layout, pages: sourceAnalysis.pages.slice(0, 8).map((page) => ({ path: page.path, title: page.title, headings: page.headings.slice(0, 6) })) })}` : '';
-    const userPrompt = `Requested edit: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}${sourceContext}`;
+    const selectedBlock = body.selectedBlock && typeof body.selectedBlock === 'object' ? body.selectedBlock : undefined;
+    const siteTree = compactEditorTree(body.siteTree);
+    const history = compactCopilotHistory(body.history);
+    const system = `You are the senior product designer and editorial website engineer powering the OpenPage AI copilot inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Apply the user's requested change to the current document and return the COMPLETE replacement document, never an explanation or a partial patch.
+
+Work like a careful design partner:
+- First infer the user's intent from the request, the currently focused block, the existing document, the scanned source, and the prior copilot conversation. Make the best useful change without asking a needless clarification.
+- Change only what the request calls for. Preserve unrelated content, real image URLs, brand colors, typography direction, navigation intent, metadata, and the document's recognizable identity.
+- If the request targets a block, refine that block and any immediately dependent copy or layout only. If it asks for a page-wide redesign, improve hierarchy, rhythm, accessibility, responsive behavior, and conversion flow across the full document.
+- If the user asks to redo, rethink, refresh, or try another version, create a genuinely different but coherent version rather than returning the same copy with superficial word swaps.
+- Use the site tree to understand the broader WordPress information architecture and avoid inventing pages, claims, URLs, or assets. Never replace a real scanned image with a mock, placeholder, or stock image.
+- Keep 3-12 useful blocks and valid OpenPage block types. Preserve schemaVersion "openpage-v1".
+- Write every visible phrase as polished natural language with normal spacing, punctuation, sentence case where appropriate, and readable paragraph breaks. Never concatenate labels, phrases, or thoughts into a clump. Never include HTML, CSS, markdown, commentary, or extra JSON keys.
+
+The current document schema is:\n${JSON.stringify(current, null, 2)}`;
+    const sourceContext = sourceAnalysis ? `\n\nScanned source brand to preserve:\n${JSON.stringify({ siteName: sourceAnalysis.siteName, sourceUrl: sourceAnalysis.sourceUrl, brand: sourceAnalysis.brand, layout: sourceAnalysis.layout, pages: sourceAnalysis.pages.slice(0, 12).map((page) => ({ path: page.path, title: page.title, description: page.description.slice(0, 280), headings: page.headings.slice(0, 8), imageCount: page.images.length })) })}` : '';
+    const editorContext = `\n\nCurrently focused block:\n${JSON.stringify(selectedBlock ?? { label: 'No specific block selected; use the full page context.' })}\n\nWordPress site tree (navigation and page names only):\n${JSON.stringify(siteTree.length ? siteTree : 'No site tree loaded.')}\n\nPrior copilot conversation:\n${history.length ? history.map((item) => `${item.role === 'user' ? 'User' : 'OpenPage AI'}: ${item.content}`).join('\n') : 'No prior conversation.'}`;
+    const userPrompt = `Requested edit: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}${sourceContext}${editorContext}`;
     try {
       let generatedText: string;
       if (openPageGeminiStatus().configured) {
@@ -365,7 +405,8 @@ export async function POST(request: Request) {
       const parsed = parseJsonObject(generatedText);
       if (!parsed) throw new Error('The live model returned no valid OpenPage document.');
       const document = normalizeOpenPageDocument(parsed, current.name);
-      return NextResponse.json({ ok: true, document, message: `Applied: ${prompt}`, provider: openPageGeminiStatus().configured ? 'Gemini' : 'OpenAI/Gateway fallback', brainContext: brain.slice(0, 5) });
+      const changedBlocks = document.blocks.filter((block) => JSON.stringify(current.blocks.find((item) => item.id === block.id)) !== JSON.stringify(block)).map((block) => block.label).slice(0, 4);
+      return NextResponse.json({ ok: true, document, message: `Applied to ${document.name}. ${changedBlocks.length ? `Updated ${changedBlocks.join(', ')}.` : 'Reviewed the page and preserved its current structure.'}`, provider: openPageGeminiStatus().configured ? 'Gemini' : 'OpenAI/Gateway fallback', brainContext: brain.slice(0, 5) });
     } catch (error) {
       return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 503 });
     }
