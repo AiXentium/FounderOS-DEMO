@@ -64,6 +64,15 @@ type SiteDraft = {
   imageCount: number;
   document: OpenPageDocument;
 };
+type OpenPageScanCache = {
+  sourceUrl: string;
+  analysis: ScrapedSiteAnalysis;
+  blueprint?: SiteBlueprint;
+  siteDrafts?: SiteDraft[];
+  selectedScrapedPath?: string;
+  sourcePreviewExpanded?: boolean;
+  savedAt: string;
+};
 type SiteTreeNode = {
   id: string;
   wpId?: number;
@@ -103,6 +112,7 @@ type CopilotMessage = {
 
 const OPENPAGE_PREVIEW_CACHE_KEY = "business-os.openpage.latest-preview";
 const OPENPAGE_SITE_DRAFTS_KEY = "business-os.openpage.site-drafts";
+const OPENPAGE_SCAN_CACHE_KEY = "business-os.openpage.scan-workspace";
 
 const inputClass =
   "w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent";
@@ -660,7 +670,7 @@ export function OpenPageBuilder({
   const [blueprintApproved, setBlueprintApproved] = useState(false);
   const [selectedScrapedPath, setSelectedScrapedPath] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
-  const [sourcePreviewExpanded, setSourcePreviewExpanded] = useState(false);
+  const [sourcePreviewExpanded, setSourcePreviewExpanded] = useState(true);
   const [siteTree, setSiteTree] = useState<SiteTreeNode[]>([]);
   const [siteTreeOpen, setSiteTreeOpen] = useState<Record<string, boolean>>({});
   const [siteTreeStatus, setSiteTreeStatus] = useState("");
@@ -704,6 +714,41 @@ export function OpenPageBuilder({
       globalThis.localStorage.removeItem(OPENPAGE_PREVIEW_CACHE_KEY);
     }
   }, [initialView]);
+  useEffect(() => {
+    if (initialView !== "dashboard") return;
+    try {
+      const cached = globalThis.localStorage.getItem(OPENPAGE_SCAN_CACHE_KEY);
+      if (!cached) return;
+      const saved = JSON.parse(cached) as Partial<OpenPageScanCache>;
+      if (!saved.analysis || !Array.isArray(saved.analysis.pages)) return;
+      setAnalysis(saved.analysis);
+      setBlueprint(saved.blueprint ?? null);
+      setSiteDrafts(saved.siteDrafts ?? []);
+      setBlueprintApproved(Boolean(saved.siteDrafts?.length));
+      setSourceUrl(saved.sourceUrl || saved.analysis.sourceUrl);
+      setSelectedScrapedPath(saved.selectedScrapedPath || saved.analysis.pages[0]?.path || "");
+      setSourcePreviewExpanded(saved.sourcePreviewExpanded ?? true);
+      setStatus(`Restored scan workspace · ${saved.analysis.pagesScanned} pages · no changes made to WordPress`);
+    } catch {
+      globalThis.localStorage.removeItem(OPENPAGE_SCAN_CACHE_KEY);
+    }
+  }, [initialView]);
+  useEffect(() => {
+    if (initialView !== "dashboard" || !analysis) return;
+    try {
+      globalThis.localStorage.setItem(OPENPAGE_SCAN_CACHE_KEY, JSON.stringify({
+        sourceUrl,
+        analysis,
+        blueprint: blueprint ?? undefined,
+        siteDrafts: siteDrafts.length ? siteDrafts : undefined,
+        selectedScrapedPath,
+        sourcePreviewExpanded,
+        savedAt: new Date().toISOString(),
+      } satisfies OpenPageScanCache));
+    } catch {
+      // The live workspace remains available if browser storage is unavailable.
+    }
+  }, [analysis, blueprint, initialView, selectedScrapedPath, siteDrafts, sourcePreviewExpanded, sourceUrl]);
   useEffect(() => {
     if (view === "dashboard") setBrief("");
   }, [view]);
@@ -957,8 +1002,22 @@ export function OpenPageBuilder({
       setBusy(false);
     }
   }
+  function clearScanWorkspace() {
+    setAnalysis(null);
+    setBlueprint(null);
+    setSiteDrafts([]);
+    setBlueprintApproved(false);
+    setSelectedScrapedPath("");
+    setSourcePreviewExpanded(false);
+    try {
+      globalThis.localStorage.removeItem(OPENPAGE_SCAN_CACHE_KEY);
+    } catch {
+      // The in-memory workspace is still cleared if browser storage is unavailable.
+    }
+  }
   async function scanWebsite() {
     setBusy(true);
+    clearScanWorkspace();
     setTemplateSaved(false);
     setStatus("Scanning public pages, brand styles, and layout signals…");
     try {
@@ -1130,6 +1189,7 @@ export function OpenPageBuilder({
     setStatus("Standalone HTML exported");
   }
   function startTemplate(name: string, nextBrief: string) {
+    clearScanWorkspace();
     setBrief(nextBrief);
     setDocument(defaultOpenPageDocument(name));
     setSelectedProject("");
@@ -1575,7 +1635,7 @@ export function OpenPageBuilder({
                         }
                         sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin"
                         referrerPolicy="no-referrer"
-                        className={`w-full bg-white ${sourcePreviewExpanded ? "h-[calc(100vh-11rem)] min-h-[720px]" : "h-[560px] sm:h-[680px] lg:h-[760px]"}`}
+                        className={`w-full bg-white ${sourcePreviewExpanded ? "h-[calc(100vh-7rem)] min-h-[720px]" : "h-[560px] min-h-[560px]"}`}
                       />
                     ) : (
                       <div className="flex h-[420px] items-center justify-center px-5 text-center text-xs text-[#71717a]">
