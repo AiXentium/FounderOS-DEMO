@@ -122,6 +122,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, workspace: OPENPAGE_WORKSPACE, results });
   }
 
+  if (action === 'edit') {
+    const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
+    if (!prompt) return NextResponse.json({ ok: false, error: 'Tell the OpenPage copilot what to change.' }, { status: 400 });
+    if (!body?.document || typeof body.document !== 'object') return NextResponse.json({ ok: false, error: 'A current OpenPage document is required.' }, { status: 400 });
+    const current = normalizeOpenPageDocument(body.document);
+    const sourceAnalysis = asScrapedAnalysis(body.analysis);
+    const brain = await getBrainProvider().search(`openpage ${prompt}`);
+    const system = `You are the OpenPage AI copilot inside Business OS. Return ONLY valid JSON matching the OpenPage document schema. Apply the user's requested change to the current document and return the COMPLETE replacement document, never an explanation or a partial patch. Preserve schemaVersion "openpage-v1". Keep existing content, brand colors, typography, navigation, and structure unless the user asks to change them. If the user asks to redo, rethink, refresh, or try another version, create a genuinely different but coherent version while preserving the site's identity. Keep 3-12 useful blocks, accessible copy, responsive hierarchy, and clear conversion flow. Never include HTML or markdown. The current document schema is:\n${JSON.stringify(current, null, 2)}`;
+    const sourceContext = sourceAnalysis ? `\n\nScanned source brand to preserve:\n${JSON.stringify({ siteName: sourceAnalysis.siteName, sourceUrl: sourceAnalysis.sourceUrl, brand: sourceAnalysis.brand, layout: sourceAnalysis.layout, pages: sourceAnalysis.pages.slice(0, 8).map((page) => ({ path: page.path, title: page.title, headings: page.headings.slice(0, 6) })) })}` : '';
+    const userPrompt = `Requested edit: ${prompt}\n\nRelevant G-Brain context:\n${brain.map((item) => `${item.title}: ${item.snippet}`).join('\n') || 'No matching notes yet.'}${sourceContext}`;
+    try {
+      let generatedText: string;
+      if (openPageGeminiStatus().configured) {
+        try {
+          generatedText = await generateWithGemini({ system, prompt: userPrompt });
+        } catch {
+          generatedText = (await llmChat({ system, messages: [{ role: 'user', content: userPrompt }] })).text;
+        }
+      } else {
+        generatedText = (await llmChat({ system, messages: [{ role: 'user', content: userPrompt }] })).text;
+      }
+      const parsed = parseJsonObject(generatedText);
+      if (!parsed) throw new Error('The live model returned no valid OpenPage document.');
+      const document = normalizeOpenPageDocument(parsed, current.name);
+      return NextResponse.json({ ok: true, document, message: `Applied: ${prompt}`, provider: openPageGeminiStatus().configured ? 'Gemini' : 'OpenAI/Gateway fallback', brainContext: brain.slice(0, 5) });
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 503 });
+    }
+  }
+
   if (action === 'generate') {
     const prompt = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
     if (!prompt) return NextResponse.json({ ok: false, error: 'Add a brief before generating.' }, { status: 400 });

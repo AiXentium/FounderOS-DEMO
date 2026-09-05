@@ -1,98 +1,578 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Brain, Download, ExternalLink, Github, Grid2X2, Layers3, Monitor, PenLine, Play, Plus, Save, Settings2, Smartphone, Sparkles, Tablet, Wand2, X } from 'lucide-react';
-import { defaultOpenPageDocument, type OpenPageBlock, type OpenPageDocument } from '@/lib/openpage';
-import type { ScrapedSiteAnalysis } from '@/lib/openpage-scraper';
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Brain,
+  Download,
+  ExternalLink,
+  Github,
+  Grid2X2,
+  Layers3,
+  Monitor,
+  PenLine,
+  Play,
+  Plus,
+  Save,
+  Settings2,
+  Smartphone,
+  Sparkles,
+  Tablet,
+  Wand2,
+  X,
+} from "lucide-react";
+import {
+  defaultOpenPageDocument,
+  type OpenPageBlock,
+  type OpenPageDocument,
+} from "@/lib/openpage";
+import type { ScrapedSiteAnalysis } from "@/lib/openpage-scraper";
 
-type Project = { id: string; name: string; prompt?: string; updatedAt?: string; document: OpenPageDocument };
+type Project = {
+  id: string;
+  name: string;
+  prompt?: string;
+  updatedAt?: string;
+  document: OpenPageDocument;
+};
 type BrainResult = { title: string; snippet: string; source?: string };
-type AiStatus = { configured: boolean; provider: string; model: string; detail: string };
-type OpenPageView = 'dashboard' | 'editor' | 'settings';
-type OpenPagePreviewCache = { document: OpenPageDocument; brief: string; analysis?: ScrapedSiteAnalysis; savedAt: string };
+type AiStatus = {
+  configured: boolean;
+  provider: string;
+  model: string;
+  detail: string;
+};
+type OpenPageView = "dashboard" | "editor" | "settings";
+type OpenPagePreviewCache = {
+  document: OpenPageDocument;
+  brief: string;
+  analysis?: ScrapedSiteAnalysis;
+  savedAt: string;
+};
+type CopilotMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+};
 
-const OPENPAGE_PREVIEW_CACHE_KEY = 'business-os.openpage.latest-preview';
+const OPENPAGE_PREVIEW_CACHE_KEY = "business-os.openpage.latest-preview";
 
-const inputClass = 'w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent';
-const buttonClass = 'inline-flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-os-text transition hover:border-os-accent hover:text-os-accent disabled:cursor-not-allowed disabled:opacity-40';
+const inputClass =
+  "w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent";
+const buttonClass =
+  "inline-flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-os-text transition hover:border-os-accent hover:text-os-accent disabled:cursor-not-allowed disabled:opacity-40";
 
-function value(block: OpenPageBlock, key: string, fallback = '') { return typeof block.props[key] === 'string' ? String(block.props[key]) : fallback; }
-function setProp(block: OpenPageBlock, key: string, next: unknown): OpenPageBlock { return { ...block, props: { ...block.props, [key]: next } }; }
+function value(block: OpenPageBlock, key: string, fallback = "") {
+  return typeof block.props[key] === "string"
+    ? String(block.props[key])
+    : fallback;
+}
+function setProp(
+  block: OpenPageBlock,
+  key: string,
+  next: unknown,
+): OpenPageBlock {
+  return { ...block, props: { ...block.props, [key]: next } };
+}
 
 function OpenPageSettings({ ai }: { ai: AiStatus | null }) {
-  const [section, setSection] = useState<'general' | 'seo' | 'api'>('general');
+  const [section, setSection] = useState<"general" | "seo" | "api">("general");
   const [siteName, setSiteName] = useState("Let's Talk Miles & Travel");
-  const [description, setDescription] = useState('A structured OpenPage workspace for thoughtful travel content and conversion-ready experiences.');
-  const [favicon, setFavicon] = useState('');
-  const [language, setLanguage] = useState('English');
-  const [status, setStatus] = useState('Settings are ready to customize.');
-  const tabs = [{ id: 'general', label: 'General' }, { id: 'seo', label: 'SEO' }, { id: 'api', label: 'API Keys' }] as const;
-  return <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
-    <header className="border-b border-white/10 bg-[#0b0c0d]"><div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm"><a href="/openpage" className="mr-2 flex items-center gap-2 font-semibold tracking-tight"><span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />OpenPage</a><nav className="flex items-center gap-5 text-[#a1a1aa]" aria-label="OpenPage navigation"><a href="/openpage" className="flex items-center gap-2 pb-2 hover:text-white"><Grid2X2 className="h-3.5 w-3.5" />Dashboard</a><a href="/openpage/editor" className="flex items-center gap-2 pb-2 hover:text-white"><PenLine className="h-3.5 w-3.5" />Editor</a><a href="/openpage/settings" className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"><Settings2 className="h-3.5 w-3.5" />Settings</a></nav><a href="https://github.com/buildingopen/openpage" target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"><Github className="h-3.5 w-3.5" />GitHub</a></div></header>
-    <main id="openpage-settings" className="mx-auto grid max-w-6xl gap-8 px-5 pb-20 pt-8 md:grid-cols-[180px_minmax(0,1fr)] md:pt-12"><aside className="space-y-1">{tabs.map((tab) => <button key={tab.id} onClick={() => setSection(tab.id)} className={`flex w-full items-center rounded-xl px-4 py-2.5 text-left text-sm transition ${section === tab.id ? 'bg-[#242127] text-white' : 'text-[#71717a] hover:text-white'}`}>{tab.label}</button>)}</aside><section className="max-w-2xl"><h1 className="text-2xl font-semibold tracking-[-.03em]">{section === 'general' ? 'General' : section === 'seo' ? 'SEO' : 'API Keys'}</h1>{section === 'general' && <div className="mt-8 space-y-6"><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Site Name</span><input aria-label="Site Name" value={siteName} onChange={(event) => setSiteName(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]" /></label><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Site Description</span><textarea aria-label="Site Description" value={description} onChange={(event) => setDescription(event.target.value)} className="min-h-28 w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm leading-relaxed outline-none focus:border-[#84cc72]" /></label><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Favicon URL</span><input aria-label="Favicon URL" value={favicon} onChange={(event) => setFavicon(event.target.value)} placeholder="https://example.com/favicon.ico" className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]" /></label><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Language</span><select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]"><option>English</option><option>German</option><option>Spanish</option><option>French</option></select></label><button onClick={() => setStatus('General settings saved for this OpenPage workspace.')} className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a]">Save settings</button></div>}{section === 'seo' && <div className="mt-8 space-y-5"><div className="rounded-xl border border-white/10 bg-[#101112] p-5"><div className="text-sm font-semibold">Search appearance</div><p className="mt-2 text-sm leading-relaxed text-[#71717a]">Set the title, description, and social image direction that exported OpenPage pages should use.</p></div><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Default page title</span><input aria-label="Default page title" defaultValue={siteName} className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]" /></label><label className="block text-sm"><span className="mb-2 block text-[#71717a]">Default meta description</span><textarea aria-label="Default meta description" defaultValue={description} className="min-h-24 w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm leading-relaxed outline-none focus:border-[#84cc72]" /></label><button onClick={() => setStatus('SEO settings saved for this OpenPage workspace.')} className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a]">Save SEO settings</button></div>}{section === 'api' && <div className="mt-8 space-y-5"><div className="rounded-xl border border-[#84cc72]/30 bg-[#0d120e] p-5"><div className="text-sm font-semibold">Gemini generation</div><p className="mt-2 text-sm leading-relaxed text-[#a1a1aa]">OpenPage uses Gemini server-side for live page generation. Your key stays in the Business OS environment and is never placed in exported HTML.</p><div className="mt-4 text-xs uppercase tracking-wide text-[#84cc72]">{ai?.configured ? `Connected · ${ai.model}` : 'Key not configured'}</div><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl border border-white/15 px-4 py-2.5 text-sm text-[#d4d4d8] hover:border-white/30">Manage Gemini key</a></div><div className="rounded-xl border border-white/10 bg-[#101112] p-5"><div className="text-sm font-semibold">Separate workspaces</div><p className="mt-2 text-sm leading-relaxed text-[#71717a]">OpenPage drafts live in the <code className="text-[#84cc72]">openpage</code> workspace and its G-Brain memory namespace.</p></div></div>}<p className="mt-8 text-xs text-[#71717a]" role="status">{status}</p></section></main>
-  </div>;
+  const [description, setDescription] = useState(
+    "A structured OpenPage workspace for thoughtful travel content and conversion-ready experiences.",
+  );
+  const [favicon, setFavicon] = useState("");
+  const [language, setLanguage] = useState("English");
+  const [status, setStatus] = useState("Settings are ready to customize.");
+  const tabs = [
+    { id: "general", label: "General" },
+    { id: "seo", label: "SEO" },
+    { id: "api", label: "API Keys" },
+  ] as const;
+  return (
+    <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
+      <header className="border-b border-white/10 bg-[#0b0c0d]">
+        <div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm">
+          <a
+            href="/openpage"
+            className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
+          >
+            <span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />
+            OpenPage
+          </a>
+          <nav
+            className="flex items-center gap-5 text-[#a1a1aa]"
+            aria-label="OpenPage navigation"
+          >
+            <a
+              href="/openpage"
+              className="flex items-center gap-2 pb-2 hover:text-white"
+            >
+              <Grid2X2 className="h-3.5 w-3.5" />
+              Dashboard
+            </a>
+            <a
+              href="/openpage/editor"
+              className="flex items-center gap-2 pb-2 hover:text-white"
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              Editor
+            </a>
+            <a
+              href="/openpage/settings"
+              className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Settings
+            </a>
+          </nav>
+          <a
+            href="https://github.com/buildingopen/openpage"
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+          >
+            <Github className="h-3.5 w-3.5" />
+            GitHub
+          </a>
+        </div>
+      </header>
+      <main
+        id="openpage-settings"
+        className="mx-auto grid max-w-6xl gap-8 px-5 pb-20 pt-8 md:grid-cols-[180px_minmax(0,1fr)] md:pt-12"
+      >
+        <aside className="space-y-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSection(tab.id)}
+              className={`flex w-full items-center rounded-xl px-4 py-2.5 text-left text-sm transition ${section === tab.id ? "bg-[#242127] text-white" : "text-[#71717a] hover:text-white"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </aside>
+        <section className="max-w-2xl">
+          <h1 className="text-2xl font-semibold tracking-[-.03em]">
+            {section === "general"
+              ? "General"
+              : section === "seo"
+                ? "SEO"
+                : "API Keys"}
+          </h1>
+          {section === "general" && (
+            <div className="mt-8 space-y-6">
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">Site Name</span>
+                <input
+                  aria-label="Site Name"
+                  value={siteName}
+                  onChange={(event) => setSiteName(event.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">
+                  Site Description
+                </span>
+                <textarea
+                  aria-label="Site Description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  className="min-h-28 w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm leading-relaxed outline-none focus:border-[#84cc72]"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">Favicon URL</span>
+                <input
+                  aria-label="Favicon URL"
+                  value={favicon}
+                  onChange={(event) => setFavicon(event.target.value)}
+                  placeholder="https://example.com/favicon.ico"
+                  className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">Language</span>
+                <select
+                  aria-label="Language"
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]"
+                >
+                  <option>English</option>
+                  <option>German</option>
+                  <option>Spanish</option>
+                  <option>French</option>
+                </select>
+              </label>
+              <button
+                onClick={() =>
+                  setStatus(
+                    "General settings saved for this OpenPage workspace.",
+                  )
+                }
+                className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a]"
+              >
+                Save settings
+              </button>
+            </div>
+          )}
+          {section === "seo" && (
+            <div className="mt-8 space-y-5">
+              <div className="rounded-xl border border-white/10 bg-[#101112] p-5">
+                <div className="text-sm font-semibold">Search appearance</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#71717a]">
+                  Set the title, description, and social image direction that
+                  exported OpenPage pages should use.
+                </p>
+              </div>
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">
+                  Default page title
+                </span>
+                <input
+                  aria-label="Default page title"
+                  defaultValue={siteName}
+                  className="w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm outline-none focus:border-[#84cc72]"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-2 block text-[#71717a]">
+                  Default meta description
+                </span>
+                <textarea
+                  aria-label="Default meta description"
+                  defaultValue={description}
+                  className="min-h-24 w-full rounded-xl border border-white/10 bg-[#19191b] px-3 py-3 text-sm leading-relaxed outline-none focus:border-[#84cc72]"
+                />
+              </label>
+              <button
+                onClick={() =>
+                  setStatus("SEO settings saved for this OpenPage workspace.")
+                }
+                className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a]"
+              >
+                Save SEO settings
+              </button>
+            </div>
+          )}
+          {section === "api" && (
+            <div className="mt-8 space-y-5">
+              <div className="rounded-xl border border-[#84cc72]/30 bg-[#0d120e] p-5">
+                <div className="text-sm font-semibold">Gemini generation</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#a1a1aa]">
+                  OpenPage uses Gemini server-side for live page generation.
+                  Your key stays in the Business OS environment and is never
+                  placed in exported HTML.
+                </p>
+                <div className="mt-4 text-xs uppercase tracking-wide text-[#84cc72]">
+                  {ai?.configured
+                    ? `Connected · ${ai.model}`
+                    : "Key not configured"}
+                </div>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex rounded-xl border border-white/15 px-4 py-2.5 text-sm text-[#d4d4d8] hover:border-white/30"
+                >
+                  Manage Gemini key
+                </a>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#101112] p-5">
+                <div className="text-sm font-semibold">Separate workspaces</div>
+                <p className="mt-2 text-sm leading-relaxed text-[#71717a]">
+                  OpenPage drafts live in the{" "}
+                  <code className="text-[#84cc72]">openpage</code> workspace and
+                  its G-Brain memory namespace.
+                </p>
+              </div>
+            </div>
+          )}
+          <p className="mt-8 text-xs text-[#71717a]" role="status">
+            {status}
+          </p>
+        </section>
+      </main>
+    </div>
+  );
 }
 
 function Canvas({ document }: { document: OpenPageDocument }) {
-  const hero = document.blocks.find((item) => item.type === 'hero');
-  const nav = document.blocks.find((item) => item.type === 'navbar');
-  const features = document.blocks.find((item) => item.type === 'features');
-  const content = document.blocks.find((item) => item.type === 'content');
-  const stats = document.blocks.find((item) => item.type === 'stats');
-  const cta = document.blocks.find((item) => item.type === 'cta');
-  const footer = document.blocks.find((item) => item.type === 'footer');
+  const hero = document.blocks.find((item) => item.type === "hero");
+  const nav = document.blocks.find((item) => item.type === "navbar");
+  const features = document.blocks.find((item) => item.type === "features");
+  const content = document.blocks.find((item) => item.type === "content");
+  const stats = document.blocks.find((item) => item.type === "stats");
+  const cta = document.blocks.find((item) => item.type === "cta");
+  const footer = document.blocks.find((item) => item.type === "footer");
   const t = document.theme;
-  const items = Array.isArray(features?.props.items) ? features?.props.items as string[] : [];
-  const statItems = Array.isArray(stats?.props.items) ? stats?.props.items as Array<{ value?: string; label?: string }> : [];
-  return <div className="overflow-hidden" style={{ background: t.background, color: t.text, fontFamily: t.bodyFont }}>
-    <div className="mx-auto max-w-5xl px-7 py-6">
-      {nav && <div className="flex flex-wrap items-center justify-between gap-4 pb-8 text-[10px] font-bold uppercase tracking-[.16em]"><span>{value(nav, 'brand', document.name)}</span><div className="flex flex-wrap gap-4 opacity-70">{(Array.isArray(nav.props.links) ? nav.props.links as string[] : []).map((link) => <span key={link}>{link}</span>)}</div></div>}
-      {hero && <section className="pb-20 pt-14"><div className="mb-5 text-[11px] font-bold uppercase tracking-[.2em]" style={{ color: t.accent }}>{value(hero, 'eyebrow', 'OPENPAGE DRAFT')}</div><h1 className="max-w-4xl text-6xl font-medium leading-[.93] tracking-[-.06em] md:text-8xl" style={{ fontFamily: t.displayFont }}>{value(hero, 'headline', document.name)}</h1><p className="mt-7 max-w-2xl text-lg leading-relaxed opacity-65">{value(hero, 'subheadline', document.description)}</p><div className="mt-8 flex flex-wrap items-center gap-5"><span className="rounded-full px-5 py-3 text-xs font-bold text-white" style={{ background: t.accent }}>{value(hero, 'cta', 'Explore')}</span><span className="text-xs font-bold">{value(hero, 'secondaryCta', 'Read more')} ↗</span></div></section>}
-      {features && <section className="border-t py-12" style={{ borderColor: `${t.text}22` }}><div className="text-[10px] font-bold uppercase tracking-[.18em]" style={{ color: t.accent }}>OPENPAGE BLOCK · {features.label}</div><h2 className="mt-3 max-w-2xl text-4xl font-medium tracking-[-.04em] md:text-5xl" style={{ fontFamily: t.displayFont }}>{value(features, 'heading', 'Make the page useful.')}</h2><div className="mt-7 grid gap-3 md:grid-cols-3">{items.map((item, index) => <div key={`${item}-${index}`} className="min-h-36 p-5" style={{ background: t.surface, borderRadius: t.radius }}><span className="text-xs" style={{ color: t.accent }}>0{index + 1}</span><h3 className="mt-8 text-lg font-bold leading-tight">{item}</h3><p className="mt-2 text-xs opacity-60">Grounded in the brief, ready for an agent to refine.</p></div>)}</div></section>}
-      {content && <section className="max-w-3xl border-t py-12" style={{ borderColor: `${t.text}22` }}><div className="text-[10px] font-bold uppercase tracking-[.18em]" style={{ color: t.accent }}>{value(content, 'eyebrow', 'EDITORIAL NOTE')}</div><h2 className="mt-3 text-4xl font-medium tracking-[-.04em] md:text-5xl" style={{ fontFamily: t.displayFont }}>{value(content, 'heading', 'A page with a point of view.')}</h2><p className="mt-6 text-lg leading-relaxed opacity-65">{value(content, 'body', document.description)}</p></section>}
-      {stats && <div className="grid gap-5 border-y py-7 md:grid-cols-3" style={{ borderColor: `${t.text}22` }}>{statItems.map((item, index) => <div key={`${item.label}-${index}`}><div className="text-5xl" style={{ fontFamily: t.displayFont }}>{item.value ?? '—'}</div><div className="mt-1 text-[10px] font-bold uppercase tracking-[.14em] opacity-60">{item.label ?? 'proof point'}</div></div>)}</div>}
-      {cta && <section className="my-10 p-8 md:p-12" style={{ background: t.text, color: t.background, borderRadius: t.radius }}><h2 className="max-w-xl text-4xl font-medium tracking-[-.04em]" style={{ fontFamily: t.displayFont }}>{value(cta, 'heading', 'Ready for the next draft?')}</h2><p className="mt-4 max-w-lg opacity-70">{value(cta, 'body', 'Review the work before publishing.')}</p><span className="mt-7 inline-flex rounded-full px-5 py-3 text-xs font-bold text-white" style={{ background: t.accent }}>{value(cta, 'cta', 'Continue')} ↗</span></section>}
-      {footer && <div className="pt-5 text-[10px] font-bold uppercase tracking-[.18em] opacity-50">{value(footer, 'text', document.name)}</div>}
+  const items = Array.isArray(features?.props.items)
+    ? (features?.props.items as string[])
+    : [];
+  const statItems = Array.isArray(stats?.props.items)
+    ? (stats?.props.items as Array<{ value?: string; label?: string }>)
+    : [];
+  return (
+    <div
+      className="overflow-hidden"
+      style={{
+        background: t.background,
+        color: t.text,
+        fontFamily: t.bodyFont,
+      }}
+    >
+      <div className="mx-auto max-w-5xl px-7 py-6">
+        {nav && (
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-8 text-[10px] font-bold uppercase tracking-[.16em]">
+            <span>{value(nav, "brand", document.name)}</span>
+            <div className="flex flex-wrap gap-4 opacity-70">
+              {(Array.isArray(nav.props.links)
+                ? (nav.props.links as string[])
+                : []
+              ).map((link) => (
+                <span key={link}>{link}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {hero && (
+          <section className="pb-20 pt-14">
+            <div
+              className="mb-5 text-[11px] font-bold uppercase tracking-[.2em]"
+              style={{ color: t.accent }}
+            >
+              {value(hero, "eyebrow", "OPENPAGE DRAFT")}
+            </div>
+            <h1
+              className="max-w-4xl text-6xl font-medium leading-[.93] tracking-[-.06em] md:text-8xl"
+              style={{ fontFamily: t.displayFont }}
+            >
+              {value(hero, "headline", document.name)}
+            </h1>
+            <p className="mt-7 max-w-2xl text-lg leading-relaxed opacity-65">
+              {value(hero, "subheadline", document.description)}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-5">
+              <span
+                className="rounded-full px-5 py-3 text-xs font-bold text-white"
+                style={{ background: t.accent }}
+              >
+                {value(hero, "cta", "Explore")}
+              </span>
+              <span className="text-xs font-bold">
+                {value(hero, "secondaryCta", "Read more")} ↗
+              </span>
+            </div>
+          </section>
+        )}
+        {features && (
+          <section
+            className="border-t py-12"
+            style={{ borderColor: `${t.text}22` }}
+          >
+            <div
+              className="text-[10px] font-bold uppercase tracking-[.18em]"
+              style={{ color: t.accent }}
+            >
+              OPENPAGE BLOCK · {features.label}
+            </div>
+            <h2
+              className="mt-3 max-w-2xl text-4xl font-medium tracking-[-.04em] md:text-5xl"
+              style={{ fontFamily: t.displayFont }}
+            >
+              {value(features, "heading", "Make the page useful.")}
+            </h2>
+            <div className="mt-7 grid gap-3 md:grid-cols-3">
+              {items.map((item, index) => (
+                <div
+                  key={`${item}-${index}`}
+                  className="min-h-36 p-5"
+                  style={{ background: t.surface, borderRadius: t.radius }}
+                >
+                  <span className="text-xs" style={{ color: t.accent }}>
+                    0{index + 1}
+                  </span>
+                  <h3 className="mt-8 text-lg font-bold leading-tight">
+                    {item}
+                  </h3>
+                  <p className="mt-2 text-xs opacity-60">
+                    Grounded in the brief, ready for an agent to refine.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+        {content && (
+          <section
+            className="max-w-3xl border-t py-12"
+            style={{ borderColor: `${t.text}22` }}
+          >
+            <div
+              className="text-[10px] font-bold uppercase tracking-[.18em]"
+              style={{ color: t.accent }}
+            >
+              {value(content, "eyebrow", "EDITORIAL NOTE")}
+            </div>
+            <h2
+              className="mt-3 text-4xl font-medium tracking-[-.04em] md:text-5xl"
+              style={{ fontFamily: t.displayFont }}
+            >
+              {value(content, "heading", "A page with a point of view.")}
+            </h2>
+            <p className="mt-6 text-lg leading-relaxed opacity-65">
+              {value(content, "body", document.description)}
+            </p>
+          </section>
+        )}
+        {stats && (
+          <div
+            className="grid gap-5 border-y py-7 md:grid-cols-3"
+            style={{ borderColor: `${t.text}22` }}
+          >
+            {statItems.map((item, index) => (
+              <div key={`${item.label}-${index}`}>
+                <div className="text-5xl" style={{ fontFamily: t.displayFont }}>
+                  {item.value ?? "—"}
+                </div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[.14em] opacity-60">
+                  {item.label ?? "proof point"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {cta && (
+          <section
+            className="my-10 p-8 md:p-12"
+            style={{
+              background: t.text,
+              color: t.background,
+              borderRadius: t.radius,
+            }}
+          >
+            <h2
+              className="max-w-xl text-4xl font-medium tracking-[-.04em]"
+              style={{ fontFamily: t.displayFont }}
+            >
+              {value(cta, "heading", "Ready for the next draft?")}
+            </h2>
+            <p className="mt-4 max-w-lg opacity-70">
+              {value(cta, "body", "Review the work before publishing.")}
+            </p>
+            <span
+              className="mt-7 inline-flex rounded-full px-5 py-3 text-xs font-bold text-white"
+              style={{ background: t.accent }}
+            >
+              {value(cta, "cta", "Continue")} ↗
+            </span>
+          </section>
+        )}
+        {footer && (
+          <div className="pt-5 text-[10px] font-bold uppercase tracking-[.18em] opacity-50">
+            {value(footer, "text", document.name)}
+          </div>
+        )}
+      </div>
     </div>
-  </div>;
+  );
 }
 
-export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: OpenPageView }) {
+export function OpenPageBuilder({
+  initialView = "dashboard",
+}: {
+  initialView?: OpenPageView;
+}) {
   const templates = [
-    { name: 'Portfolio', icon: '▣', description: 'Showcase your work and skills', blocks: 7, brief: 'Create a polished portfolio site with a strong introduction, selected work, proof, and a clear contact call to action.' },
-    { name: 'Restaurant', icon: '⚒', description: 'Menu, reservations, and ambiance', blocks: 7, brief: 'Create an elegant restaurant website with a menu, signature dishes, atmosphere, location, reservations, and a clear booking call to action.' },
-    { name: 'Agency', icon: '▥', description: 'Services, case studies, and team', blocks: 8, brief: 'Create a conversion-ready agency website with services, case studies, team credibility, process, and a strong consultation call to action.' },
-    { name: 'Blog', icon: '▤', description: 'Articles, topics, and subscribers', blocks: 7, brief: 'Create a thoughtful editorial blog with a clear point of view, article categories, featured stories, and a newsletter signup.' },
+    {
+      name: "Portfolio",
+      icon: "▣",
+      description: "Showcase your work and skills",
+      blocks: 7,
+      brief:
+        "Create a polished portfolio site with a strong introduction, selected work, proof, and a clear contact call to action.",
+    },
+    {
+      name: "Restaurant",
+      icon: "⚒",
+      description: "Menu, reservations, and ambiance",
+      blocks: 7,
+      brief:
+        "Create an elegant restaurant website with a menu, signature dishes, atmosphere, location, reservations, and a clear booking call to action.",
+    },
+    {
+      name: "Agency",
+      icon: "▥",
+      description: "Services, case studies, and team",
+      blocks: 8,
+      brief:
+        "Create a conversion-ready agency website with services, case studies, team credibility, process, and a strong consultation call to action.",
+    },
+    {
+      name: "Blog",
+      icon: "▤",
+      description: "Articles, topics, and subscribers",
+      blocks: 7,
+      brief:
+        "Create a thoughtful editorial blog with a clear point of view, article categories, featured stories, and a newsletter signup.",
+    },
   ] as const;
-  const [document, setDocument] = useState<OpenPageDocument>(() => defaultOpenPageDocument());
-  const [brief, setBrief] = useState('Create a Barcelona travel affiliate landing page for people who want smart itineraries, local food, and bookable experiences. Keep it editorial, useful, and conversion-ready.');
+  const [document, setDocument] = useState<OpenPageDocument>(() =>
+    defaultOpenPageDocument(),
+  );
+  const [brief, setBrief] = useState(
+    "Create a Barcelona travel affiliate landing page for people who want smart itineraries, local food, and bookable experiences. Keep it editorial, useful, and conversion-ready.",
+  );
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState('');
+  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedBlock, setSelectedBlock] = useState("");
   const [brain, setBrain] = useState<BrainResult[]>([]);
-  const [status, setStatus] = useState('Starter loaded · unsaved');
+  const [status, setStatus] = useState("Starter loaded · unsaved");
   const [busy, setBusy] = useState(false);
   const [ai, setAi] = useState<AiStatus | null>(null);
   const [view, setView] = useState<OpenPageView>(initialView);
-  const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">(
+    "desktop",
+  );
   const [showJson, setShowJson] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState('https://letstalkmilesandtravel.com/');
+  const [sourceUrl, setSourceUrl] = useState(
+    "https://letstalkmilesandtravel.com/",
+  );
   const [analysis, setAnalysis] = useState<ScrapedSiteAnalysis | null>(null);
-  const [selectedScrapedPath, setSelectedScrapedPath] = useState('');
+  const [selectedScrapedPath, setSelectedScrapedPath] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [copilotInput, setCopilotInput] = useState("");
+  const [copilotMessages, setCopilotMessages] = useState<CopilotMessage[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "I’m connected to this OpenPage draft. Ask me to change the copy, layout, style, or create another version. I’ll update the live preview; you approve it with Save to vault.",
+    },
+  ]);
 
-  const currentBlock = useMemo(() => document.blocks.find((item) => item.id === selectedBlock) ?? document.blocks[0], [document.blocks, selectedBlock]);
+  const currentBlock = useMemo(
+    () =>
+      document.blocks.find((item) => item.id === selectedBlock) ??
+      document.blocks[0],
+    [document.blocks, selectedBlock],
+  );
   useEffect(() => {
     void loadProjects();
-    void loadBrain('OpenPage');
-    if (initialView !== 'editor') return;
+    void loadBrain("OpenPage");
+    if (initialView !== "editor") return;
     try {
-      const cached = globalThis.localStorage.getItem(OPENPAGE_PREVIEW_CACHE_KEY);
+      const cached = globalThis.localStorage.getItem(
+        OPENPAGE_PREVIEW_CACHE_KEY,
+      );
       if (!cached) return;
       const preview = JSON.parse(cached) as Partial<OpenPagePreviewCache>;
       if (preview.document && Array.isArray(preview.document.blocks)) {
         setDocument(preview.document);
-        setBrief(preview.brief ?? '');
+        setBrief(preview.brief ?? "");
         setAnalysis(preview.analysis ?? null);
         setStatus(`Loaded latest generated preview · ${preview.document.name}`);
       }
@@ -101,26 +581,192 @@ export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: O
     }
   }, [initialView]);
 
-  async function loadProjects() { const response = await fetch('/api/openpage'); if (response.ok) { const payload = await response.json(); setProjects(payload.projects ?? []); setAi(payload.ai ?? null); } }
-  async function loadBrain(query: string) { const response = await fetch(`/api/openpage?action=context&query=${encodeURIComponent(query)}`); if (response.ok) setBrain((await response.json()).results ?? []); }
-  function replaceBlock(next: OpenPageBlock) { setDocument((current) => ({ ...current, updatedAt: new Date().toISOString(), blocks: current.blocks.map((item) => item.id === next.id ? next : item) })); }
-  function moveBlock(direction: -1 | 1) { if (!currentBlock) return; setDocument((current) => { const index = current.blocks.findIndex((item) => item.id === currentBlock.id); const target = index + direction; if (index < 0 || target < 0 || target >= current.blocks.length) return current; const blocks = [...current.blocks]; [blocks[index], blocks[target]] = [blocks[target], blocks[index]]; return { ...current, blocks }; }); }
-  function removeBlock() { if (!currentBlock || document.blocks.length <= 1) return; setDocument((current) => ({ ...current, blocks: current.blocks.filter((item) => item.id !== currentBlock.id) })); setSelectedBlock(''); }
-  function addBlock() { const next: OpenPageBlock = { id: crypto.randomUUID(), type: 'content', label: 'New content', props: { eyebrow: 'NEW BLOCK', heading: 'A new idea to shape.', body: 'Ask an agent to develop this section from the shared brief.' } }; setDocument((current) => ({ ...current, blocks: [...current.blocks, next] })); setSelectedBlock(next.id); }
+  async function loadProjects() {
+    const response = await fetch("/api/openpage");
+    if (response.ok) {
+      const payload = await response.json();
+      setProjects(payload.projects ?? []);
+      setAi(payload.ai ?? null);
+    }
+  }
+  async function loadBrain(query: string) {
+    const response = await fetch(
+      `/api/openpage?action=context&query=${encodeURIComponent(query)}`,
+    );
+    if (response.ok) setBrain((await response.json()).results ?? []);
+  }
+  function replaceBlock(next: OpenPageBlock) {
+    setDocument((current) => ({
+      ...current,
+      updatedAt: new Date().toISOString(),
+      blocks: current.blocks.map((item) => (item.id === next.id ? next : item)),
+    }));
+  }
+  function moveBlock(direction: -1 | 1) {
+    if (!currentBlock) return;
+    setDocument((current) => {
+      const index = current.blocks.findIndex(
+        (item) => item.id === currentBlock.id,
+      );
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= current.blocks.length)
+        return current;
+      const blocks = [...current.blocks];
+      [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+      return { ...current, blocks };
+    });
+  }
+  function removeBlock() {
+    if (!currentBlock || document.blocks.length <= 1) return;
+    setDocument((current) => ({
+      ...current,
+      blocks: current.blocks.filter((item) => item.id !== currentBlock.id),
+    }));
+    setSelectedBlock("");
+  }
+  function addBlock() {
+    const next: OpenPageBlock = {
+      id: crypto.randomUUID(),
+      type: "content",
+      label: "New content",
+      props: {
+        eyebrow: "NEW BLOCK",
+        heading: "A new idea to shape.",
+        body: "Ask an agent to develop this section from the shared brief.",
+      },
+    };
+    setDocument((current) => ({
+      ...current,
+      blocks: [...current.blocks, next],
+    }));
+    setSelectedBlock(next.id);
+  }
   async function generate(nextBrief = brief, nextName = document.name) {
     setBusy(true);
-    setStatus('Asking the live model for a complete OpenPage redesign…');
+    setStatus("Asking the live model for a complete OpenPage redesign…");
     try {
-      const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'generate', prompt: nextBrief, name: nextName, analysis }) });
-      const payload = await response.json().catch(() => null) as { ok?: boolean; document?: OpenPageDocument; source?: string; warning?: string; error?: string } | null;
+      const response = await fetch("/api/openpage", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "generate",
+          prompt: nextBrief,
+          name: nextName,
+          analysis,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        document?: OpenPageDocument;
+        source?: string;
+        warning?: string;
+        error?: string;
+      } | null;
       if (payload?.ok && payload.document) {
         setDocument(payload.document);
-        try { globalThis.localStorage.setItem(OPENPAGE_PREVIEW_CACHE_KEY, JSON.stringify({ document: payload.document, brief: nextBrief, analysis: analysis ?? undefined, savedAt: new Date().toISOString() } satisfies OpenPagePreviewCache)); } catch { /* Preview still works in the current view if storage is unavailable. */ }
-        setStatus(payload.source === 'brand-preserving-fallback' ? `Redesign preview ready · ${payload.warning ?? 'built from the scanned brand and page content'}` : analysis ? 'Redesign preview ready · brand and source content preserved · review before saving' : 'Live AI preview ready · review before saving');
-        setView('editor');
-      } else setStatus(`Redesign unavailable: ${payload?.error ?? 'the server returned no usable page'} · scan remains available`);
+        try {
+          globalThis.localStorage.setItem(
+            OPENPAGE_PREVIEW_CACHE_KEY,
+            JSON.stringify({
+              document: payload.document,
+              brief: nextBrief,
+              analysis: analysis ?? undefined,
+              savedAt: new Date().toISOString(),
+            } satisfies OpenPagePreviewCache),
+          );
+        } catch {
+          /* Preview still works in the current view if storage is unavailable. */
+        }
+        setStatus(
+          payload.source === "brand-preserving-fallback"
+            ? `Redesign preview ready · ${payload.warning ?? "built from the scanned brand and page content"}`
+            : analysis
+              ? "Redesign preview ready · brand and source content preserved · review before saving"
+              : "Live AI preview ready · review before saving",
+        );
+        setView("editor");
+      } else
+        setStatus(
+          `Redesign unavailable: ${payload?.error ?? "the server returned no usable page"} · scan remains available`,
+        );
     } catch (error) {
-      setStatus(`Redesign unavailable: ${error instanceof Error ? error.message : 'network error'} · scan remains available`);
+      setStatus(
+        `Redesign unavailable: ${error instanceof Error ? error.message : "network error"} · scan remains available`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function askCopilot(nextPrompt = copilotInput) {
+    const prompt = nextPrompt.trim();
+    if (!prompt || busy) return;
+    setCopilotInput("");
+    setCopilotMessages((current) => [
+      ...current,
+      { id: `user-${Date.now()}`, role: "user", content: prompt },
+    ]);
+    setBusy(true);
+    setStatus("OpenPage AI is applying your requested change…");
+    try {
+      const response = await fetch("/api/openpage", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "edit", prompt, document, analysis }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        document?: OpenPageDocument;
+        message?: string;
+        error?: string;
+      } | null;
+      if (payload?.ok && payload.document) {
+        setDocument(payload.document);
+        try {
+          globalThis.localStorage.setItem(
+            OPENPAGE_PREVIEW_CACHE_KEY,
+            JSON.stringify({
+              document: payload.document,
+              brief,
+              analysis: analysis ?? undefined,
+              savedAt: new Date().toISOString(),
+            } satisfies OpenPagePreviewCache),
+          );
+        } catch {
+          /* The live editor remains usable if storage is unavailable. */
+        }
+        setCopilotMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: `${payload.message ?? "Change applied."}\n\nThe live preview is updated. Nothing is published or saved to the vault until you approve it.`,
+          },
+        ]);
+        setStatus("AI edit applied · review the live preview before saving");
+      } else {
+        setCopilotMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            content: `I couldn’t apply that change: ${payload?.error ?? "the model returned no usable document"}`,
+          },
+        ]);
+        setStatus(
+          `AI edit unavailable: ${payload?.error ?? "the server returned no usable page"}`,
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "network error";
+      setCopilotMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: `I couldn’t reach the live editor service: ${message}`,
+        },
+      ]);
+      setStatus(`AI edit unavailable: ${message}`);
     } finally {
       setBusy(false);
     }
@@ -128,57 +774,1163 @@ export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: O
   async function scanWebsite() {
     setBusy(true);
     setTemplateSaved(false);
-    setStatus('Scanning public pages, brand styles, and layout signals…');
+    setStatus("Scanning public pages, brand styles, and layout signals…");
     try {
-      const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'scrape', url: sourceUrl, maxPages: 8 }) });
-      const payload = await response.json().catch(() => null) as { ok?: boolean; analysis?: ScrapedSiteAnalysis; error?: string } | null;
-      if (payload?.ok && payload.analysis) { setAnalysis(payload.analysis); setSelectedScrapedPath(payload.analysis.pages[0]?.path ?? ''); setStatus(`Scan complete · ${payload.analysis.pagesScanned} pages analyzed · ready for redesign`); }
-      else setStatus(`Scan failed: ${payload?.error ?? 'the server returned no analysis'}`);
+      const response = await fetch("/api/openpage", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "scrape", url: sourceUrl, maxPages: 8 }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        analysis?: ScrapedSiteAnalysis;
+        error?: string;
+      } | null;
+      if (payload?.ok && payload.analysis) {
+        setAnalysis(payload.analysis);
+        setSelectedScrapedPath(payload.analysis.pages[0]?.path ?? "");
+        setStatus(
+          `Scan complete · ${payload.analysis.pagesScanned} pages analyzed · ready for redesign`,
+        );
+      } else
+        setStatus(
+          `Scan failed: ${payload?.error ?? "the server returned no analysis"}`,
+        );
     } catch (error) {
-      setStatus(`Scan failed: ${error instanceof Error ? error.message : 'network error'}`);
+      setStatus(
+        `Scan failed: ${error instanceof Error ? error.message : "network error"}`,
+      );
     } finally {
       setBusy(false);
     }
   }
-  async function createRedesign() { if (!analysis) return; const redesignBrief = `Create a complete cleaner replacement for the scanned website. Use the real page titles, headings, and content themes from the scan. Preserve the recognizable brand identity, logo direction, colors, typography direction, navigation intent, and strongest calls to action. Improve hierarchy, whitespace, mobile responsiveness, accessibility, scannability, and conversion flow. Do not return an explanation or generic travel filler; return the full OpenPage JSON document for ${analysis.siteName}.`; setBrief(redesignBrief); await generate(redesignBrief, `${analysis.siteName} · Cleaner redesign`); }
-  async function save() { setBusy(true); setStatus('Saving draft and capturing OpenPage memory…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save', id: selectedProject || undefined, name: document.name, prompt: brief, document, sourceAnalysis: analysis }) }); const payload = await response.json(); if (payload.ok) { setSelectedProject(payload.project.id); setStatus(payload.memory?.ok ? 'Saved · G-Brain captured in openpage/' : `Saved · memory capture needs attention: ${payload.memory?.error ?? 'unknown error'}`); await loadProjects(); await loadBrain(document.name); } else setStatus(`Save failed: ${payload.error ?? 'unknown error'}`); setBusy(false); }
-  async function saveTemplate() { if (!analysis) return; setBusy(true); setStatus('Saving brand system and suggestions to the template vault…'); const response = await fetch('/api/openpage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save-template', analysis }) }); const payload = await response.json(); if (payload.ok) { setTemplateSaved(true); setStatus(payload.memory?.ok ? 'Reusable template saved · G-Brain captured in openpage/templates/' : 'Reusable template saved · memory capture needs attention'); } else setStatus(`Template save failed: ${payload.error ?? 'unknown error'}`); setBusy(false); }
-  async function loadSelected() { const project = projects.find((item) => item.id === selectedProject); if (project) { setDocument(project.document); setBrief(project.prompt ?? ''); setStatus('Loaded from OpenPage workspace'); await loadBrain(project.name); } }
-  async function exportHtml() { const response = await fetch('/api/openpage', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'export', document }) }); if (!response.ok) return setStatus('Export failed'); const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = globalThis.document.createElement('a'); link.href = url; link.download = `${document.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'openpage'}.html`; link.click(); URL.revokeObjectURL(url); setStatus('Standalone HTML exported'); }
-  function startTemplate(name: string, nextBrief: string) { setBrief(nextBrief); setDocument(defaultOpenPageDocument(name)); setSelectedProject(''); setSelectedBlock(''); setStatus(`${name} template loaded · unsaved`); setView('editor'); }
+  async function createRedesign() {
+    if (!analysis) return;
+    const redesignBrief = `Create a complete cleaner replacement for the scanned website. Use the real page titles, headings, and content themes from the scan. Preserve the recognizable brand identity, logo direction, colors, typography direction, navigation intent, and strongest calls to action. Improve hierarchy, whitespace, mobile responsiveness, accessibility, scannability, and conversion flow. Do not return an explanation or generic travel filler; return the full OpenPage JSON document for ${analysis.siteName}.`;
+    setBrief(redesignBrief);
+    await generate(redesignBrief, `${analysis.siteName} · Cleaner redesign`);
+  }
+  async function save() {
+    setBusy(true);
+    setStatus("Saving draft and capturing OpenPage memory…");
+    const response = await fetch("/api/openpage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "save",
+        id: selectedProject || undefined,
+        name: document.name,
+        prompt: brief,
+        document,
+        sourceAnalysis: analysis,
+      }),
+    });
+    const payload = await response.json();
+    if (payload.ok) {
+      setSelectedProject(payload.project.id);
+      setStatus(
+        payload.memory?.ok
+          ? "Saved · G-Brain captured in openpage/"
+          : `Saved · memory capture needs attention: ${payload.memory?.error ?? "unknown error"}`,
+      );
+      await loadProjects();
+      await loadBrain(document.name);
+    } else setStatus(`Save failed: ${payload.error ?? "unknown error"}`);
+    setBusy(false);
+  }
+  async function saveTemplate() {
+    if (!analysis) return;
+    setBusy(true);
+    setStatus("Saving brand system and suggestions to the template vault…");
+    const response = await fetch("/api/openpage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "save-template", analysis }),
+    });
+    const payload = await response.json();
+    if (payload.ok) {
+      setTemplateSaved(true);
+      setStatus(
+        payload.memory?.ok
+          ? "Reusable template saved · G-Brain captured in openpage/templates/"
+          : "Reusable template saved · memory capture needs attention",
+      );
+    } else
+      setStatus(`Template save failed: ${payload.error ?? "unknown error"}`);
+    setBusy(false);
+  }
+  async function loadSelected() {
+    const project = projects.find((item) => item.id === selectedProject);
+    if (project) {
+      setDocument(project.document);
+      setBrief(project.prompt ?? "");
+      setStatus("Loaded from OpenPage workspace");
+      await loadBrain(project.name);
+    }
+  }
+  async function exportHtml() {
+    const response = await fetch("/api/openpage", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "export", document }),
+    });
+    if (!response.ok) return setStatus("Export failed");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = globalThis.document.createElement("a");
+    link.href = url;
+    link.download = `${
+      document.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "openpage"
+    }.html`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus("Standalone HTML exported");
+  }
+  function startTemplate(name: string, nextBrief: string) {
+    setBrief(nextBrief);
+    setDocument(defaultOpenPageDocument(name));
+    setSelectedProject("");
+    setSelectedBlock("");
+    setStatus(`${name} template loaded · unsaved`);
+    setView("editor");
+  }
 
-  if (view === 'dashboard') return <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
-    <header className="border-b border-white/10 bg-[#0b0c0d]">
-      <div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm">
-        <button onClick={() => setView('dashboard')} className="mr-2 flex items-center gap-2 font-semibold tracking-tight"><span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />OpenPage</button>
-        <nav className="flex items-center gap-5 text-[#a1a1aa]" aria-label="OpenPage navigation"><button onClick={() => setView('dashboard')} className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"><Grid2X2 className="h-3.5 w-3.5" />Dashboard</button><a href="/openpage/editor" className="flex items-center gap-2 pb-2 hover:text-white"><PenLine className="h-3.5 w-3.5" />Editor</a><a href="/openpage/settings" className="flex items-center gap-2 pb-2 hover:text-white"><Settings2 className="h-3.5 w-3.5" />Settings</a></nav>
-        <a href="https://github.com/buildingopen/openpage" target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"><Github className="h-3.5 w-3.5" />GitHub</a>
+  if (view === "dashboard")
+    return (
+      <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
+        <header className="border-b border-white/10 bg-[#0b0c0d]">
+          <div className="mx-auto flex max-w-7xl items-center gap-7 px-5 py-3 text-sm">
+            <button
+              onClick={() => setView("dashboard")}
+              className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
+            >
+              <span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />
+              OpenPage
+            </button>
+            <nav
+              className="flex items-center gap-5 text-[#a1a1aa]"
+              aria-label="OpenPage navigation"
+            >
+              <button
+                onClick={() => setView("dashboard")}
+                className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"
+              >
+                <Grid2X2 className="h-3.5 w-3.5" />
+                Dashboard
+              </button>
+              <a
+                href="/openpage/editor"
+                className="flex items-center gap-2 pb-2 hover:text-white"
+              >
+                <PenLine className="h-3.5 w-3.5" />
+                Editor
+              </a>
+              <a
+                href="/openpage/settings"
+                className="flex items-center gap-2 pb-2 hover:text-white"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                Settings
+              </a>
+            </nav>
+            <a
+              href="https://github.com/buildingopen/openpage"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+            >
+              <Github className="h-3.5 w-3.5" />
+              GitHub
+            </a>
+          </div>
+        </header>
+        <main
+          id="openpage-dashboard"
+          className="mx-auto max-w-4xl px-5 pb-20 pt-16 sm:pt-20"
+        >
+          <div className="text-center">
+            <h1 className="text-4xl font-semibold tracking-[-.04em] sm:text-5xl">
+              What will you build?
+            </h1>
+            <p className="mt-3 text-base text-[#71717a]">
+              Describe your site and AI generates the layout, copy, and theme.
+            </p>
+          </div>
+          <section className="mx-auto mt-10 rounded-[20px] border border-white/20 bg-[#101112] p-3 shadow-[0_0_70px_rgba(132,204,114,.05)]">
+            <textarea
+              aria-label="OpenPage brief"
+              value={brief}
+              onChange={(event) => setBrief(event.target.value)}
+              placeholder="A landing page for a modern fitness app with dark theme…"
+              className="min-h-28 w-full resize-none bg-transparent px-2 py-1 text-sm leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#52525b]"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-1 flex-wrap gap-2">
+                <button
+                  onClick={() =>
+                    setBrief(
+                      "Create a SaaS landing page with a clear product promise, benefits, proof, and signup CTA.",
+                    )
+                  }
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+                >
+                  SaaS landing page
+                </button>
+                <button
+                  onClick={() => setBrief(templates[0].brief)}
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+                >
+                  Portfolio site
+                </button>
+                <button
+                  onClick={() => setBrief(templates[1].brief)}
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+                >
+                  Restaurant website
+                </button>
+                <button
+                  onClick={() =>
+                    setBrief(
+                      "Create a modern AI startup website with a bold hero, product benefits, trust signals, use cases, and a demo CTA.",
+                    )
+                  }
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+                >
+                  AI startup
+                </button>
+                <button
+                  disabled={busy || !sourceUrl.trim()}
+                  onClick={() => void scanWebsite()}
+                  className="rounded-full border border-[#84cc72]/50 px-3 py-1.5 text-xs text-[#a6e896] hover:bg-[#84cc72]/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Scrape / extract
+                </button>
+              </div>
+              <button
+                disabled={busy || !brief.trim()}
+                onClick={() => void generate()}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#84cc72] px-5 py-3 text-sm font-semibold text-[#10200e] transition hover:bg-[#9ae68a] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Wand2 className="h-4 w-4" />
+                Generate
+              </button>
+            </div>
+          </section>
+          <section className="mt-5 rounded-2xl border border-[#84cc72]/30 bg-[#0d120e] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[#e4e4e7]">
+                  Import a site and redesign it
+                </div>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#8a8f8a]">
+                  Scan an approved public site, extract its brand signals and
+                  content map, then let Gemini prepare a cleaner OpenPage draft
+                  without losing its identity.
+                </p>
+              </div>
+              <span className="rounded-full border border-[#84cc72]/30 px-2.5 py-1 text-[10px] uppercase tracking-wide text-[#84cc72]">
+                Brand-preserving scan
+              </span>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <input
+                aria-label="Website URL to scan"
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                placeholder="https://example.com"
+                className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#101112] px-3 py-2.5 text-sm text-[#e4e4e7] outline-none focus:border-[#84cc72]"
+              />
+              <button
+                disabled={busy || !sourceUrl.trim()}
+                onClick={() => void scanWebsite()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#84cc72]/50 px-4 py-2.5 text-sm font-semibold text-[#a6e896] hover:bg-[#84cc72]/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Sparkles className="h-4 w-4" />
+                Scan website
+              </button>
+            </div>
+            {analysis && (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-[#101112] p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Pages scanned
+                    </div>
+                    <div className="mt-1 text-xl font-semibold">
+                      {analysis.pagesScanned}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#101112] p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Brand colors
+                    </div>
+                    <div className="mt-2 flex gap-1.5">
+                      {analysis.brand.colors.slice(0, 6).map((color) => (
+                        <span
+                          key={color}
+                          title={color}
+                          className="h-5 w-5 rounded-full border border-white/20"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#101112] p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Layout signals
+                    </div>
+                    <div className="mt-1 text-xs text-[#a1a1aa]">
+                      {[
+                        analysis.layout.hasHeader && "header",
+                        analysis.layout.hasNavigation && "navigation",
+                        analysis.layout.hasHero && "hero",
+                        analysis.layout.hasFooter && "footer",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "content structure detected"}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-[1fr_1.2fr]">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Detected brand
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-[#a1a1aa]">
+                      {analysis.siteName} · accent {analysis.brand.accentColor}{" "}
+                      ·{" "}
+                      {analysis.brand.fonts.join(", ") ||
+                        "font direction not detected"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        disabled={busy}
+                        onClick={() => void createRedesign()}
+                        className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a] disabled:opacity-40"
+                      >
+                        <Wand2 className="mr-1 inline h-4 w-4" />
+                        Create cleaner redesign
+                      </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => void saveTemplate()}
+                        className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-[#d4d4d8] hover:border-white/30"
+                      >
+                        {templateSaved
+                          ? "Template saved"
+                          : "Save as reusable template"}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Suggestions for improvement
+                    </div>
+                    <ul className="mt-2 space-y-1 text-xs leading-relaxed text-[#a1a1aa]">
+                      {analysis.suggestions.slice(0, 4).map((suggestion) => (
+                        <li key={suggestion}>• {suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                      Inspect source pages
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-[#71717a]">
+                      Choose a scanned page to review it before redesigning.
+                    </p>
+                    <div className="mt-3 max-h-56 space-y-1 overflow-auto">
+                      {analysis.pages.map((page) => (
+                        <button
+                          key={page.path}
+                          aria-selected={selectedScrapedPath === page.path}
+                          onClick={() => setSelectedScrapedPath(page.path)}
+                          className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition ${selectedScrapedPath === page.path ? "border-[#84cc72]/60 bg-[#84cc72]/10 text-[#e4e4e7]" : "border-white/10 text-[#a1a1aa] hover:border-white/25"}`}
+                        >
+                          <span className="block truncate">{page.title}</span>
+                          <span className="mt-1 block truncate text-[10px] text-[#71717a]">
+                            {page.path}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-white/10 bg-[#101112]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+                      <span className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                        Source preview ·{" "}
+                        {analysis.pages.find(
+                          (page) => page.path === selectedScrapedPath,
+                        )?.path ??
+                          analysis.pages[0]?.path ??
+                          "/"}
+                      </span>
+                      {analysis.pages[0] && (
+                        <a
+                          href={
+                            (
+                              analysis.pages.find(
+                                (page) => page.path === selectedScrapedPath,
+                              ) ?? analysis.pages[0]
+                            ).url
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-[#a6e896] hover:underline"
+                        >
+                          Open page ↗
+                        </a>
+                      )}
+                    </div>
+                    {analysis.pages.find(
+                      (page) => page.path === selectedScrapedPath,
+                    ) ? (
+                      <iframe
+                        title="Scanned source page preview"
+                        src={
+                          (
+                            analysis.pages.find(
+                              (page) => page.path === selectedScrapedPath,
+                            ) ?? analysis.pages[0]
+                          ).url
+                        }
+                        sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin"
+                        referrerPolicy="no-referrer"
+                        className="h-[420px] w-full bg-white"
+                      />
+                    ) : (
+                      <div className="flex h-[420px] items-center justify-center px-5 text-center text-xs text-[#71717a]">
+                        No scanned page is available for preview.
+                      </div>
+                    )}
+                    <p className="border-t border-white/10 px-3 py-2 text-[10px] leading-relaxed text-[#71717a]">
+                      If the source blocks embedded viewing, use Open page ↗ to
+                      inspect it in a normal browser tab.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+          <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {templates.map((template) => (
+              <button
+                key={template.name}
+                onClick={() => startTemplate(template.name, template.brief)}
+                className="group rounded-xl border border-white/15 bg-[#101112] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-[#151718]"
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="text-base text-[#84cc72]">
+                    {template.icon}
+                  </span>
+                  {template.name}
+                </div>
+                <p className="mt-3 min-h-8 text-xs leading-relaxed text-[#71717a]">
+                  {template.description}
+                </p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs text-[#71717a]">
+                  ◌ {template.blocks} blocks
+                </div>
+              </button>
+            ))}
+          </section>
+          <div className="mt-4 text-center text-xs text-[#71717a]">
+            or{" "}
+            <button
+              onClick={() =>
+                startTemplate(
+                  "OpenPage blank draft",
+                  "Create a clean, flexible website draft from this brief.",
+                )
+              }
+              className="text-[#a1a1aa] underline decoration-white/20 underline-offset-4 hover:text-white"
+            >
+              start blank
+            </button>
+          </div>
+          <div className="mt-3 text-center text-xs text-[#52525b]">
+            Using Gemini for live generation.{" "}
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#84cc72] hover:underline"
+            >
+              Manage your Gemini API key
+            </a>{" "}
+            in Google AI Studio.
+          </div>
+          {projects.length > 0 && (
+            <div className="mt-10 text-center">
+              <button
+                onClick={() => setView("editor")}
+                className="text-xs text-[#71717a] underline decoration-white/20 underline-offset-4 hover:text-white"
+              >
+                Open {projects.length} saved OpenPage draft
+                {projects.length === 1 ? "" : "s"} in the editor
+              </button>
+            </div>
+          )}
+        </main>
       </div>
-    </header>
-    <main id="openpage-dashboard" className="mx-auto max-w-4xl px-5 pb-20 pt-16 sm:pt-20">
-      <div className="text-center"><h1 className="text-4xl font-semibold tracking-[-.04em] sm:text-5xl">What will you build?</h1><p className="mt-3 text-base text-[#71717a]">Describe your site and AI generates the layout, copy, and theme.</p></div>
-      <section className="mx-auto mt-10 rounded-[20px] border border-white/20 bg-[#101112] p-3 shadow-[0_0_70px_rgba(132,204,114,.05)]"><textarea aria-label="OpenPage brief" value={brief} onChange={(event) => setBrief(event.target.value)} placeholder="A landing page for a modern fitness app with dark theme…" className="min-h-28 w-full resize-none bg-transparent px-2 py-1 text-sm leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#52525b]" /><div className="flex flex-wrap items-center gap-2"><div className="flex flex-1 flex-wrap gap-2"><button onClick={() => setBrief('Create a SaaS landing page with a clear product promise, benefits, proof, and signup CTA.')} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white">SaaS landing page</button><button onClick={() => setBrief(templates[0].brief)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white">Portfolio site</button><button onClick={() => setBrief(templates[1].brief)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white">Restaurant website</button><button onClick={() => setBrief('Create a modern AI startup website with a bold hero, product benefits, trust signals, use cases, and a demo CTA.')} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white">AI startup</button><button disabled={busy || !sourceUrl.trim()} onClick={() => void scanWebsite()} className="rounded-full border border-[#84cc72]/50 px-3 py-1.5 text-xs text-[#a6e896] hover:bg-[#84cc72]/10 disabled:cursor-not-allowed disabled:opacity-40">Scrape / extract</button></div><button disabled={busy || !brief.trim()} onClick={() => void generate()} className="inline-flex items-center gap-2 rounded-xl bg-[#84cc72] px-5 py-3 text-sm font-semibold text-[#10200e] transition hover:bg-[#9ae68a] disabled:cursor-not-allowed disabled:opacity-40"><Wand2 className="h-4 w-4" />Generate</button></div></section>
-      <section className="mt-5 rounded-2xl border border-[#84cc72]/30 bg-[#0d120e] p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm font-semibold text-[#e4e4e7]">Import a site and redesign it</div><p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#8a8f8a]">Scan an approved public site, extract its brand signals and content map, then let Gemini prepare a cleaner OpenPage draft without losing its identity.</p></div><span className="rounded-full border border-[#84cc72]/30 px-2.5 py-1 text-[10px] uppercase tracking-wide text-[#84cc72]">Brand-preserving scan</span></div><div className="mt-4 flex flex-col gap-2 sm:flex-row"><input aria-label="Website URL to scan" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://example.com" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#101112] px-3 py-2.5 text-sm text-[#e4e4e7] outline-none focus:border-[#84cc72]" /><button disabled={busy || !sourceUrl.trim()} onClick={() => void scanWebsite()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#84cc72]/50 px-4 py-2.5 text-sm font-semibold text-[#a6e896] hover:bg-[#84cc72]/10 disabled:cursor-not-allowed disabled:opacity-40"><Sparkles className="h-4 w-4" />Scan website</button></div>{analysis && <div className="mt-5 space-y-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-white/10 bg-[#101112] p-3"><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Pages scanned</div><div className="mt-1 text-xl font-semibold">{analysis.pagesScanned}</div></div><div className="rounded-xl border border-white/10 bg-[#101112] p-3"><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Brand colors</div><div className="mt-2 flex gap-1.5">{analysis.brand.colors.slice(0, 6).map((color) => <span key={color} title={color} className="h-5 w-5 rounded-full border border-white/20" style={{ backgroundColor: color }} />)}</div></div><div className="rounded-xl border border-white/10 bg-[#101112] p-3"><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Layout signals</div><div className="mt-1 text-xs text-[#a1a1aa]">{[analysis.layout.hasHeader && 'header', analysis.layout.hasNavigation && 'navigation', analysis.layout.hasHero && 'hero', analysis.layout.hasFooter && 'footer'].filter(Boolean).join(' · ') || 'content structure detected'}</div></div></div><div className="grid gap-4 md:grid-cols-[1fr_1.2fr]"><div><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Detected brand</div><p className="mt-2 text-xs leading-relaxed text-[#a1a1aa]">{analysis.siteName} · accent {analysis.brand.accentColor} · {analysis.brand.fonts.join(', ') || 'font direction not detected'}</p><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} onClick={() => void createRedesign()} className="rounded-xl bg-[#84cc72] px-4 py-2.5 text-sm font-semibold text-[#10200e] hover:bg-[#9ae68a] disabled:opacity-40"><Wand2 className="mr-1 inline h-4 w-4" />Create cleaner redesign</button><button disabled={busy} onClick={() => void saveTemplate()} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-[#d4d4d8] hover:border-white/30">{templateSaved ? 'Template saved' : 'Save as reusable template'}</button></div></div><div><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Suggestions for improvement</div><ul className="mt-2 space-y-1 text-xs leading-relaxed text-[#a1a1aa]">{analysis.suggestions.slice(0, 4).map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}</ul></div></div><div className="grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[230px_minmax(0,1fr)]"><div><div className="text-[10px] uppercase tracking-wide text-[#71717a]">Inspect source pages</div><p className="mt-1 text-xs leading-relaxed text-[#71717a]">Choose a scanned page to review it before redesigning.</p><div className="mt-3 max-h-56 space-y-1 overflow-auto">{analysis.pages.map((page) => <button key={page.path} aria-selected={selectedScrapedPath === page.path} onClick={() => setSelectedScrapedPath(page.path)} className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition ${selectedScrapedPath === page.path ? 'border-[#84cc72]/60 bg-[#84cc72]/10 text-[#e4e4e7]' : 'border-white/10 text-[#a1a1aa] hover:border-white/25'}`}><span className="block truncate">{page.title}</span><span className="mt-1 block truncate text-[10px] text-[#71717a]">{page.path}</span></button>)}</div></div><div className="overflow-hidden rounded-xl border border-white/10 bg-[#101112]"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2"><span className="text-[10px] uppercase tracking-wide text-[#71717a]">Source preview · {analysis.pages.find((page) => page.path === selectedScrapedPath)?.path ?? analysis.pages[0]?.path ?? '/'}</span>{analysis.pages[0] && <a href={(analysis.pages.find((page) => page.path === selectedScrapedPath) ?? analysis.pages[0]).url} target="_blank" rel="noreferrer" className="text-[10px] text-[#a6e896] hover:underline">Open page ↗</a>}</div>{analysis.pages.find((page) => page.path === selectedScrapedPath) ? <iframe title="Scanned source page preview" src={(analysis.pages.find((page) => page.path === selectedScrapedPath) ?? analysis.pages[0]).url} sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin" referrerPolicy="no-referrer" className="h-[420px] w-full bg-white" /> : <div className="flex h-[420px] items-center justify-center px-5 text-center text-xs text-[#71717a]">No scanned page is available for preview.</div>}<p className="border-t border-white/10 px-3 py-2 text-[10px] leading-relaxed text-[#71717a]">If the source blocks embedded viewing, use Open page ↗ to inspect it in a normal browser tab.</p></div></div></div>}</section>
-      <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{templates.map((template) => <button key={template.name} onClick={() => startTemplate(template.name, template.brief)} className="group rounded-xl border border-white/15 bg-[#101112] p-4 text-left transition hover:-translate-y-0.5 hover:border-white/35 hover:bg-[#151718]"><div className="flex items-center gap-2 text-sm font-semibold"><span className="text-base text-[#84cc72]">{template.icon}</span>{template.name}</div><p className="mt-3 min-h-8 text-xs leading-relaxed text-[#71717a]">{template.description}</p><div className="mt-4 flex items-center gap-1.5 text-xs text-[#71717a]">◌ {template.blocks} blocks</div></button>)}</section>
-      <div className="mt-4 text-center text-xs text-[#71717a]">or <button onClick={() => startTemplate('OpenPage blank draft', 'Create a clean, flexible website draft from this brief.')} className="text-[#a1a1aa] underline decoration-white/20 underline-offset-4 hover:text-white">start blank</button></div>
-      <div className="mt-3 text-center text-xs text-[#52525b]">Using Gemini for live generation. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[#84cc72] hover:underline">Manage your Gemini API key</a> in Google AI Studio.</div>
-      {projects.length > 0 && <div className="mt-10 text-center"><button onClick={() => setView('editor')} className="text-xs text-[#71717a] underline decoration-white/20 underline-offset-4 hover:text-white">Open {projects.length} saved OpenPage draft{projects.length === 1 ? '' : 's'} in the editor</button></div>}
-    </main>
-  </div>;
+    );
 
-  if (view === 'settings') return <OpenPageSettings ai={ai} />;
+  if (view === "settings") return <OpenPageSettings ai={ai} />;
 
-  if (view === 'editor') return <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
-    <header className="border-b border-white/10 bg-[#0b0c0d]"><div className="mx-auto flex max-w-[1600px] items-center gap-7 px-5 py-3 text-sm"><a href="/openpage" className="mr-2 flex items-center gap-2 font-semibold tracking-tight"><span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />OpenPage</a><nav className="flex items-center gap-5 text-[#a1a1aa]" aria-label="OpenPage navigation"><a href="/openpage" className="flex items-center gap-2 pb-2 hover:text-white"><Grid2X2 className="h-3.5 w-3.5" />Dashboard</a><a href="/openpage/editor" className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"><PenLine className="h-3.5 w-3.5" />Editor</a><a href="/openpage/settings" className="flex items-center gap-2 pb-2 hover:text-white"><Settings2 className="h-3.5 w-3.5" />Settings</a></nav><a href="https://github.com/buildingopen/openpage" target="_blank" rel="noreferrer" className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"><Github className="h-3.5 w-3.5" />GitHub</a></div></header>
-    <div className="grid min-h-[calc(100vh-7rem)] xl:grid-cols-[280px_minmax(0,1fr)_300px]"><aside className="border-r border-white/10 bg-[#0d0e0f] p-4"><div className="mb-4 flex items-center gap-5 border-b border-white/10 text-xs uppercase tracking-[.16em]"><span className="border-b-2 border-[#84cc72] pb-3 text-white">Layers</span><span className="pb-3 text-[#71717a]">Components</span></div><div className="mb-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]">Layers {document.blocks.length}</div><div className="space-y-1">{document.blocks.map((item) => <button key={item.id} onClick={() => setSelectedBlock(item.id)} className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${item.id === currentBlock?.id ? 'bg-[#242127] text-white' : 'text-[#a1a1aa] hover:bg-[#19191b] hover:text-white'}`}><span>{item.label}</span><span className="text-[10px] uppercase tracking-wide text-[#71717a]">{item.type}</span></button>)}</div><button onClick={addBlock} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 px-3 py-2.5 text-xs text-[#a1a1aa] hover:border-[#84cc72] hover:text-[#84cc72]"><Plus className="h-3.5 w-3.5" />Add Component</button><div className="mt-8 border-t border-white/10 pt-5"><div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">Projects</div><div className="mb-2 text-xs text-[#71717a]">/ {document.name}</div><select aria-label="OpenPage project" value={selectedProject} onChange={(event) => setSelectedProject(event.target.value)} className={inputClass}><option value="">New OpenPage draft</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div className="mt-2 flex gap-2"><button className={buttonClass} disabled={!selectedProject} onClick={() => void loadSelected()}><ExternalLink className="h-3 w-3" />Load</button><button className={buttonClass} onClick={() => { setDocument(defaultOpenPageDocument()); setSelectedProject(''); setStatus('Starter loaded · unsaved'); }}><Plus className="h-3 w-3" />Add page</button></div></div><div className="mt-8 grid grid-cols-3 gap-1"><button aria-label="Desktop" onClick={() => setViewport('desktop')} className={`rounded-lg border p-2 ${viewport === 'desktop' ? 'border-[#84cc72] text-[#84cc72]' : 'border-white/10 text-[#71717a]'}`}><Monitor className="mx-auto h-4 w-4" /></button><button aria-label="Tablet" onClick={() => setViewport('tablet')} className={`rounded-lg border p-2 ${viewport === 'tablet' ? 'border-[#84cc72] text-[#84cc72]' : 'border-white/10 text-[#71717a]'}`}><Tablet className="mx-auto h-4 w-4" /></button><button aria-label="Mobile" onClick={() => setViewport('mobile')} className={`rounded-lg border p-2 ${viewport === 'mobile' ? 'border-[#84cc72] text-[#84cc72]' : 'border-white/10 text-[#71717a]'}`}><Smartphone className="mx-auto h-4 w-4" /></button></div><div className="mt-2 flex gap-1"><button className={`${buttonClass} flex-1 justify-center`} disabled>Undo</button><button className={`${buttonClass} flex-1 justify-center`} disabled>Redo</button></div></aside><main className="min-w-0 bg-[#111213] p-4 md:p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3"><div className="text-xs text-[#71717a]">Projects <span className="px-2">/</span> {document.name} <span className="px-2">/</span> Home</div><div className="flex flex-wrap gap-2"><button className={buttonClass} onClick={() => setShowJson((current) => !current)}>JSON</button><button className={buttonClass}>History</button><button className="inline-flex items-center gap-2 rounded-xl bg-[#84cc72] px-4 py-2 text-xs font-semibold text-[#10200e] hover:bg-[#9ae68a]" onClick={() => void exportHtml()}><Download className="h-3.5 w-3.5" />Export</button></div></div><div className="mb-4 flex items-center justify-center gap-5 text-xs text-[#71717a]"><span className={viewport === 'desktop' ? 'text-white' : ''}>Desktop</span><span className={viewport === 'tablet' ? 'text-white' : ''}>Tablet</span><span className={viewport === 'mobile' ? 'text-white' : ''}>Mobile</span><button onClick={() => setShowJson((current) => !current)} className="text-[#a1a1aa] hover:text-white">{showJson ? 'Hide JSON' : 'Preview'}</button></div>{showJson ? <pre className="mx-auto max-h-[calc(100vh-13rem)] max-w-4xl overflow-auto rounded-2xl border border-white/10 bg-[#0b0c0d] p-5 text-xs leading-relaxed text-[#a6e896]">{JSON.stringify(document, null, 2)}</pre> : <div className={`mx-auto overflow-hidden rounded-2xl border border-white/10 bg-[#19191b] shadow-2xl transition-all ${viewport === 'mobile' ? 'max-w-[390px]' : viewport === 'tablet' ? 'max-w-[760px]' : 'max-w-[1120px]'}`}><Canvas document={document} /></div>}<div className="mt-4 flex items-center justify-between text-xs text-[#71717a]"><span>{status}</span><span>{document.blocks.length} blocks · {document.schemaVersion}</span></div></main><aside className="border-l border-white/10 bg-[#0d0e0f] p-4"><div className="mb-5 flex items-center gap-6 border-b border-white/10 text-xs uppercase tracking-[.16em]"><span className="border-b-2 border-[#84cc72] pb-3 text-white">Properties</span><span className="pb-3 text-[#71717a]">Design</span></div>{currentBlock && <section><div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">Selected block</div><input aria-label="Selected block label" value={currentBlock.label} onChange={(event) => replaceBlock({ ...currentBlock, label: event.target.value })} className={`${inputClass} mb-3`} /><div className="grid grid-cols-2 gap-2"><button className={buttonClass} onClick={() => moveBlock(-1)}><ArrowUp className="h-3 w-3" />Up</button><button className={buttonClass} onClick={() => moveBlock(1)}><ArrowDown className="h-3 w-3" />Down</button></div>{['hero', 'content', 'features', 'cta'].includes(currentBlock.type) && <div className="mt-4 space-y-2">{['eyebrow', 'headline', 'heading', 'subheadline', 'body', 'cta', 'secondaryCta'].map((key) => <input key={key} aria-label={key} value={value(currentBlock, key)} placeholder={key} onChange={(event) => replaceBlock(setProp(currentBlock, key, event.target.value))} className={inputClass} />)}</div>}<button onClick={removeBlock} className="mt-4 inline-flex items-center gap-2 text-xs text-[#a1a1aa] hover:text-red-400"><X className="h-3.5 w-3.5" />Remove block</button></section>}<section className="mt-8 border-t border-white/10 pt-5"><div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">Version History <span className="ml-1">(0)</span></div><div className="rounded-xl border border-white/10 bg-[#101112] p-3 text-xs text-[#71717a]">Current latest<br /><span className="text-[#a1a1aa]">Current state</span><br />No history yet. Make some changes to see history.</div></section><section className="mt-5 border-t border-white/10 pt-5"><div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]"><Brain className="h-3.5 w-3.5 text-[#84cc72]" />Memory vault</div><div className="rounded-xl border border-white/10 bg-[#101112] p-3 text-xs leading-relaxed text-[#71717a]"><strong className="text-white">G-Brain / openpage/</strong><br />OpenPage-only briefs and draft summaries.</div><button className={`${buttonClass} mt-3 w-full justify-center`} onClick={() => void loadBrain(document.name)}><Play className="h-3 w-3" />Refresh context</button></section></aside></div>
-  </div>;
+  if (view === "editor")
+    return (
+      <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-[#08090a] text-[#f4f4f5] md:-mx-6">
+        <header className="border-b border-white/10 bg-[#0b0c0d]">
+          <div className="mx-auto flex max-w-[1600px] items-center gap-7 px-5 py-3 text-sm">
+            <a
+              href="/openpage"
+              className="mr-2 flex items-center gap-2 font-semibold tracking-tight"
+            >
+              <span className="h-3.5 w-3.5 rounded-full bg-[#84cc72] shadow-[0_0_18px_rgba(132,204,114,.35)]" />
+              OpenPage
+            </a>
+            <nav
+              className="flex items-center gap-5 text-[#a1a1aa]"
+              aria-label="OpenPage navigation"
+            >
+              <a
+                href="/openpage"
+                className="flex items-center gap-2 pb-2 hover:text-white"
+              >
+                <Grid2X2 className="h-3.5 w-3.5" />
+                Dashboard
+              </a>
+              <a
+                href="/openpage/editor"
+                className="flex items-center gap-2 border-b-2 border-[#84cc72] pb-2 text-[#f4f4f5]"
+              >
+                <PenLine className="h-3.5 w-3.5" />
+                Editor
+              </a>
+              <a
+                href="/openpage/settings"
+                className="flex items-center gap-2 pb-2 hover:text-white"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                Settings
+              </a>
+            </nav>
+            <a
+              href="https://github.com/buildingopen/openpage"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs text-[#a1a1aa] hover:border-white/30 hover:text-white"
+            >
+              <Github className="h-3.5 w-3.5" />
+              GitHub
+            </a>
+          </div>
+        </header>
+        <div className="grid min-h-[calc(100vh-7rem)] xl:grid-cols-[280px_minmax(0,1fr)_340px]">
+          <aside className="border-r border-white/10 bg-[#0d0e0f] p-4">
+            <div className="mb-4 flex items-center gap-5 border-b border-white/10 text-xs uppercase tracking-[.16em]">
+              <span className="border-b-2 border-[#84cc72] pb-3 text-white">
+                Layers
+              </span>
+              <span className="pb-3 text-[#71717a]">Components</span>
+            </div>
+            <div className="mb-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+              Layers {document.blocks.length}
+            </div>
+            <div className="space-y-1">
+              {document.blocks.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedBlock(item.id)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${item.id === currentBlock?.id ? "bg-[#242127] text-white" : "text-[#a1a1aa] hover:bg-[#19191b] hover:text-white"}`}
+                >
+                  <span>{item.label}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                    {item.type}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={addBlock}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 px-3 py-2.5 text-xs text-[#a1a1aa] hover:border-[#84cc72] hover:text-[#84cc72]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Component
+            </button>
+            <div className="mt-8 border-t border-white/10 pt-5">
+              <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+                Projects
+              </div>
+              <div className="mb-2 text-xs text-[#71717a]">
+                / {document.name}
+              </div>
+              <select
+                aria-label="OpenPage project"
+                value={selectedProject}
+                onChange={(event) => setSelectedProject(event.target.value)}
+                className={inputClass}
+              >
+                <option value="">New OpenPage draft</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 flex gap-2">
+                <button
+                  className={buttonClass}
+                  disabled={!selectedProject}
+                  onClick={() => void loadSelected()}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Load
+                </button>
+                <button
+                  className={buttonClass}
+                  onClick={() => {
+                    setDocument(defaultOpenPageDocument());
+                    setSelectedProject("");
+                    setStatus("Starter loaded · unsaved");
+                  }}
+                >
+                  <Plus className="h-3 w-3" />
+                  Add page
+                </button>
+              </div>
+            </div>
+            <div className="mt-8 grid grid-cols-3 gap-1">
+              <button
+                aria-label="Desktop"
+                onClick={() => setViewport("desktop")}
+                className={`rounded-lg border p-2 ${viewport === "desktop" ? "border-[#84cc72] text-[#84cc72]" : "border-white/10 text-[#71717a]"}`}
+              >
+                <Monitor className="mx-auto h-4 w-4" />
+              </button>
+              <button
+                aria-label="Tablet"
+                onClick={() => setViewport("tablet")}
+                className={`rounded-lg border p-2 ${viewport === "tablet" ? "border-[#84cc72] text-[#84cc72]" : "border-white/10 text-[#71717a]"}`}
+              >
+                <Tablet className="mx-auto h-4 w-4" />
+              </button>
+              <button
+                aria-label="Mobile"
+                onClick={() => setViewport("mobile")}
+                className={`rounded-lg border p-2 ${viewport === "mobile" ? "border-[#84cc72] text-[#84cc72]" : "border-white/10 text-[#71717a]"}`}
+              >
+                <Smartphone className="mx-auto h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-2 flex gap-1">
+              <button
+                className={`${buttonClass} flex-1 justify-center`}
+                disabled
+              >
+                Undo
+              </button>
+              <button
+                className={`${buttonClass} flex-1 justify-center`}
+                disabled
+              >
+                Redo
+              </button>
+            </div>
+          </aside>
+          <main className="min-w-0 bg-[#111213] p-4 md:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div className="text-xs text-[#71717a]">
+                Projects <span className="px-2">/</span> {document.name}{" "}
+                <span className="px-2">/</span> Home
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className={buttonClass}
+                  onClick={() => setShowJson((current) => !current)}
+                >
+                  JSON
+                </button>
+                <button className={buttonClass}>History</button>
+                <button
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#84cc72] px-4 py-2 text-xs font-semibold text-[#10200e] hover:bg-[#9ae68a]"
+                  onClick={() => void exportHtml()}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                </button>
+              </div>
+            </div>
+            <div className="mb-4 flex items-center justify-center gap-5 text-xs text-[#71717a]">
+              <span className={viewport === "desktop" ? "text-white" : ""}>
+                Desktop
+              </span>
+              <span className={viewport === "tablet" ? "text-white" : ""}>
+                Tablet
+              </span>
+              <span className={viewport === "mobile" ? "text-white" : ""}>
+                Mobile
+              </span>
+              <button
+                onClick={() => setShowJson((current) => !current)}
+                className="text-[#a1a1aa] hover:text-white"
+              >
+                {showJson ? "Hide JSON" : "Preview"}
+              </button>
+            </div>
+            {showJson ? (
+              <pre className="mx-auto max-h-[calc(100vh-13rem)] max-w-4xl overflow-auto rounded-2xl border border-white/10 bg-[#0b0c0d] p-5 text-xs leading-relaxed text-[#a6e896]">
+                {JSON.stringify(document, null, 2)}
+              </pre>
+            ) : (
+              <div
+                className={`mx-auto overflow-hidden rounded-2xl border border-white/10 bg-[#19191b] shadow-2xl transition-all ${viewport === "mobile" ? "max-w-[390px]" : viewport === "tablet" ? "max-w-[760px]" : "max-w-[1120px]"}`}
+              >
+                <Canvas document={document} />
+              </div>
+            )}
+            <div className="mt-4 flex items-center justify-between text-xs text-[#71717a]">
+              <span>{status}</span>
+              <span>
+                {document.blocks.length} blocks · {document.schemaVersion}
+              </span>
+            </div>
+          </main>
+          <aside className="border-l border-white/10 bg-[#0d0e0f] p-4">
+            <section
+              aria-label="OpenPage AI copilot"
+              className="mb-6 rounded-xl border border-[#84cc72]/35 bg-[#101512] p-3"
+            >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#a6e896]">
+                  <Sparkles className="h-3.5 w-3.5" /> AI copilot
+                </div>
+                <span className="text-[10px] text-[#71717a]">
+                  {ai?.configured ? "Gemini live" : "AI fallback"}
+                </span>
+              </div>
+              <div
+                className="max-h-52 space-y-2 overflow-auto pr-1"
+                aria-live="polite"
+              >
+                {copilotMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "ml-4 bg-[#242127] text-[#e4e4e7]" : "mr-2 border border-white/10 bg-[#0b0c0d] text-[#a1a1aa]"}`}
+                  >
+                    <div className="mb-1 text-[9px] uppercase tracking-[.14em] text-[#71717a]">
+                      {message.role === "user" ? "You" : "OpenPage AI"}
+                    </div>
+                    {message.content}
+                  </div>
+                ))}
+              </div>
+              <form
+                className="mt-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void askCopilot();
+                }}
+              >
+                <textarea
+                  aria-label="Ask OpenPage AI to edit this page"
+                  value={copilotInput}
+                  onChange={(event) => setCopilotInput(event.target.value)}
+                  placeholder="Make the hero clearer, add a Barcelona itinerary section, or redo this version…"
+                  rows={3}
+                  className="w-full resize-y rounded-lg border border-white/15 bg-[#0b0c0d] px-3 py-2 text-xs leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#71717a] focus:border-[#84cc72]"
+                />
+                <button
+                  type="submit"
+                  disabled={busy || !copilotInput.trim()}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#84cc72] px-3 py-2 text-xs font-semibold text-[#10200e] hover:bg-[#9ae68a] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Apply to live preview
+                </button>
+              </form>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void askCopilot("Redo this page as a stronger, cleaner version while preserving the current brand and content.")}
+                  className="rounded-lg border border-white/10 px-2 py-2 text-[10px] uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                >
+                  Redo version
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void askCopilot("Improve the conversion flow and calls to action without changing the brand identity.")}
+                  className="rounded-lg border border-white/10 px-2 py-2 text-[10px] uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                >
+                  Improve CTA
+                </button>
+              </div>
+            </section>
+            <div className="mb-5 flex items-center gap-6 border-b border-white/10 text-xs uppercase tracking-[.16em]">
+              <span className="border-b-2 border-[#84cc72] pb-3 text-white">
+                Properties
+              </span>
+              <span className="pb-3 text-[#71717a]">Design</span>
+            </div>
+            {currentBlock && (
+              <section>
+                <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+                  Selected block
+                </div>
+                <input
+                  aria-label="Selected block label"
+                  value={currentBlock.label}
+                  onChange={(event) =>
+                    replaceBlock({ ...currentBlock, label: event.target.value })
+                  }
+                  className={`${inputClass} mb-3`}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button className={buttonClass} onClick={() => moveBlock(-1)}>
+                    <ArrowUp className="h-3 w-3" />
+                    Up
+                  </button>
+                  <button className={buttonClass} onClick={() => moveBlock(1)}>
+                    <ArrowDown className="h-3 w-3" />
+                    Down
+                  </button>
+                </div>
+                {["hero", "content", "features", "cta"].includes(
+                  currentBlock.type,
+                ) && (
+                  <div className="mt-4 space-y-2">
+                    {[
+                      "eyebrow",
+                      "headline",
+                      "heading",
+                      "subheadline",
+                      "body",
+                      "cta",
+                      "secondaryCta",
+                    ].map((key) => (
+                      <input
+                        key={key}
+                        aria-label={key}
+                        value={value(currentBlock, key)}
+                        placeholder={key}
+                        onChange={(event) =>
+                          replaceBlock(
+                            setProp(currentBlock, key, event.target.value),
+                          )
+                        }
+                        className={inputClass}
+                      />
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={removeBlock}
+                  className="mt-4 inline-flex items-center gap-2 text-xs text-[#a1a1aa] hover:text-red-400"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Remove block
+                </button>
+              </section>
+            )}
+            <section className="mt-8 border-t border-white/10 pt-5">
+              <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+                Version History <span className="ml-1">(0)</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#101112] p-3 text-xs text-[#71717a]">
+                Current latest
+                <br />
+                <span className="text-[#a1a1aa]">Current state</span>
+                <br />
+                No history yet. Make some changes to see history.
+              </div>
+            </section>
+            <section className="mt-5 border-t border-white/10 pt-5">
+              <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+                <Brain className="h-3.5 w-3.5 text-[#84cc72]" />
+                Memory vault
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#101112] p-3 text-xs leading-relaxed text-[#71717a]">
+                <strong className="text-white">G-Brain / openpage/</strong>
+                <br />
+                OpenPage-only briefs and draft summaries.
+              </div>
+              <button
+                className={`${buttonClass} mt-3 w-full justify-center`}
+                onClick={() => void loadBrain(document.name)}
+              >
+                <Play className="h-3 w-3" />
+                Refresh context
+              </button>
+            </section>
+          </aside>
+        </div>
+      </div>
+    );
 
-  return <div className="space-y-5">
-    <header className="flex flex-col justify-between gap-4 border-b border-os-border pb-5 md:flex-row md:items-end"><div><div className="mb-2 font-mono text-[10px] uppercase tracking-[.2em] text-os-accent">Creative / structured web</div><h1 className="font-display text-3xl uppercase tracking-[.06em] text-os-text md:text-4xl">OpenPage Lab</h1><p className="mt-2 max-w-2xl text-sm text-os-dim">A separate JSON-first website workspace for agents, previews, and memory. The existing Website Builder remains unchanged.</p></div><div className="flex flex-wrap items-center gap-2"><button onClick={() => setView('dashboard')} className={buttonClass}><Grid2X2 className="h-3 w-3" /> Dashboard</button><span className="rounded-full border border-os-ok/40 px-3 py-1 font-mono text-[10px] uppercase text-os-ok">OpenPage JSON</span><span className="rounded-full border border-os-accent/40 px-3 py-1 font-mono text-[10px] uppercase text-os-accent">G-Brain · openpage/</span><span className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase ${ai?.configured ? 'border-os-ok/40 text-os-ok' : 'border-os-border text-os-dim'}`}>{ai?.configured ? `Gemini · ${ai.model}` : 'Gemini key missing'}</span></div></header>
-    <div className="grid gap-5 xl:grid-cols-[270px_minmax(0,1fr)_290px]">
-      <aside className="space-y-4"><section className="rounded-lg-t border border-os-border bg-os-surface p-4"><div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim"><Layers3 className="h-4 w-4 text-os-accent" /> Separate workspace</div><select aria-label="OpenPage project" value={selectedProject} onChange={(event) => setSelectedProject(event.target.value)} className={inputClass}><option value="">New OpenPage draft</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select><div className="mt-3 flex gap-2"><button className={buttonClass} disabled={!selectedProject} onClick={() => void loadSelected()}><ExternalLink className="h-3 w-3" /> Load</button><button className={buttonClass} onClick={() => { setDocument(defaultOpenPageDocument()); setSelectedProject(''); setStatus('Starter loaded · unsaved'); }}><Plus className="h-3 w-3" /> New</button></div><p className="mt-4 text-xs leading-relaxed text-os-dim">Projects are stored with workspace <code className="text-os-accent">openpage</code>, separate from Website Builder and WordPress imports.</p></section><section className="rounded-lg-t border border-os-border bg-os-surface p-4"><div className="mb-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">Brief for the agents</div><textarea value={brief} onChange={(event) => setBrief(event.target.value)} className={`${inputClass} min-h-32 resize-y`} /><button className={`${buttonClass} mt-3 w-full justify-center border-os-accent text-os-accent`} disabled={busy || !brief.trim()} onClick={() => void generate()}><Wand2 className="h-3 w-3" /> Generate with live AI</button><button className={`${buttonClass} mt-2 w-full justify-center`} onClick={() => { setDocument(defaultOpenPageDocument(document.name)); setStatus('Barcelona starter loaded · unsaved'); }}>Load starter</button></section></aside>
-      <main className="min-w-0 space-y-4"><div className="flex flex-wrap items-center justify-between gap-3 rounded-lg-t border border-os-border bg-os-surface p-3"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-os-accent" /><span className="font-mono text-[10px] uppercase tracking-[.14em] text-os-dim">Live structured preview</span></div><div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={busy} onClick={() => void save()}><Save className="h-3 w-3" /> Save to vault</button><button className={buttonClass} onClick={() => void exportHtml()}><Download className="h-3 w-3" /> Export HTML</button></div></div><div className="overflow-hidden rounded-lg-t border border-os-border shadow-2xl"><Canvas document={document} /></div><div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[.1em] text-os-dim"><span>{status}</span><span>{document.blocks.length} blocks · {document.schemaVersion}</span></div></main>
-      <aside className="space-y-4"><section className="rounded-lg-t border border-os-border bg-os-surface p-4"><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim"><Layers3 className="h-4 w-4 text-os-accent" /> Blocks</div><button aria-label="Add block" className="text-os-accent" onClick={addBlock}><Plus className="h-4 w-4" /></button></div><div className="space-y-1">{document.blocks.map((item, index) => <button key={item.id} onClick={() => setSelectedBlock(item.id)} className={`flex w-full items-center justify-between border px-2 py-2 text-left text-xs transition ${item.id === currentBlock?.id ? 'border-os-accent bg-os-surface2 text-os-text' : 'border-transparent text-os-dim hover:border-os-border'}`}><span><span className="mr-2 text-[10px] text-os-accent">{String(index + 1).padStart(2, '0')}</span>{item.label}</span><span className="font-mono text-[9px] uppercase opacity-60">{item.type}</span></button>)}</div></section>{currentBlock && <section className="rounded-lg-t border border-os-border bg-os-surface p-4"><div className="mb-3 flex items-center justify-between"><div className="font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">Edit block</div><button onClick={removeBlock} aria-label="Remove block" className="text-os-dim hover:text-red-400"><X className="h-4 w-4" /></button></div><input value={currentBlock.label} onChange={(event) => replaceBlock({ ...currentBlock, label: event.target.value })} className={`${inputClass} mb-2`} /><div className="grid grid-cols-2 gap-2"><button className={buttonClass} onClick={() => moveBlock(-1)}><ArrowUp className="h-3 w-3" /> Up</button><button className={buttonClass} onClick={() => moveBlock(1)}><ArrowDown className="h-3 w-3" /> Down</button></div>{['hero', 'content', 'features', 'cta'].includes(currentBlock.type) && <div className="mt-3 space-y-2">{['eyebrow', 'headline', 'heading', 'subheadline', 'body', 'cta', 'secondaryCta'].map((key) => <input key={key} value={value(currentBlock, key)} placeholder={key} onChange={(event) => replaceBlock(setProp(currentBlock, key, event.target.value))} className={inputClass} />)}</div>}</section>}<section className="rounded-lg-t border border-os-border bg-os-surface p-4"><div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim"><Brain className="h-4 w-4 text-os-accent" /> Memory vault</div><div className="rounded border border-os-border bg-os-surface2 p-3 text-xs leading-relaxed text-os-dim"><strong className="text-os-text">G-Brain / openpage/</strong><br />Only OpenPage briefs and draft summaries are captured here. It does not mix with WordPress or the existing Website Builder.</div><button className={`${buttonClass} mt-3 w-full justify-center`} onClick={() => void loadBrain(document.name)}><Play className="h-3 w-3" /> Refresh context</button>{brain.length > 0 && <div className="mt-3 space-y-2">{brain.slice(0, 3).map((item) => <div key={`${item.title}-${item.snippet}`} className="border-l border-os-accent pl-2 text-[11px] text-os-dim"><div className="text-os-text">{item.title}</div>{item.snippet}</div>)}</div>}</section></aside>
+  return (
+    <div className="space-y-5">
+      <header className="flex flex-col justify-between gap-4 border-b border-os-border pb-5 md:flex-row md:items-end">
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-[.2em] text-os-accent">
+            Creative / structured web
+          </div>
+          <h1 className="font-display text-3xl uppercase tracking-[.06em] text-os-text md:text-4xl">
+            OpenPage Lab
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-os-dim">
+            A separate JSON-first website workspace for agents, previews, and
+            memory. The existing Website Builder remains unchanged.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => setView("dashboard")} className={buttonClass}>
+            <Grid2X2 className="h-3 w-3" /> Dashboard
+          </button>
+          <span className="rounded-full border border-os-ok/40 px-3 py-1 font-mono text-[10px] uppercase text-os-ok">
+            OpenPage JSON
+          </span>
+          <span className="rounded-full border border-os-accent/40 px-3 py-1 font-mono text-[10px] uppercase text-os-accent">
+            G-Brain · openpage/
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 font-mono text-[10px] uppercase ${ai?.configured ? "border-os-ok/40 text-os-ok" : "border-os-border text-os-dim"}`}
+          >
+            {ai?.configured ? `Gemini · ${ai.model}` : "Gemini key missing"}
+          </span>
+        </div>
+      </header>
+      <div className="grid gap-5 xl:grid-cols-[270px_minmax(0,1fr)_290px]">
+        <aside className="space-y-4">
+          <section className="rounded-lg-t border border-os-border bg-os-surface p-4">
+            <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">
+              <Layers3 className="h-4 w-4 text-os-accent" /> Separate workspace
+            </div>
+            <select
+              aria-label="OpenPage project"
+              value={selectedProject}
+              onChange={(event) => setSelectedProject(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">New OpenPage draft</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <div className="mt-3 flex gap-2">
+              <button
+                className={buttonClass}
+                disabled={!selectedProject}
+                onClick={() => void loadSelected()}
+              >
+                <ExternalLink className="h-3 w-3" /> Load
+              </button>
+              <button
+                className={buttonClass}
+                onClick={() => {
+                  setDocument(defaultOpenPageDocument());
+                  setSelectedProject("");
+                  setStatus("Starter loaded · unsaved");
+                }}
+              >
+                <Plus className="h-3 w-3" /> New
+              </button>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-os-dim">
+              Projects are stored with workspace{" "}
+              <code className="text-os-accent">openpage</code>, separate from
+              Website Builder and WordPress imports.
+            </p>
+          </section>
+          <section className="rounded-lg-t border border-os-border bg-os-surface p-4">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">
+              Brief for the agents
+            </div>
+            <textarea
+              value={brief}
+              onChange={(event) => setBrief(event.target.value)}
+              className={`${inputClass} min-h-32 resize-y`}
+            />
+            <button
+              className={`${buttonClass} mt-3 w-full justify-center border-os-accent text-os-accent`}
+              disabled={busy || !brief.trim()}
+              onClick={() => void generate()}
+            >
+              <Wand2 className="h-3 w-3" /> Generate with live AI
+            </button>
+            <button
+              className={`${buttonClass} mt-2 w-full justify-center`}
+              onClick={() => {
+                setDocument(defaultOpenPageDocument(document.name));
+                setStatus("Barcelona starter loaded · unsaved");
+              }}
+            >
+              Load starter
+            </button>
+          </section>
+        </aside>
+        <main className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg-t border border-os-border bg-os-surface p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-os-accent" />
+              <span className="font-mono text-[10px] uppercase tracking-[.14em] text-os-dim">
+                Live structured preview
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={buttonClass}
+                disabled={busy}
+                onClick={() => void save()}
+              >
+                <Save className="h-3 w-3" /> Save to vault
+              </button>
+              <button className={buttonClass} onClick={() => void exportHtml()}>
+                <Download className="h-3 w-3" /> Export HTML
+              </button>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg-t border border-os-border shadow-2xl">
+            <Canvas document={document} />
+          </div>
+          <div className="flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-[.1em] text-os-dim">
+            <span>{status}</span>
+            <span>
+              {document.blocks.length} blocks · {document.schemaVersion}
+            </span>
+          </div>
+        </main>
+        <aside className="space-y-4">
+          <section className="rounded-lg-t border border-os-border bg-os-surface p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">
+                <Layers3 className="h-4 w-4 text-os-accent" /> Blocks
+              </div>
+              <button
+                aria-label="Add block"
+                className="text-os-accent"
+                onClick={addBlock}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-1">
+              {document.blocks.map((item, index) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedBlock(item.id)}
+                  className={`flex w-full items-center justify-between border px-2 py-2 text-left text-xs transition ${item.id === currentBlock?.id ? "border-os-accent bg-os-surface2 text-os-text" : "border-transparent text-os-dim hover:border-os-border"}`}
+                >
+                  <span>
+                    <span className="mr-2 text-[10px] text-os-accent">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {item.label}
+                  </span>
+                  <span className="font-mono text-[9px] uppercase opacity-60">
+                    {item.type}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+          {currentBlock && (
+            <section className="rounded-lg-t border border-os-border bg-os-surface p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">
+                  Edit block
+                </div>
+                <button
+                  onClick={removeBlock}
+                  aria-label="Remove block"
+                  className="text-os-dim hover:text-red-400"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <input
+                value={currentBlock.label}
+                onChange={(event) =>
+                  replaceBlock({ ...currentBlock, label: event.target.value })
+                }
+                className={`${inputClass} mb-2`}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button className={buttonClass} onClick={() => moveBlock(-1)}>
+                  <ArrowUp className="h-3 w-3" /> Up
+                </button>
+                <button className={buttonClass} onClick={() => moveBlock(1)}>
+                  <ArrowDown className="h-3 w-3" /> Down
+                </button>
+              </div>
+              {["hero", "content", "features", "cta"].includes(
+                currentBlock.type,
+              ) && (
+                <div className="mt-3 space-y-2">
+                  {[
+                    "eyebrow",
+                    "headline",
+                    "heading",
+                    "subheadline",
+                    "body",
+                    "cta",
+                    "secondaryCta",
+                  ].map((key) => (
+                    <input
+                      key={key}
+                      value={value(currentBlock, key)}
+                      placeholder={key}
+                      onChange={(event) =>
+                        replaceBlock(
+                          setProp(currentBlock, key, event.target.value),
+                        )
+                      }
+                      className={inputClass}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+          <section className="rounded-lg-t border border-os-border bg-os-surface p-4">
+            <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.16em] text-os-dim">
+              <Brain className="h-4 w-4 text-os-accent" /> Memory vault
+            </div>
+            <div className="rounded border border-os-border bg-os-surface2 p-3 text-xs leading-relaxed text-os-dim">
+              <strong className="text-os-text">G-Brain / openpage/</strong>
+              <br />
+              Only OpenPage briefs and draft summaries are captured here. It
+              does not mix with WordPress or the existing Website Builder.
+            </div>
+            <button
+              className={`${buttonClass} mt-3 w-full justify-center`}
+              onClick={() => void loadBrain(document.name)}
+            >
+              <Play className="h-3 w-3" /> Refresh context
+            </button>
+            {brain.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {brain.slice(0, 3).map((item) => (
+                  <div
+                    key={`${item.title}-${item.snippet}`}
+                    className="border-l border-os-accent pl-2 text-[11px] text-os-dim"
+                  >
+                    <div className="text-os-text">{item.title}</div>
+                    {item.snippet}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
     </div>
-  </div>;
+  );
 }
