@@ -82,6 +82,10 @@ function tags(html: string, tag: string): string[] {
 
 function unique<T>(values: T[]): T[] { return [...new Set(values)]; }
 
+function usefulFonts(values: string[]): string[] {
+  return unique(values.map((font) => font.trim().replace(/["']/g, '')).filter((font) => font && !['inherit', 'initial', 'unset', 'revert', 'monospace,monospace'].includes(font.toLowerCase()))).slice(0, 8);
+}
+
 function isPrivateIp(address: string): boolean {
   if (net.isIPv4(address)) {
     const parts = address.split('.').map(Number);
@@ -168,7 +172,7 @@ function extractPage(url: URL, html: string, bytes: number): { page: ScrapedPage
   const navLabels = unique(tagBlocks(html, 'nav').flatMap((nav) => tagBlocks(nav, 'a').map(cleanText).filter(Boolean))).slice(0, 12);
   const styles = [...tagBlocks(html, 'style'), ...tags(html, 'body').map((tag) => attr(tag, 'style'))].join('\n');
   const colors = extractColors(styles);
-  const fonts = unique([...styles.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1].trim().replace(/["']/g, '')).filter((font) => font && !['inherit', 'initial', 'unset', 'revert'].includes(font.toLowerCase()) && font.toLowerCase() !== 'monospace,monospace')).slice(0, 8);
+  const fonts = usefulFonts([...styles.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1]));
   const logoTag = tags(html, 'img').find((tag) => /logo|brand|mark/i.test(`${attr(tag, 'alt')} ${attr(tag, 'class')} ${attr(tag, 'id')}`));
   const logoImage = images.find((image) => /logo|brand|mark/i.test(image));
   const logoUrl = logoTag ? new URL(attr(logoTag, 'src'), url).href : logoImage ?? '';
@@ -256,7 +260,7 @@ export async function scrapeWebsite(rawUrl: string, requestedMaxPages = 8): Prom
           const cssUrl = await safeUrl(stylesheet, url);
           const css = await fetchText(cssUrl, MAX_CSS_BYTES);
           colors.push(...extractColors(css.text));
-          fonts.push(...[...css.text.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1].trim().replace(/["']/g, '')).filter(Boolean));
+          fonts.push(...usefulFonts([...css.text.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1])));
         } catch {
           // A blocked or third-party stylesheet should not block the page scan.
         }
