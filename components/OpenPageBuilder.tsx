@@ -9,6 +9,9 @@ type Project = { id: string; name: string; prompt?: string; updatedAt?: string; 
 type BrainResult = { title: string; snippet: string; source?: string };
 type AiStatus = { configured: boolean; provider: string; model: string; detail: string };
 type OpenPageView = 'dashboard' | 'editor' | 'settings';
+type OpenPagePreviewCache = { document: OpenPageDocument; brief: string; analysis?: ScrapedSiteAnalysis; savedAt: string };
+
+const OPENPAGE_PREVIEW_CACHE_KEY = 'business-os.openpage.latest-preview';
 
 const inputClass = 'w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent';
 const buttonClass = 'inline-flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-os-text transition hover:border-os-accent hover:text-os-accent disabled:cursor-not-allowed disabled:opacity-40';
@@ -79,7 +82,24 @@ export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: O
   const [templateSaved, setTemplateSaved] = useState(false);
 
   const currentBlock = useMemo(() => document.blocks.find((item) => item.id === selectedBlock) ?? document.blocks[0], [document.blocks, selectedBlock]);
-  useEffect(() => { void loadProjects(); void loadBrain('OpenPage'); }, []);
+  useEffect(() => {
+    void loadProjects();
+    void loadBrain('OpenPage');
+    if (initialView !== 'editor') return;
+    try {
+      const cached = globalThis.localStorage.getItem(OPENPAGE_PREVIEW_CACHE_KEY);
+      if (!cached) return;
+      const preview = JSON.parse(cached) as Partial<OpenPagePreviewCache>;
+      if (preview.document && Array.isArray(preview.document.blocks)) {
+        setDocument(preview.document);
+        setBrief(preview.brief ?? '');
+        setAnalysis(preview.analysis ?? null);
+        setStatus(`Loaded latest generated preview · ${preview.document.name}`);
+      }
+    } catch {
+      globalThis.localStorage.removeItem(OPENPAGE_PREVIEW_CACHE_KEY);
+    }
+  }, [initialView]);
 
   async function loadProjects() { const response = await fetch('/api/openpage'); if (response.ok) { const payload = await response.json(); setProjects(payload.projects ?? []); setAi(payload.ai ?? null); } }
   async function loadBrain(query: string) { const response = await fetch(`/api/openpage?action=context&query=${encodeURIComponent(query)}`); if (response.ok) setBrain((await response.json()).results ?? []); }
@@ -95,6 +115,7 @@ export function OpenPageBuilder({ initialView = 'dashboard' }: { initialView?: O
       const payload = await response.json().catch(() => null) as { ok?: boolean; document?: OpenPageDocument; source?: string; warning?: string; error?: string } | null;
       if (payload?.ok && payload.document) {
         setDocument(payload.document);
+        try { globalThis.localStorage.setItem(OPENPAGE_PREVIEW_CACHE_KEY, JSON.stringify({ document: payload.document, brief: nextBrief, analysis: analysis ?? undefined, savedAt: new Date().toISOString() } satisfies OpenPagePreviewCache)); } catch { /* Preview still works in the current view if storage is unavailable. */ }
         setStatus(payload.source === 'brand-preserving-fallback' ? `Redesign preview ready · ${payload.warning ?? 'built from the scanned brand and page content'}` : analysis ? 'Redesign preview ready · brand and source content preserved · review before saving' : 'Live AI preview ready · review before saving');
         setView('editor');
       } else setStatus(`Redesign unavailable: ${payload?.error ?? 'the server returned no usable page'} · scan remains available`);
