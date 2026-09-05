@@ -32,11 +32,13 @@ function templateDocument(analysis: ScrapedSiteAnalysis): OpenPageDocument {
   const first = analysis.pages[0];
   const pageHeadings = analysis.pages.flatMap((page) => page.headings).filter(Boolean).slice(0, 3);
   const colors = analysis.brand.colors;
+  const displayFont = analysis.brand.fonts.find((font) => !/sans-serif|system-ui|apple-system|inherit|monospace/i.test(font)) || starter.theme.displayFont;
+  const bodyFont = analysis.brand.fonts.find((font) => /sans|system|arial|roboto|helvetica/i.test(font)) || starter.theme.bodyFont;
   return normalizeOpenPageDocument({
     ...starter,
     name: `${analysis.siteName} · Imported style template`,
     description: `A reusable OpenPage template extracted from ${analysis.sourceUrl}.`,
-    theme: { ...starter.theme, background: analysis.brand.backgroundColor, text: analysis.brand.textColor, accent: analysis.brand.accentColor, displayFont: analysis.brand.fonts[0] || starter.theme.displayFont, bodyFont: analysis.brand.fonts[1] || starter.theme.bodyFont },
+    theme: { ...starter.theme, background: analysis.brand.backgroundColor, text: analysis.brand.textColor, accent: analysis.brand.accentColor, displayFont, bodyFont },
     metadata: { purpose: 'Preserve the source brand while improving clarity, hierarchy, and conversion.', audience: 'Visitors to the imported website.', source: `OpenPage website scan · ${analysis.sourceUrl}` },
     blocks: [
       { id: 'imported-nav', type: 'navbar', label: 'Imported navigation', props: { brand: analysis.siteName, links: analysis.layout.navLabels.length ? analysis.layout.navLabels : ['Home', 'About', 'Contact'] } },

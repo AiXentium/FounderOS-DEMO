@@ -168,16 +168,17 @@ function extractPage(url: URL, html: string, bytes: number): { page: ScrapedPage
   const navLabels = unique(tagBlocks(html, 'nav').flatMap((nav) => tagBlocks(nav, 'a').map(cleanText).filter(Boolean))).slice(0, 12);
   const styles = [...tagBlocks(html, 'style'), ...tags(html, 'body').map((tag) => attr(tag, 'style'))].join('\n');
   const colors = extractColors(styles);
-  const fonts = unique([...styles.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1].trim().replace(/["']/g, '')).filter(Boolean)).slice(0, 8);
+  const fonts = unique([...styles.matchAll(/font-family\s*:\s*([^;}{]+)/gi)].map((match) => match[1].trim().replace(/["']/g, '')).filter((font) => font && !['inherit', 'initial', 'unset', 'revert'].includes(font.toLowerCase()) && font.toLowerCase() !== 'monospace,monospace')).slice(0, 8);
   const logoTag = tags(html, 'img').find((tag) => /logo|brand|mark/i.test(`${attr(tag, 'alt')} ${attr(tag, 'class')} ${attr(tag, 'id')}`));
-  const logoUrl = logoTag ? new URL(attr(logoTag, 'src'), url).href : '';
+  const logoImage = images.find((image) => /logo|brand|mark/i.test(image));
+  const logoUrl = logoTag ? new URL(attr(logoTag, 'src'), url).href : logoImage ?? '';
   const ogImage = html.match(/<meta\b[^>]*property=["']og:image["'][^>]*content=["']([^"']*)["']/i)?.[1]?.trim() ?? '';
   const ogImageUrl = ogImage ? new URL(ogImage, url).href : '';
   const sectionCount = (html.match(/<section\b/gi) ?? []).length;
   const layout = {
     hasHeader: /<header\b/i.test(html),
     hasNavigation: /<nav\b/i.test(html),
-    hasHero: /hero|banner|masthead/i.test(html.slice(0, 18000)),
+    hasHero: /hero|banner|masthead/i.test(html.slice(0, 18000)) || /<h1\b/i.test(html),
     hasMain: /<main\b/i.test(html),
     hasFooter: /<footer\b/i.test(html),
     sectionCount,
