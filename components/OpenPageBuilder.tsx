@@ -117,7 +117,7 @@ const OPENPAGE_SCAN_CACHE_KEY = "business-os.openpage.scan-workspace";
 const inputClass =
   "w-full rounded-sm-t border border-os-border bg-os-surface2 px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent";
 const buttonClass =
-  "inline-flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-os-text transition hover:border-os-accent hover:text-os-accent disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex items-center gap-2 rounded-sm-t border border-os-border px-3 py-2 font-mono text-xs uppercase tracking-[.1em] text-os-text transition hover:border-os-accent hover:text-os-accent disabled:cursor-not-allowed disabled:opacity-40";
 
 function value(block: OpenPageBlock, key: string, fallback = "") {
   return typeof block.props[key] === "string"
@@ -578,7 +578,7 @@ function SiteTree({
                   type="button"
                   aria-label={`${expanded ? "Collapse" : "Expand"} ${node.title}`}
                   onClick={() => onToggle(node.id)}
-                  className="rounded p-1 text-[#71717a] hover:text-white"
+                  className="rounded p-1 text-xs text-[#a1a1aa] hover:text-white"
                 >
                   {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                 </button>
@@ -586,13 +586,13 @@ function SiteTree({
               <button
                 type="button"
                 onClick={() => (hasChildren ? onToggle(node.id) : onSelect(node))}
-                className={`min-w-0 flex-1 truncate rounded-lg px-2 py-1.5 text-left text-xs ${node.kind === "folder" ? "font-semibold text-[#e4e4e7]" : "text-[#a1a1aa] hover:bg-[#19191b] hover:text-white"}`}
+                className={`min-w-0 flex-1 truncate rounded-lg px-2 py-2 text-left text-sm ${node.kind === "folder" ? "font-semibold text-[#f4f4f5]" : "text-[#d4d4d8] hover:bg-[#19191b] hover:text-white"}`}
                 title={node.url ?? node.title}
               >
-                <span className="mr-1.5 text-[10px] text-[#84cc72]">{node.kind === "folder" ? "▾" : node.kind === "post" ? "◌" : "□"}</span>
+                <span className="mr-1.5 text-xs text-[#84cc72]">{node.kind === "folder" ? "▾" : node.kind === "post" ? "◌" : "□"}</span>
                 {node.title}
               </button>
-              {node.kind !== "folder" && <span className="text-[9px] uppercase text-[#52525b]">{node.status}</span>}
+              {node.kind !== "folder" && <span className="text-[10px] uppercase text-[#71717a]">{node.status}</span>}
             </div>
             {hasChildren && expanded && (
               <div className="ml-3 border-l border-white/10 pl-2">
@@ -1730,7 +1730,7 @@ export function OpenPageBuilder({
               </span>
               <span className="pb-3 text-[#71717a]">Components</span>
             </div>
-            <div className="mb-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+            <div className="mb-2 text-xs uppercase tracking-[.16em] text-[#71717a]">
               Layers {document.blocks.length}
             </div>
             <div className="space-y-1">
@@ -1741,7 +1741,7 @@ export function OpenPageBuilder({
                   className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition ${item.id === currentBlock?.id ? "bg-[#242127] text-white" : "text-[#a1a1aa] hover:bg-[#19191b] hover:text-white"}`}
                 >
                   <span>{item.label}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-[#71717a]">
+                  <span className="text-[11px] uppercase tracking-wide text-[#71717a]">
                     {item.type}
                   </span>
                 </button>
@@ -1755,10 +1755,10 @@ export function OpenPageBuilder({
               Add Component
             </button>
             <div className="mt-8 border-t border-white/10 pt-5">
-              <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+              <div className="mb-3 text-xs uppercase tracking-[.16em] text-[#71717a]">
                 Projects
               </div>
-              <div className="mb-2 text-xs text-[#71717a]">
+              <div className="mb-2 text-sm text-[#a1a1aa]">
                 / {document.name}
               </div>
               <select
@@ -1798,17 +1798,17 @@ export function OpenPageBuilder({
             </div>
             <section className="mt-6 border-t border-white/10 pt-5" aria-label="WordPress site pages">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-[10px] uppercase tracking-[.16em] text-[#71717a]">Site pages</div>
-                <span className="text-[9px] uppercase tracking-wide text-[#52525b]">WordPress</span>
+                <div className="text-xs uppercase tracking-[.16em] text-[#a1a1aa]">Site pages</div>
+                <span className="text-[10px] uppercase tracking-wide text-[#71717a]">WordPress</span>
               </div>
-              <p className="text-[11px] leading-relaxed text-[#71717a]">Open a page or post here and edit it as a separate local draft. The source site stays unchanged until you approve a publish action.</p>
+              <p className="text-sm leading-6 text-[#a1a1aa]">Open a page or post here and edit it as a separate local draft. The source site stays unchanged until you approve a publish action.</p>
               <button type="button" className={`${buttonClass} mt-3 w-full justify-center`} onClick={() => void loadSiteTree()} disabled={busy}>
                 <Layers3 className="h-3 w-3" />
                 {siteTree.length ? "Refresh site tree" : "Connect site pages"}
               </button>
-              {siteTreeStatus && <p className="mt-2 text-[10px] leading-relaxed text-[#a1a1aa]">{siteTreeStatus}</p>}
+              {siteTreeStatus && <p className="mt-2 text-xs leading-5 text-[#a1a1aa]">{siteTreeStatus}</p>}
               {siteTree.length > 0 && (
-                <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-white/10 bg-[#101112] p-2">
+                <div className="mt-3 max-h-72 overflow-auto rounded-xl border border-white/10 bg-[#101112] p-2.5">
                   <SiteTree nodes={siteTree} open={siteTreeOpen} onToggle={toggleSiteTree} onSelect={(node) => void openSiteNode(node)} />
                 </div>
               )}
@@ -1853,7 +1853,7 @@ export function OpenPageBuilder({
           </aside>
           <main className="min-w-0 bg-[#111213] p-4 md:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-              <div className="text-xs text-[#71717a]">
+              <div className="text-sm text-[#a1a1aa]">
                 Projects <span className="px-2">/</span> {document.name}{" "}
                 <span className="px-2">/</span> Home
               </div>
@@ -1874,7 +1874,7 @@ export function OpenPageBuilder({
                 </button>
               </div>
             </div>
-            <div className="mb-4 flex items-center justify-center gap-5 text-xs text-[#71717a]">
+            <div className="mb-4 flex items-center justify-center gap-5 text-sm text-[#71717a]">
               <span className={viewport === "desktop" ? "text-white" : ""}>
                 Desktop
               </span>
@@ -1902,7 +1902,7 @@ export function OpenPageBuilder({
                 <Canvas document={document} />
               </div>
             )}
-            <div className="mt-4 flex items-center justify-between text-xs text-[#71717a]">
+            <div className="mt-4 flex items-center justify-between text-sm text-[#a1a1aa]">
               <span>{status}</span>
               <span>
                 {document.blocks.length} blocks · {document.schemaVersion}
@@ -1915,10 +1915,10 @@ export function OpenPageBuilder({
               className="mb-6 rounded-xl border border-[#84cc72]/35 bg-[#101512] p-3"
             >
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#a6e896]">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[.16em] text-[#a6e896]">
                   <Sparkles className="h-3.5 w-3.5" /> AI copilot
                 </div>
-                <span className="text-[10px] text-[#71717a]">
+                <span className="text-xs text-[#a1a1aa]">
                   {ai?.configured ? "Gemini live" : "AI fallback"}
                 </span>
               </div>
@@ -1929,9 +1929,9 @@ export function OpenPageBuilder({
                 {copilotMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "ml-4 bg-[#242127] text-[#e4e4e7]" : "mr-2 border border-white/10 bg-[#0b0c0d] text-[#a1a1aa]"}`}
+                    className={`rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${message.role === "user" ? "ml-4 bg-[#242127] text-[#e4e4e7]" : "mr-2 border border-white/10 bg-[#0b0c0d] text-[#a1a1aa]"}`}
                   >
-                    <div className="mb-1 text-[9px] uppercase tracking-[.14em] text-[#71717a]">
+                    <div className="mb-1 text-[10px] uppercase tracking-[.14em] text-[#a1a1aa]">
                       {message.role === "user" ? "You" : "OpenPage AI"}
                     </div>
                     {message.content}
@@ -1951,7 +1951,7 @@ export function OpenPageBuilder({
                   onChange={(event) => setCopilotInput(event.target.value)}
                   placeholder="Make the hero clearer, add a Barcelona itinerary section, or redo this version…"
                   rows={3}
-                  className="w-full resize-y rounded-lg border border-white/15 bg-[#0b0c0d] px-3 py-2 text-xs leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#71717a] focus:border-[#84cc72]"
+                  className="w-full resize-y rounded-lg border border-white/15 bg-[#0b0c0d] px-3 py-2 text-sm leading-relaxed text-[#e4e4e7] outline-none placeholder:text-[#71717a] focus:border-[#84cc72]"
                 />
                 <button
                   type="submit"
@@ -1966,7 +1966,7 @@ export function OpenPageBuilder({
                   type="button"
                   disabled={busy}
                   onClick={() => void askCopilot("Redo this page as a stronger, cleaner version while preserving the current brand and content.")}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-[10px] uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                  className="rounded-lg border border-white/10 px-2 py-2 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
                 >
                   Redo version
                 </button>
@@ -1974,7 +1974,7 @@ export function OpenPageBuilder({
                   type="button"
                   disabled={busy}
                   onClick={() => void askCopilot("Improve the conversion flow and calls to action without changing the brand identity.")}
-                  className="rounded-lg border border-white/10 px-2 py-2 text-[10px] uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
+                  className="rounded-lg border border-white/10 px-2 py-2 text-xs uppercase tracking-wide text-[#a1a1aa] hover:border-[#84cc72]/60 hover:text-[#e4e4e7] disabled:opacity-40"
                 >
                   Improve CTA
                 </button>
@@ -1982,20 +1982,20 @@ export function OpenPageBuilder({
             </section>
             <section aria-label="OpenPage asset library" className="mb-6 rounded-xl border border-white/10 bg-[#101112] p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#a1a1aa]"><ImageIcon className="h-3.5 w-3.5 text-[#84cc72]" /> Logo &amp; images</div>
-                <span className="text-[10px] text-[#71717a]">{assets.length} ready</span>
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[.16em] text-[#a1a1aa]"><ImageIcon className="h-3.5 w-3.5 text-[#84cc72]" /> Logo &amp; images</div>
+                <span className="text-[11px] text-[#a1a1aa]">{assets.length} ready</span>
               </div>
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-xs text-[#a1a1aa] hover:border-[#84cc72] hover:text-[#e4e4e7]">
                 <Upload className="h-3.5 w-3.5" /> Upload assets
                 <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple className="sr-only" onChange={(event) => { void uploadAssets(event.target.files); event.currentTarget.value = ""; }} />
               </label>
-              {assetStatus && <p className="mt-2 text-[10px] leading-relaxed text-[#71717a]">{assetStatus}</p>}
+              {assetStatus && <p className="mt-2 text-xs leading-5 text-[#a1a1aa]">{assetStatus}</p>}
               {assets.length > 0 && (
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {assets.slice(0, 12).map((asset) => (
                     <div key={asset.storageName} className="group relative overflow-hidden rounded-lg border border-white/10 bg-[#0b0c0d]">
                       <img src={asset.url} alt={asset.name} className="h-16 w-full object-cover" />
-                      <div className="truncate px-1.5 py-1 text-[9px] text-[#a1a1aa]" title={asset.name}>{asset.name}</div>
+                      <div className="truncate px-1.5 py-1 text-[10px] text-[#a1a1aa]" title={asset.name}>{asset.name}</div>
                       <div className="absolute inset-x-1 bottom-7 hidden gap-1 group-hover:flex">
                         <button type="button" onClick={() => addImageBlock(asset)} className="flex-1 rounded bg-[#84cc72] px-1 py-1 text-[8px] font-bold text-[#10200e]">Add image</button>
                         <button type="button" onClick={() => setAsLogo(asset)} className="rounded bg-[#242127] px-1 py-1 text-[8px] font-bold text-white">Logo</button>
@@ -2004,7 +2004,7 @@ export function OpenPageBuilder({
                   ))}
                 </div>
               )}
-              <p className="mt-2 text-[10px] leading-relaxed text-[#71717a]">Upload a logo or image, then hover its thumbnail to add it to the page or use it in the navigation.</p>
+              <p className="mt-2 text-xs leading-5 text-[#a1a1aa]">Upload a logo or image, then hover its thumbnail to add it to the page or use it in the navigation.</p>
             </section>
             <div className="mb-5 flex items-center gap-6 border-b border-white/10 text-xs uppercase tracking-[.16em]">
               <span className="border-b-2 border-[#84cc72] pb-3 text-white">
@@ -2014,7 +2014,7 @@ export function OpenPageBuilder({
             </div>
             {currentBlock && (
               <section>
-                <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+                <div className="mb-3 text-xs uppercase tracking-[.16em] text-[#a1a1aa]">
                   Selected block
                 </div>
                 <input
@@ -2116,7 +2116,7 @@ export function OpenPageBuilder({
               </section>
             )}
             <section className="mt-8 border-t border-white/10 pt-5">
-              <div className="mb-3 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+              <div className="mb-3 text-xs uppercase tracking-[.16em] text-[#a1a1aa]">
                 Version History <span className="ml-1">(0)</span>
               </div>
               <div className="rounded-xl border border-white/10 bg-[#101112] p-3 text-xs text-[#71717a]">
@@ -2128,7 +2128,7 @@ export function OpenPageBuilder({
               </div>
             </section>
             <section className="mt-5 border-t border-white/10 pt-5">
-              <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[.16em] text-[#71717a]">
+              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[.16em] text-[#a1a1aa]">
                 <Brain className="h-3.5 w-3.5 text-[#84cc72]" />
                 Memory vault
               </div>
