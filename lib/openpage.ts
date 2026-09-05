@@ -1,4 +1,5 @@
 export const OPENPAGE_WORKSPACE = 'openpage';
+export const OPENPAGE_TEMPLATE_WORKSPACE = 'openpage-templates';
 export const OPENPAGE_MEMORY_FOLDER = 'openpage';
 export const OPENPAGE_SCHEMA_VERSION = 'openpage-v1';
 
