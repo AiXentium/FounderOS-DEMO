@@ -4,6 +4,7 @@ import { Fragment, FormEvent, useCallback, useEffect, useState } from 'react';
 
 type Message = { id?: string; role: 'user' | 'assistant'; content: string; routedTo?: string | null };
 type Chat = { id: string; title: string; status: 'active' | 'archived'; createdAt: string; updatedAt: string };
+export type BrainCommandResult = { handled: boolean; message: string };
 
 const ACTIVE_CHAT_KEY = 'founder-os.gbrain.active-chat';
 
@@ -38,11 +39,19 @@ export function BrainChat({
   heading = 'Ask G-Brain',
   description = 'Your conversations are saved automatically and remain available when you refresh or change pages.',
   badge = 'CONDUCTOR · MEMORY GROUNDED',
+  quickPrompts = [],
+  onCommand,
+  inputPlaceholder = 'Ask anything about the business…',
+  className = '',
 }: {
   context?: string;
   heading?: string;
   description?: string;
   badge?: string;
+  quickPrompts?: string[];
+  onCommand?: (message: string) => Promise<BrainCommandResult | null>;
+  inputPlaceholder?: string;
+  className?: string;
 } = {}) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState('');
@@ -128,6 +137,11 @@ export function BrainChat({
     setMessages((current) => [...current, { role: 'user', content: message }]);
     setBusy(true);
     try {
+      const localCommand = onCommand ? await onCommand(message) : null;
+      if (localCommand?.handled) {
+        setMessages((current) => [...current, { role: 'assistant', content: localCommand.message }]);
+        return;
+      }
       const response = await fetch('/api/agents/conductor/chat', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message, chatId: activeChatId, context }),
@@ -152,7 +166,7 @@ export function BrainChat({
   const archivedChats = chats.filter((chat) => chat.status === 'archived');
   const activeChat = chats.find((chat) => chat.id === activeChatId);
 
-  return <section className="border border-os-line bg-os-panel p-5">
+  return <section className={`border border-os-line bg-os-panel p-5 ${className}`}>
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div><div className="os-kicker">CONVERSE WITH THE BRAIN</div><h2 className="mt-1 text-xl text-os-text">{heading}</h2><p className="mt-1 text-sm leading-6 text-os-dim">{description}</p></div>
       <span className="font-mono text-[11px] text-os-dim">{badge}</span>
@@ -183,9 +197,11 @@ export function BrainChat({
       </div>)}
     </div>
     {error && <p className="mb-3 border border-os-err/40 bg-os-err/5 px-3 py-2 text-sm text-os-err">{error}</p>}
-    <form onSubmit={send} className="flex gap-2">
-      <input value={input} onChange={(event) => setInput(event.target.value)} disabled={busy || loading || !activeChatId} placeholder="Ask anything about the business…" className="min-w-0 flex-1 border border-os-line bg-os-bg px-3 py-2 text-sm text-os-text outline-none focus:border-os-accent disabled:opacity-60" />
-      <button type="submit" disabled={busy || loading || !input.trim() || !activeChatId} className="border border-os-accent px-4 py-2 text-sm text-os-accent disabled:opacity-40">{busy ? 'THINKING…' : 'SEND'}</button>
+    {quickPrompts.length > 0 && <div className="mb-3 border-t border-os-line pt-3"><div className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-os-dim">Quick commands</div><div className="flex flex-wrap gap-2">{quickPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => setInput(prompt)} disabled={busy || loading || !activeChatId} className="border border-os-line px-2.5 py-1.5 text-left text-xs leading-5 text-os-dim hover:border-os-accent hover:text-os-accent disabled:opacity-40">{prompt}</button>)}</div></div>}
+    <form onSubmit={send} className="flex items-end gap-2">
+      <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} disabled={busy || loading || !activeChatId} placeholder={inputPlaceholder} rows={3} className="min-h-20 min-w-0 flex-1 resize-y border border-os-line bg-os-bg px-3 py-2 text-sm leading-6 text-os-text outline-none focus:border-os-accent disabled:opacity-60" />
+      <button type="submit" disabled={busy || loading || !input.trim() || !activeChatId} className="border border-os-accent px-4 py-3 text-sm text-os-accent disabled:opacity-40">{busy ? 'THINKING…' : 'SEND'}</button>
     </form>
+    <p className="mt-2 text-xs leading-5 text-os-dim">Enter sends. Shift + Enter adds a new line. Commands can prepare a draft or update the working structure; publishing always requires approval.</p>
   </section>;
 }
