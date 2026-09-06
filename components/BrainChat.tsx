@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, FormEvent, useEffect, useState } from 'react';
+import { Fragment, FormEvent, useCallback, useEffect, useState } from 'react';
 
 type Message = { id?: string; role: 'user' | 'assistant'; content: string; routedTo?: string | null };
 type Chat = { id: string; title: string; status: 'active' | 'archived'; createdAt: string; updatedAt: string };
@@ -33,7 +33,17 @@ function MessageBody({ content }: { content: string }) {
   </div>;
 }
 
-export function BrainChat() {
+export function BrainChat({
+  context = 'G-Brain shared memory and agent command center',
+  heading = 'Ask G-Brain',
+  description = 'Your conversations are saved automatically and remain available when you refresh or change pages.',
+  badge = 'CONDUCTOR · MEMORY GROUNDED',
+}: {
+  context?: string;
+  heading?: string;
+  description?: string;
+  badge?: string;
+} = {}) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,7 +58,7 @@ export function BrainChat() {
     window.localStorage.setItem(ACTIVE_CHAT_KEY, id);
   }
 
-  async function load(preferredId?: string) {
+  const load = useCallback(async (preferredId?: string) => {
     setLoading(true);
     setError('');
     try {
@@ -64,13 +74,13 @@ export function BrainChat() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     let preferred: string | undefined;
     try { preferred = window.localStorage.getItem(ACTIVE_CHAT_KEY) ?? undefined; } catch { /* storage can be disabled */ }
     void load(preferred);
-  }, []);
+  }, [load]);
 
   async function createChat() {
     setError('');
@@ -120,7 +130,7 @@ export function BrainChat() {
     try {
       const response = await fetch('/api/agents/conductor/chat', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message, chatId: activeChatId, context: 'G-Brain shared memory and agent command center' }),
+        body: JSON.stringify({ message, chatId: activeChatId, context }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'The brain did not return a response.');
@@ -144,8 +154,8 @@ export function BrainChat() {
 
   return <section className="border border-os-line bg-os-panel p-5">
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div><div className="os-kicker">CONVERSE WITH THE BRAIN</div><h2 className="mt-1 text-xl text-os-text">Ask G-Brain</h2><p className="mt-1 text-sm leading-6 text-os-dim">Your conversations are saved automatically and remain available when you refresh or change pages.</p></div>
-      <span className="font-mono text-[11px] text-os-dim">CONDUCTOR · MEMORY GROUNDED</span>
+      <div><div className="os-kicker">CONVERSE WITH THE BRAIN</div><h2 className="mt-1 text-xl text-os-text">{heading}</h2><p className="mt-1 text-sm leading-6 text-os-dim">{description}</p></div>
+      <span className="font-mono text-[11px] text-os-dim">{badge}</span>
     </div>
 
     <div className="mb-4 flex flex-wrap items-center gap-2 border-y border-os-line py-3">
