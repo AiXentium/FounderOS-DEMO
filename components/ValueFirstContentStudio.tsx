@@ -3,6 +3,7 @@
 import { Check, Clipboard, FileText, Image as ImageIcon, Mail, Play, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import type { ValueFirstPlan } from '@/lib/value-first-content';
+import { ContentCompliancePanel } from '@/components/ContentCompliancePanel';
 
 const lanes = [
   ['01', 'Research packet', 'One source of truth with evidence, rights, and brand direction.'],
@@ -21,6 +22,7 @@ export function ValueFirstContentStudio() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('Ready. Build a production brief from your real research and assets.');
   const [assetStatus, setAssetStatus] = useState('No assets attached to this source packet yet.');
+  const [uploadedAssets, setUploadedAssets] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
 
   async function uploadAssets(files: FileList | null) {
@@ -33,7 +35,11 @@ export function ValueFirstContentStudio() {
         form.append('file', file);
         form.append('folder', 'value-first-content');
         const response = await fetch('/api/assets', { method: 'POST', body: form });
-        if (response.ok) uploaded += 1;
+        const body = await response.json().catch(() => ({})) as { asset?: { name?: string } };
+        if (response.ok) {
+          uploaded += 1;
+          if (body.asset?.name) setUploadedAssets((current) => [...current, body.asset!.name!]);
+        }
       }
     } catch {
       setAssetStatus(`${uploaded}/${files.length} assets attached. The remaining uploads could not be reached.`);
@@ -112,6 +118,7 @@ export function ValueFirstContentStudio() {
           {!plan ? <div className="grid min-h-[360px] place-items-center text-center"><div><div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-os-border bg-os-surface text-os-accent"><Search className="h-5 w-5" /></div><h3 className="mt-3 text-[16px] font-semibold">Your plan preview appears here</h3><p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-os-dim">Create a plan to inspect the hook, narration, visuals, bridge page, SEO structure, and distribution outputs before anything reaches a channel.</p></div></div> : <PlanPreview plan={plan} copied={copied} onCopy={() => void copyPlan()} />}
         </div>
       </div>
+      {plan && <ContentCompliancePanel title={plan.video.title} uploadedAssets={uploadedAssets} />}
     </section>
   );
 }

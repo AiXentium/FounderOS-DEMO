@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getDb } from '@/lib/data';
 import { SocialPlatformSchema, type SocialPost } from '@/lib/schemas';
 import { publishThroughZernio } from '@/lib/connectors/zernio';
+import { canPublishReview } from '@/lib/content-compliance';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,8 @@ const CreateSchema = z.object({
   scheduledFor: z.string().nullish(),
   /** Explicit live publish. Omit to keep the existing local approval queue. */
   publishNow: z.boolean().optional().default(false),
+  /** Required for a live publish or schedule; drafts may remain unreviewed. */
+  complianceId: z.string().trim().min(1).optional(),
 });
 
 /**
@@ -34,6 +37,13 @@ export async function POST(request: Request) {
   const liveRequested = parsed.data.publishNow || Boolean(parsed.data.scheduledFor);
   let providerResult: unknown = null;
   if (liveRequested) {
+    const db = getDb();
+    if (!parsed.data.complianceId) return NextResponse.json({ ok: false, error: 'A passed human-approved compliance review is required before publishing or scheduling.' }, { status: 409 });
+    const review = db.contentComplianceReviews.byId(parsed.data.complianceId) as { status: string; payload: Parameters<typeof canPublishReview>[0]['payload'] } | null;
+    if (!review) return NextResponse.json({ ok: false, error: 'The compliance review was not found.' }, { status: 409 });
+    const currentHealth = db.contentAccountHealth.state(parsed.data.platforms);
+    const gate = canPublishReview({ status: review.status, payload: { ...review.payload, accountHealth: currentHealth } }, parsed.data.platforms);
+    if (!gate.allowed) return NextResponse.json({ ok: false, error: gate.reason }, { status: 409 });
     try {
       providerResult = await publishThroughZernio({
         caption: parsed.data.caption,
@@ -43,10 +53,14 @@ export async function POST(request: Request) {
         scheduledFor: parsed.data.scheduledFor ?? null,
       });
     } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      for (const platform of parsed.data.platforms) {
+        db.contentAccountHealth.save({ id: randomUUID(), platform, signal: 'api_failure', severity: 'warning', message: `Provider publish failed: ${detail.slice(0, 240)}`, paused: false, observedAt: new Date().toISOString() });
+      }
       const status = typeof (error as { status?: unknown })?.status === 'number'
         ? (error as { status: number }).status
         : 502;
-      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status });
+      return NextResponse.json({ ok: false, error: detail }, { status });
     }
   }
 
@@ -62,7 +76,7 @@ export async function POST(request: Request) {
     createdAt: new Date().toISOString(),
   };
   getDb().socialPosts.enqueue(post);
-  return NextResponse.json({ ok: true, post, live: liveRequested, providerResult }, { status: 201 });
+  return NextResponse.json({ ok: true, post, live: liveRequested, complianceId: parsed.data.complianceId ?? null, providerResult }, { status: 201 });
 }
 
 export async function DELETE(request: Request) {

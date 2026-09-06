@@ -82,6 +82,9 @@ export default async function SocialPage() {
   const dash = buildSocialDashboard(db);
   const email = buildEmailList(db);
   const posts = db.socialPosts.all();
+  const approvedComplianceReviews = db.contentComplianceReviews.all()
+    .filter((review) => review.status === 'approved')
+    .map((review) => ({ id: review.id, title: review.title, platforms: review.platforms as string[] }));
 
   // Real published posts straight from Zernio/Late. Engagement (likes/views) is
   // behind Late's paid analytics add-on, so live posts show the post link in its
@@ -270,7 +273,7 @@ export default async function SocialPage() {
       {/* Publish — compose a post that queues for the Social agent */}
       <section className="mt-10">
         <SectionHead label="Publish" count={`${queued} queued`} link="Social agent" href="/agents" />
-        <PostComposer initialPosts={posts} />
+        <PostComposer initialPosts={posts} approvedComplianceReviews={approvedComplianceReviews} />
       </section>
     </div>
   );

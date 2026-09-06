@@ -6,6 +6,8 @@ import { Send, Clock, Paperclip, X } from 'lucide-react';
 import { Badge } from '@/components/terminal';
 import type { SocialPost } from '@/lib/schemas';
 
+type ApprovedComplianceReview = { id: string; title: string; platforms: string[] };
+
 // Kept in sync with SocialPlatformSchema; defined here so this client
 // component never imports server-only lib code.
 const PLATFORMS: { id: SocialPost['platforms'][number]; label: string }[] = [
@@ -22,7 +24,7 @@ function fmtWhen(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
+export function PostComposer({ initialPosts, approvedComplianceReviews = [] }: { initialPosts: SocialPost[]; approvedComplianceReviews?: ApprovedComplianceReview[] }) {
   const router = useRouter();
   const [posts, setPosts] = useState<SocialPost[]>(initialPosts);
   const [caption, setCaption] = useState('');
@@ -30,6 +32,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
   const [mediaUrl, setMediaUrl] = useState('');
   const [scheduledFor, setScheduledFor] = useState('');
   const [publishNow, setPublishNow] = useState(false);
+  const [complianceId, setComplianceId] = useState(approvedComplianceReviews[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +59,7 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
           mediaUrl: mediaUrl.trim() || null,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
           publishNow,
+          complianceId: complianceId || undefined,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -131,7 +135,11 @@ export function PostComposer({ initialPosts }: { initialPosts: SocialPost[] }) {
           </label>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 font-mono text-[10px] text-os-dim"><input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} className="accent-[var(--accent)]" /> Publish immediately through Zernio</label>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <label className="flex items-center gap-2 font-mono text-[10px] text-os-dim"><input type="checkbox" checked={publishNow} onChange={(event) => setPublishNow(event.target.checked)} className="accent-[var(--accent)]" /> Publish immediately through Zernio</label>
+            {(publishNow || scheduledFor) && <label className="flex items-center gap-2 font-mono text-[10px] text-os-dim">Compliance review<select value={complianceId} onChange={(event) => setComplianceId(event.target.value)} aria-label="Approved compliance review" className="min-w-0 rounded-sm-t border border-os-border bg-os-surface2 px-2 py-1 text-[10px] text-os-text"><option value="">Select approved review</option>{approvedComplianceReviews.map((review) => <option key={review.id} value={review.id}>{review.title} · {review.platforms.join(', ')}</option>)}</select></label>}
+            {(publishNow || scheduledFor) && approvedComplianceReviews.length === 0 && <span className="font-mono text-[10px] text-os-warn">Live publishing is locked until a human-approved compliance review exists.</span>}
+          </div>
           <button
             onClick={submit}
             disabled={busy}

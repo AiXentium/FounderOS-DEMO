@@ -264,6 +264,38 @@ CREATE TABLE IF NOT EXISTS social_posts (
   scheduled_for TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS content_compliance_reviews (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content_kind TEXT NOT NULL,
+  platforms TEXT NOT NULL DEFAULT '[]',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS content_provenance (
+  id TEXT PRIMARY KEY,
+  asset_name TEXT NOT NULL,
+  asset_type TEXT NOT NULL,
+  source TEXT NOT NULL,
+  rights_status TEXT NOT NULL,
+  license TEXT NOT NULL DEFAULT '',
+  expires_at TEXT,
+  attribution TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS content_account_health (
+  id TEXT PRIMARY KEY,
+  platform TEXT NOT NULL,
+  signal TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  message TEXT NOT NULL,
+  paused INTEGER NOT NULL DEFAULT 0,
+  observed_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS affiliate_products (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -1075,6 +1107,46 @@ export function openDb(path: string) {
     },
   };
 
+  const contentComplianceReviews = {
+    all(): Array<{ id: string; title: string; contentKind: string; platforms: string[]; payload: unknown; status: string; createdAt: string; updatedAt: string }> {
+      return (db.prepare('SELECT * FROM content_compliance_reviews ORDER BY updated_at DESC').all() as Array<Record<string, string>>).map((row) => ({
+        id: row.id,
+        title: row.title,
+        contentKind: row.content_kind,
+        platforms: JSON.parse(row.platforms || '[]'),
+        payload: JSON.parse(row.payload_json || '{}'),
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    },
+    byId(id: string): { id: string; title: string; contentKind: string; platforms: string[]; payload: unknown; status: string; createdAt: string; updatedAt: string } | null {
+      const row = db.prepare('SELECT * FROM content_compliance_reviews WHERE id = ?').get(id) as Record<string, string> | undefined;
+      if (!row) return null;
+      return { id: row.id, title: row.title, contentKind: row.content_kind, platforms: JSON.parse(row.platforms || '[]'), payload: JSON.parse(row.payload_json || '{}'), status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+    },
+    save(review: { id: string; title: string; contentKind: string; platforms: string[]; payload: unknown; status: string; createdAt: string; updatedAt: string }) {
+      db.prepare(`INSERT OR REPLACE INTO content_compliance_reviews (id, title, content_kind, platforms, payload_json, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(review.id, review.title, review.contentKind, JSON.stringify(review.platforms), JSON.stringify(review.payload), review.status, review.createdAt, review.updatedAt);
+    },
+  };
+
+  const contentProvenance = {
+    all() { return db.prepare('SELECT id, asset_name, asset_type, source, rights_status, license, expires_at, attribution, notes, created_at, updated_at FROM content_provenance ORDER BY updated_at DESC').all().map((row: any) => ({ id: row.id, assetName: row.asset_name, assetType: row.asset_type, source: row.source, rightsStatus: row.rights_status, license: row.license, expiresAt: row.expires_at, attribution: row.attribution, notes: row.notes, createdAt: row.created_at, updatedAt: row.updated_at })); },
+    save(record: { id: string; assetName: string; assetType: string; source: string; rightsStatus: string; license: string; expiresAt: string | null; attribution: string; notes: string; createdAt: string; updatedAt: string }) { db.prepare(`INSERT OR REPLACE INTO content_provenance (id, asset_name, asset_type, source, rights_status, license, expires_at, attribution, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(record.id, record.assetName, record.assetType, record.source, record.rightsStatus, record.license, record.expiresAt, record.attribution, record.notes, record.createdAt, record.updatedAt); },
+  };
+
+  const contentAccountHealth = {
+    all() { return db.prepare('SELECT * FROM content_account_health ORDER BY observed_at DESC').all().map((row: any) => ({ id: row.id, platform: row.platform, signal: row.signal, severity: row.severity, message: row.message, paused: Boolean(row.paused), observedAt: row.observed_at })); },
+    save(event: { id: string; platform: string; signal: string; severity: string; message: string; paused: boolean; observedAt: string }) { db.prepare(`INSERT OR REPLACE INTO content_account_health (id, platform, signal, severity, message, paused, observed_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(event.id, event.platform, event.signal, event.severity, event.message, event.paused ? 1 : 0, event.observedAt); },
+    state(platforms: string[]) {
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const events = this.all().filter((event) => platforms.includes(event.platform) && new Date(event.observedAt).getTime() >= cutoff);
+      const reasons = events.filter((event) => event.paused || event.severity === 'critical' || ['copyright_claim', 'suspended_feature', 'account_suspended'].includes(event.signal));
+      const warningCount = events.filter((event) => event.severity === 'warning' || ['rejected_post', 'reach_drop', 'api_failure', 'login_failure'].includes(event.signal)).length;
+      return { paused: reasons.length > 0 || warningCount >= 3, reasons: reasons.map((event) => `${event.platform}: ${event.message}`), warningCount };
+    },
+  };
+
   const affiliateProducts = {
     all() {
       return (db.prepare("SELECT * FROM affiliate_products WHERE url NOT LIKE '%example.com/%' ORDER BY created_at DESC").all() as Array<Record<string, string>>).map((row) => ({
@@ -1367,6 +1439,9 @@ export function openDb(path: string) {
     social,
     emailList,
     socialPosts,
+    contentComplianceReviews,
+    contentProvenance,
+    contentAccountHealth,
     affiliateProducts,
     affiliateCampaigns,
     websiteProjects,
