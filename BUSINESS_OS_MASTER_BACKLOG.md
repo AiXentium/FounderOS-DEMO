@@ -1,6 +1,6 @@
 # Business OS v2 Master Execution Backlog
 
-This is the canonical execution backlog. The prior audit, gap analysis, implementation backlog, release checklist, and roadmap remain historical reference only. Travel Commerce OS remains paused until GA.
+This is the canonical execution backlog. The prior audit, gap analysis, implementation backlog, release checklist, and roadmap remain historical reference only. **Let's Talk Miles & Travel is the first business workstream for Business OS; production publishing remains paused until the GA release gate passes.**
 
 ## Milestones
 
@@ -482,7 +482,7 @@ This is the canonical execution backlog. The prior audit, gap analysis, implemen
 - **Dependencies:** BO-023, BO-024, BO-025, BO-026, BO-027, BO-028, BO-029, BO-030
 - **Estimated Effort:** 5 days
 - **Files Affected:** `BUSINESS_OS_MASTER_BACKLOG.md`, `BUSINESS_OS_RELEASE_CHECKLIST.md`, `docs/`
-- **Acceptance Criteria:** Every CRITICAL and HIGH backlog item is COMPLETE; release checklist passes; build/tests/docs/deployment/recovery pass; Travel Commerce OS remains paused until this gate passes.
+- **Acceptance Criteria:** Every CRITICAL and HIGH backlog item is COMPLETE; release checklist passes; build/tests/docs/deployment/recovery pass; production publishing for the Let's Talk Miles & Travel workstream remains paused until this gate passes.
 - **Milestone:** Business OS v2.0 GA
 
 ## Execution order

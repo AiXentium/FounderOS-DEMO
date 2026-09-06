@@ -16,6 +16,28 @@ you explore and run it yourself.
 > Want to build your own, live, with guidance? That's what the cohort is for.
 > [thefounderos.com](https://www.thefounderos.com)
 
+## Operating mission
+
+Business OS is the governed command center for the first business it operates:
+[Let's Talk Miles & Travel](https://letstalkmilesandtravel.com/). The travel
+business exists to help people make better points, miles, credit-card,
+itinerary, and booking decisions through useful, trustworthy guidance.
+
+The intended loop is:
+
+```
+Research and evidence -> branded website resource -> helpful content
+-> owned audience -> transparent affiliate recommendation
+-> measurement and improvement
+```
+
+The Website Builder, Content, Social, Affiliate Studio, G-Brain, and agent
+systems are parts of this same loop. They prepare complete, reviewable work;
+they do not invent business facts, use unlicensed assets, or publish to
+external systems without explicit human approval. See
+[`lib/system-context.ts`](lib/system-context.ts) for the runtime contract
+provided to AI-facing routes.
+
 ---
 
 ## Quick start
