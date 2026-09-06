@@ -3,6 +3,8 @@ node_modules/
 .next-*/
 data/*.db
 data/*.db-*
+# External template downloads are local cache material; the catalog stores audited source links.
+data/template-vault/
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
