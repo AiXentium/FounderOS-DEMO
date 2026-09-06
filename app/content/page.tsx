@@ -8,6 +8,7 @@ import { LeadMagnets } from '@/components/LeadMagnets';
 import { Badge, Dot, SectionHead } from '@/components/terminal';
 import type { Agent } from '@/lib/schemas';
 import { ContentCommandCenter } from '@/components/ContentCommandCenter';
+import { ValueFirstContentStudio } from '@/components/ValueFirstContentStudio';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,12 +111,13 @@ export default async function ContentPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="content engine"
+        eyebrow="value-first content engine"
         title="Content Creation"
         right={<Badge tone="accent">{crew.length} agents</Badge>}
       />
 
       <ContentCommandCenter />
+      <ValueFirstContentStudio />
 
       {/* Backlinks to the Vantage content-intelligence system */}
       <section>

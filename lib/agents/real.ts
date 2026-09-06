@@ -189,7 +189,7 @@ export const realAgents: RuntimeAgent[] = ([
   {
     id: 'social-agent',
     name: 'Social Agent',
-    description: 'Aggregates the Postly publishing and Adsmith ad-generation workers.',
+    description: 'Coordinates value-first content: research-backed video, owned-audience bridges, SEO resources, and approved distribution.',
     departmentId: 'dept-marketing-growth',
     async run() {
       const [postly, adsmith] = await Promise.all([zernioRun(), arcadsRun()]);
@@ -204,11 +204,11 @@ export const realAgents: RuntimeAgent[] = ([
     },
   },
   { id: 'postly-publisher', name: 'Postly Publisher', description: 'Six platforms under @founderos.ai via Postly.', departmentId: 'dept-marketing-growth', run: zernioRun },
-  { id: 'adsmith-creative', name: 'Adsmith Creative', description: 'UGC ads for Vantage via the Adsmith API.', departmentId: 'dept-marketing-growth', run: arcadsRun },
+  { id: 'adsmith-creative', name: 'Adsmith Creative', description: 'Original creative direction and real-asset production for approved campaigns.', departmentId: 'dept-marketing-growth', run: arcadsRun },
   {
     id: 'reelkit-editor',
     name: 'Reelkit Editor',
-    description: 'Editing and rendering pipeline for social clips, captions, and promotional cuts.',
+    description: 'Humanized faceless editing: original commentary, licensed visuals, captions, and platform-ready cuts.',
     departmentId: 'dept-marketing-growth',
     async run() {
       const stack = await localStackStatus();
@@ -222,7 +222,7 @@ export const realAgents: RuntimeAgent[] = ([
   {
     id: 'renderly-creative',
     name: 'Renderly Creative',
-    description: 'Renderly creative generation for campaign visuals and product assets.',
+    description: 'Real-image direction, thumbnails, and accessible visual assets from approved research.',
     departmentId: 'dept-marketing-growth',
     async run() {
       const stack = await localStackStatus();
