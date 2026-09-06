@@ -7,8 +7,27 @@ import { challengePage, gateDecision, GATE_COOKIE } from '@/lib/access-gate';
  * completely open. See lib/access-gate.ts for the decision logic + tests.
  */
 export function middleware(req: NextRequest) {
+  const accessToken = process.env.FOUNDER_OS_ACCESS_TOKEN?.trim();
+
+  // Do not expose mutation/data APIs on a public production deployment that
+  // was started without the access gate configured. Health remains public for
+  // monitoring, but every other API must be explicitly unlocked. This keeps a
+  // missing Railway variable from silently turning credentials and connected
+  // services into an anonymous API.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !accessToken &&
+    req.nextUrl.pathname.startsWith('/api/') &&
+    req.nextUrl.pathname !== '/api/health'
+  ) {
+    return NextResponse.json(
+      { error: 'Founder OS access is not configured for this production deployment.' },
+      { status: 503 },
+    );
+  }
+
   const decision = gateDecision({
-    token: process.env.FOUNDER_OS_ACCESS_TOKEN,
+    token: accessToken,
     cookie: req.cookies.get(GATE_COOKIE)?.value ?? null,
     queryToken: req.nextUrl.searchParams.get('token'),
   });

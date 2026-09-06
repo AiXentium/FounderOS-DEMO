@@ -40,6 +40,8 @@ export interface LlmProvider {
 
 const GATEWAY_KEY = 'AI_GATEWAY_API_KEY';
 const DEFAULT_MODEL = process.env.LLM_MODEL ?? 'anthropic/claude-sonnet-5';
+const configuredToolSteps = Number.parseInt(process.env.AI_MAX_TOOL_STEPS ?? '4', 10);
+const MAX_TOOL_STEPS = Number.isFinite(configuredToolSteps) ? Math.min(6, Math.max(1, configuredToolSteps)) : 4;
 
 /** process.env first (Next auto-loads .env.local), then Alex's cred files. */
 function resolveGatewayKey(): string | undefined {
@@ -96,7 +98,7 @@ export function createGatewayProvider(model: string = DEFAULT_MODEL): LlmProvide
         system: req.system,
         messages,
         tools: req.tools?.length ? tools : undefined,
-        stopWhen: stepCountIs(6),
+        stopWhen: stepCountIs(MAX_TOOL_STEPS),
       });
 
       const toolCalls: LlmToolCall[] = [];
@@ -133,7 +135,7 @@ export function createOpenAIProvider(): LlmProvider {
       ...req.messages.filter((m) => m.role !== 'tool').map((m) => ({ role: m.role, content: m.content })),
     ];
     const toolCalls: LlmToolCall[] = [];
-    for (let step = 0; step < 6; step++) {
+    for (let step = 0; step < MAX_TOOL_STEPS; step++) {
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ''}`, 'content-type': 'application/json' },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { elementorProvider } from '@/lib/elementor-provider';
 import type { ElementorAgentContext } from '@/lib/elementor-provider';
+import { runtimeEnv } from '@/lib/creds';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +13,9 @@ interface ApiRequest {
   data?: Record<string, unknown>;
 }
 
-async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextResponse> {
-  const { operation, siteId, agent = 'api', params = {}, data = {} } = body;
+async function handleRequest(body: ApiRequest): Promise<NextResponse> {
+  const { operation, siteId, params = {}, data = {} } = body;
+  const agent = 'WebsiteBuilder';
 
   if (!operation) {
     return NextResponse.json({ error: 'Missing operation' }, { status: 400 });
@@ -24,7 +26,7 @@ async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextRe
   }
 
   if (siteId === 'primary' && !elementorProvider.getSite(siteId)) {
-    const { WORDPRESS_URL: siteUrl, WORDPRESS_USERNAME: username, WORDPRESS_APP_PASSWORD: appPassword } = process.env;
+    const { WORDPRESS_URL: siteUrl, WORDPRESS_USERNAME: username, WORDPRESS_APP_PASSWORD: appPassword } = runtimeEnv();
     if (siteUrl && username && appPassword) {
       try {
         await elementorProvider.registerSite({ siteId, siteName: 'Primary WordPress site', siteUrl, username, appPassword, enabled: true });
@@ -175,15 +177,15 @@ async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextRe
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as ApiRequest;
-  return handleRequest(req, body);
+  const body = (await req.json().catch(() => null)) as ApiRequest | null;
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  return handleRequest(body);
 }
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const operation = url.searchParams.get('operation');
   const siteId = url.searchParams.get('siteId');
-  const agent = url.searchParams.get('agent');
   const page = url.searchParams.get('page');
   const perPage = url.searchParams.get('per_page');
   const elementorOnly = url.searchParams.get('elementorOnly');
@@ -191,7 +193,6 @@ export async function GET(req: NextRequest) {
   const body: ApiRequest = {
     operation: operation || '',
     siteId: siteId || undefined,
-    agent: agent || undefined,
     params: {
       ...(page ? { page: Number(page) } : {}),
       ...(perPage ? { per_page: Number(perPage) } : {}),
@@ -199,5 +200,5 @@ export async function GET(req: NextRequest) {
     },
   };
 
-  return handleRequest(req, body);
+  return handleRequest(body);
 }

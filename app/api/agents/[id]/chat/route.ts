@@ -4,18 +4,21 @@ import { getDb } from '@/lib/data';
 import { realAgents } from '@/lib/agents/real';
 import { chatWithAgent } from '@/lib/agents/chat';
 import { routeConductorMessage } from '@/lib/agents/conductor';
+import { consumeAiBudget } from '@/lib/ai-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // better-sqlite3 is native — keep off the edge runtime
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const budget = consumeAiBudget(req);
+  if (!budget.allowed) return NextResponse.json({ error: 'AI request limit reached', retryAfterSeconds: budget.retryAfter }, { status: 429 });
   const { id } = await params;
   let message = '';
   let screenContext: string | undefined;
   let brainChatId: string | undefined;
   try {
     const body = (await req.json()) as { message?: unknown; context?: unknown; chatId?: unknown };
-    message = typeof body.message === 'string' ? body.message.trim() : '';
+    message = typeof body.message === 'string' ? body.message.trim().slice(0, 12000) : '';
     screenContext = typeof body.context === 'string' && body.context.trim() ? body.context.slice(0, 4000) : undefined;
     brainChatId = typeof body.chatId === 'string' && body.chatId.trim() ? body.chatId.trim() : undefined;
   } catch {

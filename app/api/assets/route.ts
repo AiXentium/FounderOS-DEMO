@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
 import { ASSET_DIR, listAssets, safeAssetFolder, safeAssetName, safeAssetPath } from '@/lib/assets';
 
 const execFileAsync = promisify(execFile);
+const MAX_TOTAL_ASSET_BYTES = 2 * 1024 * 1024 * 1024;
+const BLOCKED_EXTENSIONS = /\.(php[0-9]?|phtml|phar|cgi|pl|py|rb|sh|bash|js|mjs|ts|tsx|html?|xhtml|exe|dll|bat|cmd)$/i;
 
 function findAsset(name: string) {
   return listAssets().find((asset) => asset.name === name || asset.storageName === name);
@@ -46,6 +48,9 @@ export async function POST(request: Request) {
   const file = form.get('file');
   if (!(file instanceof File)) return NextResponse.json({ error: 'file is required' }, { status: 400 });
   if (file.size > 500 * 1024 * 1024) return NextResponse.json({ error: 'maximum file size is 500MB' }, { status: 413 });
+  if (!file.name.trim() || BLOCKED_EXTENSIONS.test(file.name)) return NextResponse.json({ error: 'unsupported or executable file type' }, { status: 415 });
+  const currentBytes = listAssets().reduce((sum, asset) => sum + asset.size, 0);
+  if (currentBytes + file.size > MAX_TOTAL_ASSET_BYTES) return NextResponse.json({ error: 'asset storage quota exceeded' }, { status: 413 });
 
   await fs.mkdir(ASSET_DIR, { recursive: true });
   const folder = safeAssetFolder(String(form.get('folder') || 'general'));
@@ -60,6 +65,7 @@ export async function POST(request: Request) {
       const { stdout } = await execFileAsync('unzip', ['-Z1', filePath]);
       const entries = stdout.split('\n').filter(Boolean);
       if (entries.some((entry) => entry.startsWith('/') || entry.split('/').includes('..'))) throw new Error('unsafe ZIP paths');
+      if (entries.some((entry) => BLOCKED_EXTENSIONS.test(entry))) throw new Error('ZIP contains an executable or active-content file');
       await execFileAsync('unzip', ['-q', '-j', filePath, '-d', folderPath]);
       return NextResponse.json({ asset: { name, size: file.size }, extracted: entries.length, folder }, { status: 201 });
     } catch (error) {

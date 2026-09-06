@@ -13,8 +13,12 @@ interface ApiRequest {
   data?: Record<string, unknown>;
 }
 
-async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextResponse> {
-  const { operation, siteId, agent = 'api', params = {}, data = {} } = body;
+async function handleRequest(body: ApiRequest): Promise<NextResponse> {
+  const { operation, siteId, params = {}, data = {} } = body;
+  // The browser may request a Website Builder operation, but it must never be
+  // able to impersonate PublishingAgent or another privileged actor. Elevated
+  // agent tools call the provider directly from the server-side runtime.
+  const agent = 'WebsiteBuilder';
 
   if (!operation) {
     return NextResponse.json({ error: 'Missing operation' }, { status: 400 });
@@ -204,15 +208,15 @@ async function handleRequest(req: NextRequest, body: ApiRequest): Promise<NextRe
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as ApiRequest;
-  return handleRequest(req, body);
+  const body = (await req.json().catch(() => null)) as ApiRequest | null;
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  return handleRequest(body);
 }
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const operation = url.searchParams.get('operation');
   const siteId = url.searchParams.get('siteId');
-  const agent = url.searchParams.get('agent');
   const id = url.searchParams.get('id');
   const page = url.searchParams.get('page');
   const perPage = url.searchParams.get('per_page');
@@ -220,7 +224,6 @@ export async function GET(req: NextRequest) {
   const body: ApiRequest = {
     operation: operation || '',
     siteId: siteId || undefined,
-    agent: agent || undefined,
     params: {
       ...(id ? { id: Number(id) } : {}),
       ...(page ? { page: Number(page) } : {}),
@@ -228,5 +231,5 @@ export async function GET(req: NextRequest) {
     },
   };
 
-  return handleRequest(req, body);
+  return handleRequest(body);
 }
