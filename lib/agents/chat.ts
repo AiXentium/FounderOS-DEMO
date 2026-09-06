@@ -16,6 +16,7 @@ import { runtimeEnv } from '@/lib/creds';
 import { allConnectorStatuses } from '@/lib/connectors';
 import { syncAccountingControllerActivation } from '@/lib/accounting-controller';
 import { importWordPressContent } from '@/lib/wordpress-import';
+import { WEBSITE_DESIGN_AGENT_IDS, WEBSITE_DESIGN_AGENT_PROMPT } from '@/lib/website-design-agent';
 
 export type ChatResult = { reply: string; messages: AgentMessage[] };
 
@@ -28,6 +29,7 @@ export function systemPromptFor(agent: RuntimeAgent, screenContext?: string, bra
     'Answer concisely and use your tools to read live data when it helps.',
     'You may execute explicitly requested local-draft imports through a provided tool. Never claim to have changed, published, or deleted external content without a successful tool result and approval.',
   ];
+  if (WEBSITE_DESIGN_AGENT_IDS.has(agent.id)) lines.push(WEBSITE_DESIGN_AGENT_PROMPT);
   if (screenContext) {
     lines.push(
       `The operator is currently looking at this screen — use it as grounding when they say "this", "here", or ask about what they see:\n${screenContext.slice(0, SCREEN_CONTEXT_CAP)}`,
