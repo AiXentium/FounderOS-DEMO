@@ -22,14 +22,23 @@ const SLUG_RE = /^[a-zA-Z0-9._-]+$/;
 const validHalf = (s: string) => SLUG_RE.test(s) && s !== '.' && s !== '..';
 
 /**
- * Where to read real Claude Code skills from. OPT-IN ONLY: this is a public
- * demo, and defaulting to ~/.claude would make any machine that runs it serve
- * its owner's private skill files over HTTP. Set FOUNDER_OS_SKILLS_DIR to a
- * directory you are happy to publish; unset, the catalog stays empty and the
- * page falls back to the seeded skills.
+ * Where to read real skills from. A configured directory is opt-in because
+ * defaulting to ~/.claude would make any machine that runs the app serve its
+ * owner's private skill files over HTTP. The bundled project catalog is safe
+ * to publish and is used when no external directory is configured.
  */
 function skillsDir(): string | null {
-  return process.env.FOUNDER_OS_SKILLS_DIR || null;
+  const configured = process.env.FOUNDER_OS_SKILLS_DIR;
+  if (configured) return configured;
+  const bundled = path.join(process.cwd(), '.agents', 'skills');
+  return fs.existsSync(bundled) ? bundled : null;
+}
+
+function displaySkillPath(dir: string, slug: string): string {
+  const home = os.homedir();
+  const project = path.join(process.cwd(), '.agents', 'skills');
+  if (dir === project) return `.agents/skills/${slug}/SKILL.md`;
+  return dir.startsWith(home) ? `~${path.join(dir.slice(home.length), slug, 'SKILL.md')}` : path.join(dir, slug, 'SKILL.md');
 }
 
 /** Installed-plugin skills. Opt-in for the same reason as skillsDir(). */
@@ -134,7 +143,7 @@ export function readUserSkills(dir: string | null = skillsDir()): CatalogSkill[]
       name,
       description: fm.description ?? '',
       group: skillGroup(name),
-      path: `~/.claude/skills/${e.name}/SKILL.md`,
+      path: displaySkillPath(dir, e.name),
     });
   }
   return out.sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
