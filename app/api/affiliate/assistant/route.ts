@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   try {
     const products = await searchViatorMcp(query);
     const db = getDb();
+    const brand = db.brandVault.get('default');
     products.forEach((product) => db.affiliateProducts.create({ ...product, createdAt: new Date().toISOString() }));
     let campaign;
     let websiteProject;
@@ -36,10 +37,12 @@ export async function POST(request: Request) {
       websiteProject = {
         id: randomUUID(),
         name: `${query} — campaign preview`,
-        prompt: `Build a review-only affiliate campaign page for ${query}. Use only verified product and source URLs. Include SEO metadata, disclosure, conversion CTAs, and social variations. Do not publish without human approval.`,
+        prompt: `Build a review-only affiliate campaign page for ${query}. Follow the saved Brand Studio blueprint for ${brand?.businessName || 'the current business'}: ${JSON.stringify(brand?.blueprint || {}).slice(0, 1800)}. Use only verified product and source URLs. Include SEO metadata, disclosure, conversion CTAs, and social variations. Do not publish without human approval.`,
         direction: 'affiliate campaign draft',
       page: {
           query,
+          brandId: brand?.id || null,
+          templateRoles: brand?.blueprint ? { frontend: brand.blueprint.frontendTemplateId, backend: brand.blueprint.backendTemplateId, fullStack: brand.blueprint.fullStackTemplateId } : null,
           productIds: products.map((p) => p.id),
           team: ['affiliate-strategist', 'marketing-growth', 'brand-guardian', 'website-designer', 'social-publisher', 'research-operator'],
           status: 'draft — requires review',
