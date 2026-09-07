@@ -27,6 +27,7 @@ export async function systemContext(query?: string) {
     products: db.affiliateProducts.all().slice(0, 50),
     campaigns: db.affiliateCampaigns.all(),
     websiteProjects: db.websiteProjects.all(),
+    brand: db.brandVault.get('default'),
     brain,
   };
 }

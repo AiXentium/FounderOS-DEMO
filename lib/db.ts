@@ -332,6 +332,17 @@ CREATE TABLE IF NOT EXISTS workspaces (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS brand_vault (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL DEFAULT 'default',
+  business_name TEXT NOT NULL DEFAULT '',
+  business_type TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'draft',
+  blueprint_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_brand_vault_workspace ON brand_vault(workspace_id, updated_at DESC);
 CREATE TABLE IF NOT EXISTS project_agents (
   project_id TEXT NOT NULL,
   agent_id TEXT NOT NULL,
@@ -1186,6 +1197,20 @@ export function openDb(path: string) {
     save(workspace: { id: string; name: string; slug: string; createdAt: string; updatedAt: string }) { db.prepare('INSERT OR REPLACE INTO workspaces (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(workspace.id, workspace.name, workspace.slug, workspace.createdAt, workspace.updatedAt); },
   };
 
+  const brandVault = {
+    get(workspaceId = 'default') {
+      const row = db.prepare('SELECT * FROM brand_vault WHERE workspace_id = ? ORDER BY updated_at DESC LIMIT 1').get(workspaceId) as Record<string, string> | undefined;
+      if (!row) return null;
+      return { id: row.id, workspaceId: row.workspace_id, businessName: row.business_name, businessType: row.business_type, status: row.status, blueprint: JSON.parse(row.blueprint_json || '{}'), createdAt: row.created_at, updatedAt: row.updated_at };
+    },
+    all(workspaceId = 'default') {
+      return (db.prepare('SELECT * FROM brand_vault WHERE workspace_id = ? ORDER BY updated_at DESC').all(workspaceId) as Array<Record<string, string>>).map((row) => ({ id: row.id, workspaceId: row.workspace_id, businessName: row.business_name, businessType: row.business_type, status: row.status, blueprint: JSON.parse(row.blueprint_json || '{}'), createdAt: row.created_at, updatedAt: row.updated_at }));
+    },
+    save(profile: { id: string; workspaceId: string; businessName: string; businessType: string; status: string; blueprint: unknown; createdAt: string; updatedAt: string }) {
+      db.prepare(`INSERT OR REPLACE INTO brand_vault (id, workspace_id, business_name, business_type, status, blueprint_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(profile.id, profile.workspaceId, profile.businessName, profile.businessType, profile.status, JSON.stringify(profile.blueprint), profile.createdAt, profile.updatedAt);
+    },
+  };
+
   const projectAgents = {
     all(projectId?: string) { const rows = projectId ? db.prepare('SELECT * FROM project_agents WHERE project_id = ? ORDER BY assigned_at').all(projectId) : db.prepare('SELECT * FROM project_agents ORDER BY assigned_at DESC').all(); return rows as Array<Record<string, string>>; },
     assign(projectId: string, agentId: string) { db.prepare('INSERT OR REPLACE INTO project_agents (project_id, agent_id, assigned_at) VALUES (?, ?, ?)').run(projectId, agentId, new Date().toISOString()); },
@@ -1446,6 +1471,7 @@ export function openDb(path: string) {
     affiliateCampaigns,
     websiteProjects,
     workspaces,
+    brandVault,
     projectAgents,
     localJobs,
     funnel,

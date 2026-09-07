@@ -23,11 +23,14 @@ export function WebsiteCampaignFlow({ onPrepareWebsite }: { onPrepareWebsite: (p
     if (!topic.trim() || !audience.trim() || !offer.trim()) { setStatus('Add a topic, audience, and offer first.'); return; }
     setBusy(true); setStatus('Preparing the website and channel plan…');
     try {
-      const response = await fetch('/api/content/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, audience, offer, evidence }) });
+      const brandResponse = await fetch('/api/brand?workspace=default', { cache: 'no-store' });
+      const brandBody = await brandResponse.json().catch(() => ({}));
+      const brand = brandBody.brand?.blueprint as { voice?: string; imageDirection?: string; businessName?: string } | undefined;
+      const response = await fetch('/api/content/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, audience, offer, evidence, brandVoice: brand?.voice, realImages: brand?.imageDirection }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.plan) throw new Error(body.error || 'Could not prepare the campaign.');
       setPlan(body.plan);
-      await onPrepareWebsite(`Build a complete campaign-ready website for ${topic}. The audience is ${audience}. The offer is ${offer}. Use the evidence packet: ${evidence || 'Needs client input.'}. Create the page tree, bridge page, email capture path, SEO resource, and social content destinations. Do not publish anything.`);
+      await onPrepareWebsite(`Build a complete campaign-ready website for ${topic}. The audience is ${audience}. The offer is ${offer}. The active brand is ${brand?.businessName || 'the current business brand'} with this voice: ${brand?.voice || 'Needs client input.'}. Use the evidence packet: ${evidence || 'Needs client input.'}. Create the page tree, bridge page, email capture path, SEO resource, and social content destinations. Preserve the saved Brand Studio direction and do not publish anything.`);
       setStatus('Website draft and cross-channel plan are ready for review.');
     } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not prepare the campaign.'); }
     finally { setBusy(false); }

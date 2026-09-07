@@ -183,7 +183,9 @@ export async function chatWithAgent(
     }
   }
 
-  const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, brainContext), messages: llmMessages, tools });
+  const savedBrand = db.brandVault.get('default');
+  const brandContext = savedBrand ? `Active Brand Studio blueprint (follow it for website, content, social, email, and affiliate work): ${JSON.stringify(savedBrand.blueprint).slice(0, SCREEN_CONTEXT_CAP)}` : '';
+  const result = await llmChat({ system: systemPromptFor(agent, opts.screenContext, [brainContext, brandContext].filter(Boolean).join('\n')), messages: llmMessages, tools });
 
   // Roster audits are an operational read, not a creative answer. Guarantee
   // that the response reflects the loaded runtime rather than model memory.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { smartDesignBrief } from '@/lib/ai-studio';
+import { buildInitialBrandBlueprint } from '@/lib/brand-vault';
 import { getDb } from '@/lib/data';
 import { syncAccountingControllerActivation } from '@/lib/accounting-controller';
 
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
     region: body.region ?? '',
     taxYear: body.taxYear ?? '',
   }, createdAt: now, updatedAt: now });
+  const brand = buildInitialBrandBlueprint({ businessName: body.siteName, businessType: body.businessType, audience: body.audience, offer: body.offer, details: body.projectDetails });
+  db.brandVault.save({ id: `brand-${id}`, workspaceId: 'default', businessName: brand.businessName, businessType: brand.businessType, status: 'draft', blueprint: brand, createdAt: now, updatedAt: now });
   syncAccountingControllerActivation(db);
-  return NextResponse.json({ project: { id, name: body.siteName || `${body.businessType} website` }, brief: brief.brief, mode: brief.mode, next: 'connect-domain-and-hosting' }, { status: 201 });
+  return NextResponse.json({ project: { id, name: body.siteName || `${body.businessType} website` }, brand, brief: brief.brief, mode: brief.mode, next: 'review-brand-and-templates' }, { status: 201 });
 }
