@@ -1,61 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { challengePage, gateDecision, GATE_COOKIE } from '@/lib/access-gate';
+import { NextResponse } from 'next/server';
 
-/**
- * Whole-app access gate. Active only when FOUNDER_OS_ACCESS_TOKEN is set
- * (production deployments on public URLs); unset keeps dev and the demo
- * completely open. See lib/access-gate.ts for the decision logic + tests.
- */
-export function middleware(req: NextRequest) {
-  const accessToken = process.env.FOUNDER_OS_ACCESS_TOKEN?.trim();
-
-  // Do not expose mutation/data APIs on a public production deployment that
-  // was started without the access gate configured. Health remains public for
-  // monitoring, but every other API must be explicitly unlocked. This keeps a
-  // missing Railway variable from silently turning credentials and connected
-  // services into an anonymous API.
-  if (
-    process.env.NODE_ENV === 'production' &&
-    !accessToken &&
-    req.nextUrl.pathname.startsWith('/api/') &&
-    req.nextUrl.pathname !== '/api/health'
-  ) {
-    return NextResponse.json(
-      { error: 'Founder OS access is not configured for this production deployment.' },
-      { status: 503 },
-    );
-  }
-
-  const decision = gateDecision({
-    token: accessToken,
-    cookie: req.cookies.get(GATE_COOKIE)?.value ?? null,
-    queryToken: req.nextUrl.searchParams.get('token'),
-  });
-
-  switch (decision.kind) {
-    case 'open':
-    case 'pass':
-      return NextResponse.next();
-    case 'set-cookie': {
-      // strip ?token= from the URL so it never lingers in the address bar
-      const clean = req.nextUrl.clone();
-      clean.searchParams.delete('token');
-      const res = NextResponse.redirect(clean);
-      res.cookies.set(GATE_COOKIE, decision.value, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: req.nextUrl.protocol === 'https:',
-        maxAge: 60 * 60 * 24 * 30, // re-enter monthly
-        path: '/',
-      });
-      return res;
-    }
-    case 'challenge':
-      return new NextResponse(challengePage(), {
-        status: 401,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      });
-  }
+export function middleware() {
+  return NextResponse.next();
 }
 
 export const config = {
