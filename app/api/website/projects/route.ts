@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { getDb } from '@/lib/data';
 const Schema = z.object({ id: z.string().optional(), name: z.string().min(1), prompt: z.string().default(''), direction: z.string().default('editorial'), page: z.record(z.unknown()).default({}) });
 export async function GET() {
-  const projects = await Promise.all(getDb().websiteProjects.all('default').map(async (project: any) => {
+  const projects = await Promise.all(getDb().websiteProjects.all('default').map(async (rawProject: any) => {
+    const project = rawProject.page ? rawProject : { ...rawProject, page: typeof rawProject.page_json === 'string' ? JSON.parse(rawProject.page_json) : {} };
     if (project.page?.contentHtml || !project.page?.entryFile) return project;
     const source = await fs.readFile(project.page.entryFile, 'utf8').catch(() => '');
     if (!source) return project;

@@ -15,7 +15,7 @@ export function ProjectSwitcher({ onLoad }: { onLoad?: (project: Project) => voi
     setSelected(current => current && nextProjects.some(project => project.id === current) ? current : nextProjects[0]?.id || '');
     return nextProjects as Project[];
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load().then(nextProjects => { if (nextProjects[0]) onLoad?.(nextProjects[0]); }); }, []);
   const clone = async () => { if (!selected) return; const r = await fetch('/api/website/projects/clone', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: selected }) }); setStatus(r.ok ? 'Project cloned' : 'Clone failed'); await load(); };
   const importPackage = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setStatus('Importing package…'); const body = new FormData(); body.append('package', file); const r = await fetch('/api/website/projects/import', { method: 'POST', body }); const result = await r.json().catch(() => ({})); if (!r.ok) { setStatus(result.error || 'Import failed'); event.target.value = ''; return; } const nextProjects = await load(); setSelected(result.project.id); onLoad?.(result.project); setStatus(`${result.project.page?.pages?.length || nextProjects.find(project => project.id === result.project.id)?.page?.blocks?.length || 0} pages imported`); event.target.value = ''; };
   const loadSelected = () => { const project = projects.find(p => p.id === selected); if (project) { onLoad?.(project); setStatus('Project loaded'); } };
