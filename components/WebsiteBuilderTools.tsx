@@ -5,7 +5,7 @@ import { SectionInspector, type SectionDesign } from '@/components/SectionInspec
 
 type Asset = { name: string; size: number; modifiedAt: string; url: string };
 
-export function WebsiteBuilderTools({ projectId, prompt, title, direction, blocks, generated }: { projectId?: string; prompt: string; title: string; direction: string; blocks: string[]; generated: boolean }) {
+export function WebsiteBuilderTools({ projectId, prompt, title, direction, blocks, generated, imported = false }: { projectId?: string; prompt: string; title: string; direction: string; blocks: string[]; generated: boolean; imported?: boolean }) {
   const [status, setStatus] = useState('');
   const [reviewStatus, setReviewStatus] = useState<string>('not started');
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -51,6 +51,7 @@ export function WebsiteBuilderTools({ projectId, prompt, title, direction, block
   const renameAsset = async (asset: Asset) => { const next = window.prompt('Rename asset', asset.name); if (!next || next === asset.name) return; const response = await fetch('/api/assets', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: asset.name, newName: next }) }); setStatus(response.ok ? 'Asset renamed' : 'Rename failed'); await loadAssets(); };
   const isImage = (name: string) => /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 
+  if (imported) return <div className="border border-os-border p-3 text-xs text-os-muted">Use the saved revision controls in Working Preview to edit, approve, stage, publish, or roll back the pilot page.</div>;
   return <>
     <SectionInspector value={design} onChange={setDesign} />
     <div className="rounded-lg-t border border-os-border bg-os-surface p-3">

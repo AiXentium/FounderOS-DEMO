@@ -1,0 +1,57 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import AdmZip from 'adm-zip';
+import { openDb, type FounderDb } from '@/lib/db';
+let db: FounderDb;
+let temp: string;
+vi.mock('@/lib/data', () => ({ getDb: () => db }));
+vi.mock('next/server', async importOriginal => ({ ...await importOriginal<typeof import('next/server')>(), after: vi.fn() }));
+afterEach(async () => { db?.close(); if (temp) await fs.rm(temp, { recursive: true, force: true }); vi.unstubAllEnvs(); });
+
+describe('website pilot API', () => {
+  it('imports, selects, saves, previews, stages, publishes and rolls back one page with original assets', async () => {
+    temp = await fs.mkdtemp(path.join(os.tmpdir(), 'website-api-'));
+    vi.stubEnv('WEBSITE_DATA_DIR', temp);
+    db = openDb(':memory:');
+    const { POST: upload } = await import('@/app/api/website/projects/import/route');
+    const { POST: act } = await import('@/app/api/website/lifecycle/route');
+    const { GET: view } = await import('@/app/api/website/view/[mode]/[revision]/[[...path]]/route');
+    const zip = new AdmZip();
+    zip.addFile('.project.json', Buffer.from('{"name":"Travel pilot"}'));
+    const original = '<html><head><link href="./assets/style.css" rel="stylesheet"></head><body><h1>Real travel</h1><img src="/assets/image.svg"></body></html>';
+    zip.addFile('index.html', Buffer.from(original));
+    zip.addFile('assets/style.css', Buffer.from('body { color: navy }'));
+    zip.addFile('assets/image.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'));
+    const form = new FormData(); form.append('package', new File([new Uint8Array(zip.toBuffer())], 'pilot.zip'));
+    const imported = await upload(new Request('http://localhost/api/website/projects/import', { method: 'POST', body: form }));
+    expect(imported.status).toBe(201);
+    const { project } = await imported.json();
+    expect(project.page.packageRoot).toContain(temp);
+    expect(project.page.previewUrl).toContain(project.id);
+    const action = async (action: string, extra = {}) => {
+      const state = db.websiteLifecycle.get();
+      return act(new Request('http://localhost/api/website/lifecycle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, projectId: project.id, version: state?.version || 0, revisionId: state?.selectedId, ...extra }) }));
+    };
+    expect((await action('canonical', { pagePath: 'index.html' })).status).toBe(200);
+    const first = db.websiteLifecycle.get()!.selectedId!;
+    expect((await action('publish')).status).toBe(409);
+    await action('approve'); await action('stage'); await action('publish');
+    await action('save', { html: original.replace('Real travel', 'Real travel guide') });
+    const second = db.websiteLifecycle.get()!.selectedId!;
+    const preview = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'preview', revision: second }) });
+    expect(preview.status).toBe(200);
+    expect(await preview.text()).toContain('Real travel guide');
+    expect(preview.headers.get('content-security-policy')).toContain('sandbox');
+    const asset = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'preview', revision: second, path: ['assets', 'style.css'] }) });
+    expect(asset.status).toBe(200); expect(await asset.text()).toContain('navy');
+    expect((await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'staging', revision: second }) })).status).toBe(404);
+    await action('approve'); await action('stage'); await action('publish');
+    await action('rollback', { revisionId: first });
+    const live = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'live', revision: 'current' }) });
+    expect(live.headers.get('x-website-revision')).toBe(first);
+    expect(await fs.readFile(project.page.entryFile, 'utf8')).toBe(original);
+    expect((await action('canonical', { pagePath: 'index.html' })).status).toBe(409);
+  });
+});

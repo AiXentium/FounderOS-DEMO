@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { WebsiteLifecycleSchema } from '@/lib/website-revision-schema';
 import { isValidCron } from '@/lib/cron';
 import { runMigrations } from '@/lib/migrations';
 import {
@@ -71,6 +72,11 @@ import {
 } from '@/lib/schemas';
 
 const DDL = `
+CREATE TABLE IF NOT EXISTS website_lifecycle (
+  workspace_id TEXT PRIMARY KEY,
+  version INTEGER NOT NULL,
+  state_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS departments (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -1192,6 +1198,22 @@ export function openDb(path: string) {
     save(project: { id: string; name: string; prompt: string; direction: string; page: unknown; createdAt: string; updatedAt: string }) { db.prepare(`INSERT OR REPLACE INTO website_projects (id, name, prompt, direction, page_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(project.id, project.name, project.prompt, project.direction, JSON.stringify({ ...(project.page as object), workspaceId: 'default' }), project.createdAt, project.updatedAt); },
   };
 
+  const websiteLifecycle = {
+    get() {
+      const row = db.prepare('SELECT state_json FROM website_lifecycle WHERE workspace_id = ?').get('default') as { state_json: string } | undefined;
+      return row ? WebsiteLifecycleSchema.parse(JSON.parse(row.state_json)) : null;
+    },
+    put(input: unknown, expectedVersion: number) {
+      const state = WebsiteLifecycleSchema.parse(input);
+      const next = { ...state, version: expectedVersion + 1 };
+      const result = expectedVersion === 0
+        ? db.prepare('INSERT OR IGNORE INTO website_lifecycle (workspace_id, version, state_json) VALUES (?, ?, ?)').run('default', next.version, JSON.stringify(next))
+        : db.prepare('UPDATE website_lifecycle SET version = ?, state_json = ? WHERE workspace_id = ? AND version = ?').run(next.version, JSON.stringify(next), 'default', expectedVersion);
+      if (!result.changes) throw new Error('Website state changed. Reload before trying again.');
+      return next;
+    },
+  };
+
   const workspaces = {
     all() { return db.prepare('SELECT * FROM workspaces ORDER BY updated_at DESC').all() as Array<Record<string, string>>; },
     save(workspace: { id: string; name: string; slug: string; createdAt: string; updatedAt: string }) { db.prepare('INSERT OR REPLACE INTO workspaces (id, name, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(workspace.id, workspace.name, workspace.slug, workspace.createdAt, workspace.updatedAt); },
@@ -1218,6 +1240,7 @@ export function openDb(path: string) {
   };
 
   const localJobs = {
+    claim(id: string) { return db.prepare("UPDATE local_jobs SET status = 'running', updated_at = ? WHERE id = ? AND status = 'queued'").run(new Date().toISOString(), id).changes === 1; },
     all() { return db.prepare('SELECT * FROM local_jobs ORDER BY created_at DESC').all().map((r: any) => ({ ...r, payload: JSON.parse(r.payload_json) })); },
     enqueue(job: { id: string; type: string; payload?: unknown; createdAt: string }) { db.prepare(`INSERT OR REPLACE INTO local_jobs (id, type, payload_json, status, attempts, created_at, updated_at) VALUES (?, ?, ?, 'queued', 0, ?, ?)`).run(job.id, job.type, JSON.stringify(job.payload ?? {}), job.createdAt, job.createdAt); },
     update(id: string, status: string, error = '') { db.prepare('UPDATE local_jobs SET status = ?, attempts = attempts + 1, last_error = ?, updated_at = ? WHERE id = ?').run(status, error, new Date().toISOString(), id); },
@@ -1470,6 +1493,7 @@ export function openDb(path: string) {
     affiliateProducts,
     affiliateCampaigns,
     websiteProjects,
+    websiteLifecycle,
     workspaces,
     brandVault,
     projectAgents,

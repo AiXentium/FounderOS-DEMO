@@ -20,6 +20,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const now = new Date().toISOString();
   const old = parsed.data.id ? getDb().websiteProjects.all('default').find((p: any) => p.id === parsed.data.id) : undefined;
+  const protectedKeys = ['packageRoot', 'entryFile', 'pages', 'sourceType', 'contentHtml', 'previewUrl'];
+  if (protectedKeys.some(key => key in parsed.data.page)) return NextResponse.json({ error: 'Imported source metadata is read-only. Save page changes as revisions.' }, { status: 409 });
   const project = { ...parsed.data, id: parsed.data.id ?? randomUUID(), page: { ...(old?.page ?? {}), ...parsed.data.page }, createdAt: old?.created_at ?? now, updatedAt: now };
   getDb().websiteProjects.save(project);
   return NextResponse.json({ project }, { status: 201 });
