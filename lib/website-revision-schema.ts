@@ -24,6 +24,7 @@ export const WebsiteLifecycleSchema = z.object({
   stagedPages: z.record(z.string()).default({}), publishedPages: z.record(z.string()).default({}),
   revisions: z.array(WebsiteRevisionSchema),
   runs: z.array(z.object({ id: z.string(), status: z.enum(['running', 'completed', 'failed']), request: z.string(),
+    pagePath: z.string().optional(),
     startedAt: z.string(), finishedAt: z.string().optional(), error: z.string().optional(),
     brain: z.unknown().optional(), results: z.array(z.object({ agentId: z.string(), reply: z.string(), createdAt: z.string() })),
     revisionId: z.string().optional(),

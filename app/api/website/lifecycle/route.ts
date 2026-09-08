@@ -64,8 +64,8 @@ export async function POST(request: Request) {
         state = db.websiteLifecycle.put(next, state.version);
       } else if (body.action === 'runAll') {
         const project = db.websiteProjects.all().find(item => item.id === state!.projectId);
-        const pages = (project?.page?.pages ?? []).map((item: any) => path.relative(project.page.packageRoot, item.file).replaceAll('\\', '/')).filter((item: string) => item.endsWith('.html'));
-        if (!pages.length) throw new Error('No imported HTML pages were found.');
+        const pages = (project?.page?.pages ?? []).map((item: any) => path.relative(project.page.packageRoot, item.file).replaceAll('\\', '/')).filter((item: string) => item.endsWith('.html') && !state!.revisions.some(revision => revision.pagePath === item && revision.kind === 'agent'));
+        if (!pages.length) throw new Error('Every imported HTML page already has an agent revision.');
         if (db.localJobs.all().some(item => item.type === 'website-page-revision' && ['queued', 'running'].includes(item.status))) throw new Error('Website page work is already queued or running.');
         const now = new Date().toISOString();
         for (const pagePath of pages) db.localJobs.enqueue({ id: randomUUID(), type: 'website-page-revision', createdAt: now, payload: { projectId: state.projectId, pagePath, request: body.request || 'Preserve all factual content and links. Improve this page with approved existing design patterns, relevant source images, SEO, destination-matched affiliate proposals, internal-link validation, and mobile QA. Never invent facts, prices, reviews, images, or experiences.' } });
