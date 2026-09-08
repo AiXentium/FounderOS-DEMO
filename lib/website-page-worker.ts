@@ -36,7 +36,8 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
     if (getLlmProvider().name === 'stub') throw new Error('Configure a real LLM provider before running website agents.');
     const brain = getBrainProvider();
     const status = await brain.status();
-    const notes = await brain.search(`Let's Talk Miles & Travel ${state.pagePath} ${run.request}`);
+    let notes = await brain.search(state.projectId);
+    if (!notes.length) notes = await brain.search("Let's Talk Miles");
     if (!status.connected && !notes.length) throw new Error(`G-Brain is unavailable: ${status.detail}`);
     state = db.websiteLifecycle.put({ ...state, runs: state.runs.map(item => item.id === jobId ? { ...item, brain: { status, notes } } : item) }, state.version);
     const project = db.websiteProjects.all().find(item => item.id === state!.projectId);
