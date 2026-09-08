@@ -23,6 +23,7 @@ export async function searchViatorMcp(searchTerm: string) {
     name: 'search_experiences',
     arguments: {
       searchTerm: searchTerm || 'travel experiences',
+      sessionId: randomUUID(),
       startDate: start.toISOString().slice(0, 10),
       endDate: end.toISOString().slice(0, 10),
       limit: 10,
@@ -37,18 +38,20 @@ export async function searchViatorMcp(searchTerm: string) {
   }
   return (parsed.experiences ?? []).map((experience) => {
     const code = String(experience.code ?? '');
-    const url = String(experience.clickOffToLander ?? `https://www.viator.com/tours/-/${code}`);
+    const trackedUrl = String(experience.clickOffToLander ?? '');
+    const url = String(experience.productUrl ?? experience.url ?? `https://www.viator.com/tours/-/${code}`);
     const image = experience.imageUrl ?? experience.image ?? experience.thumbnail ?? (Array.isArray(experience.images) ? (experience.images[0] as Record<string, unknown> | undefined)?.url : undefined);
     return {
       id: `viator-mcp-${code}`,
       name: String(experience.title ?? 'Viator experience'),
       source: 'Viator',
       url,
-      trackedUrl: `${url}${url.includes('?') ? '&' : '?'}utm_source=business-os&utm_medium=affiliate`,
+      trackedUrl,
       imageUrl: typeof image === 'string' ? image.replace('{w}', '720').replace('{h}', '480') : undefined,
       price: experience.fromPrice ? `$${experience.fromPrice}` : undefined,
       commission: 'Viator partner rate',
       status: 'live',
     };
-  });
+  }).filter((experience) => /^https:\/\//.test(experience.trackedUrl));
 }
+import { randomUUID } from 'node:crypto';

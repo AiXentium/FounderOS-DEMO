@@ -3,9 +3,12 @@ import { promises as fs } from 'node:fs';
 import type { FounderDb } from '@/lib/db';
 import { getBrainProvider } from '@/lib/brain';
 import { getLlmProvider } from '@/lib/connectors/llm';
+import { searchViator, viatorConfigured } from '@/lib/connectors/viator';
+import { searchViatorMcp } from '@/lib/connectors/viator-mcp';
 import { realAgents } from '@/lib/agents/real';
 import { createRuntime } from '@/lib/agents/runtime';
 import { applyHtmlEdits, decodeHtmlEdits, hash, safeFile, saveRevision } from '@/lib/website-revisions';
+import { addAffiliateSection, detectPageTopic, matchingViatorOffers } from '@/lib/website-affiliates';
 
 export const WEBSITE_LANES = {
   content: 'agency-marketing-content-creator',
@@ -50,17 +53,24 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
     }
     const approvedOffers = db.affiliateProducts.all().filter((item: any) => item.status === 'approved');
     const contextWarnings: string[] = [];
-    let liveOffers: unknown = [];
-    const destination = source.html.match(/\b(Venice|Madrid|Rome|Florence|Paris|Barcelona)\b/i)?.[1];
-    const affiliate = realAgents.find(item => item.id === WEBSITE_LANES.affiliate);
-    const search = affiliate?.chatTools?.().find(tool => tool.name === 'searchLiveViator');
-    if (search && destination) {
-      try { liveOffers = await search.execute({ query: `${destination} travel experiences` }); }
-      catch { contextWarnings.push('Live affiliate inventory could not be retrieved. Only existing approved offers may be proposed.'); }
+    let liveOffers: Array<Record<string, unknown>> = [];
+    const detected = detectPageTopic(source.html, state.pagePath);
+    if (detected.destination) {
+      try { liveOffers = (viatorConfigured() ? await searchViator(`${detected.destination} tours`) : await searchViatorMcp(`${detected.destination} tours`)) as Array<Record<string, unknown>>; }
+      catch {
+        try { liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>; }
+        catch { contextWarnings.push('Live affiliate inventory could not be retrieved. Only existing approved offers may be proposed.'); }
+      }
+    } else {
+      contextWarnings.push('No single destination was detected with enough confidence; Viator offers were not added.');
+    }
+    const viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+    if (liveOffers.length && !viatorOffers.length) {
+      contextWarnings.push(`Live Viator results did not explicitly match ${detected.destination}; no tours were added.`);
     }
     if (!approvedOffers.length) contextWarnings.push('No approved affiliate catalog entries were found. New offers remain proposals and must be verified before insertion.');
     contextWarnings.push('Media matches use source filenames and existing alt text; visual image suitability requires review.');
-    const grounding = JSON.stringify({ projectId: state.projectId, pagePath: state.pagePath, baseRevisionId: source.id, sourceHash: source.hash, notes, brand: db.brandVault.get()?.blueprint, availableMedia: media, existingStyles: styles, approvedOffers, liveOffers, warnings: contextWarnings });
+    const grounding = JSON.stringify({ projectId: state.projectId, pagePath: state.pagePath, baseRevisionId: source.id, sourceHash: source.hash, detectedTopic: detected, notes, brand: db.brandVault.get()?.blueprint, availableMedia: media, existingStyles: styles, approvedOffers, liveOffers: viatorOffers, warnings: contextWarnings });
     const runtime = createRuntime(db, realAgents);
     const results: Array<{ agentId: string; reply: string; createdAt: string }> = [];
     const reports: Partial<Record<keyof typeof WEBSITE_LANES, z.infer<typeof ResultSchema>>> = {};
@@ -91,7 +101,8 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
       proposal = await execute(composer, compose + ` Your prior edit failed validation: ${error instanceof Error ? error.message : String(error)}. Correct the exact substring; include sufficient surrounding original HTML for a unique match.`);
       html = applyHtmlEdits(source.html, proposal);
     }
-    reports.qa = parseResult(await execute(WEBSITE_LANES.qa, contract + format + 'Review the revised HTML against the original source in the saved context and all specialist proposals. Report failed for broken structure or invented facts. Otherwise use needs_input when visual browser verification or affiliate validation is still required. Do not claim browser tests were executed. List concrete checks in changes.', html));
+    html = addAffiliateSection(html, viatorOffers);
+    reports.qa = parseResult(await execute(WEBSITE_LANES.qa, contract + format + 'Review the revised HTML against the original source in the saved context and all specialist proposals. Confirm that any affiliate cards use only the supplied matched offers, exact tracked URLs, sponsored/nofollow attributes, and a disclosure. Report failed for broken structure or invented facts. Otherwise use needs_input when visual browser verification is still required. Do not claim browser tests were executed. List concrete checks in changes.', html));
     state = saveRevision({ ...state!, selectedId: source.id }, html, 'agent');
     const qa = reports.qa;
     const qaStatus = qa.status === 'passed' ? 'passed' as const : qa.status === 'failed' ? 'failed' as const : 'needs_review' as const;
@@ -100,8 +111,8 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
       revisions: state.revisions.map(item => item.id === state!.selectedId ? { ...item,
         appliedEdits: decodeHtmlEdits(proposal),
         contentChanges: reports.content!.changes, designChanges: reports.design!.changes, mediaChanges: reports.media!.changes,
-        seo: reports.seo!.changes, affiliateProposals: reports.affiliate!.changes,
-        warnings: [...contextWarnings, ...Object.values(reports).flatMap(report => report?.warnings || [])],
+        seo: reports.seo!.changes, affiliateProposals: reports.affiliate!.changes, affiliateOffers: viatorOffers,
+        warnings: [...new Set([...contextWarnings, ...Object.values(reports).flatMap(report => report?.warnings || [])])],
         qa: { status: qaStatus, summary: qa.summary, checks: qa.changes },
         status: qaStatus === 'passed' ? 'draft' : 'needs_review',
       } : item),

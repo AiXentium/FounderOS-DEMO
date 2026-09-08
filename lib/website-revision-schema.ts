@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PageAffiliateOfferSchema } from '@/lib/website-affiliates';
 
 export const WebsiteRevisionSchema = z.object({
   id: z.string(), html: z.string().max(2_000_000), hash: z.string(),
@@ -10,6 +11,7 @@ export const WebsiteRevisionSchema = z.object({
   mediaChanges: z.array(z.string()).default([]),
   seo: z.array(z.string()).default([]),
   affiliateProposals: z.array(z.string()).default([]),
+  affiliateOffers: z.array(PageAffiliateOfferSchema).default([]),
   warnings: z.array(z.string()).default([]),
   qa: z.object({ status: z.enum(['not_run', 'passed', 'needs_review', 'failed']), summary: z.string(), checks: z.array(z.string()) }).default({ status: 'not_run', summary: 'QA has not run.', checks: [] }),
   status: z.enum(['source', 'draft', 'needs_review', 'approved', 'staged', 'published']).default('draft'),

@@ -1175,6 +1175,9 @@ export function openDb(path: string) {
     create(product: { id: string; name: string; source: string; url: string; trackedUrl: string; imageUrl?: string; price?: string; commission?: string; status?: string; createdAt: string }) {
       db.prepare(`INSERT OR REPLACE INTO affiliate_products (id, name, source, url, tracked_url, image_url, price, commission, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(product.id, product.name, product.source, product.url, product.trackedUrl, product.imageUrl ?? null, product.price ?? '—', product.commission ?? 'pending', product.status ?? 'needs review', product.createdAt);
     },
+    updateStatus(id: string, status: 'needs review' | 'approved' | 'rejected') {
+      db.prepare('UPDATE affiliate_products SET status = ? WHERE id = ?').run(status, id);
+    },
   };
 
   const affiliateCampaigns = {
