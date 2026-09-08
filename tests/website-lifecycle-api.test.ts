@@ -54,12 +54,16 @@ describe('website pilot API', () => {
     expect((await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'staging', revision: second }) })).status).toBe(404);
     await action('approve');
     const staged = await action('stage');
-    expect((await staged.json()).url).toBe('/staging');
+    expect((await staged.json()).url).toBe('http://localhost/staging/');
     expect(await (await serveRelease('staging')).text()).toContain('Real travel guide');
     expect(await (await serveRelease('staging', ['about'])).text()).toContain('Immutable about page');
     const published = await action('publish');
-    expect((await published.json()).url).toBe('/site');
+    expect((await published.json()).url).toBe('http://localhost/site/');
     expect(await (await serveRelease('site')).text()).toContain('Real travel guide');
+    await action('selectPage', { pagePath: 'about/index.html' });
+    expect(await (await serveRelease('preview')).text()).toContain('Immutable about page');
+    expect(await (await serveRelease('site')).text()).toContain('Real travel guide');
+    await action('selectPage', { pagePath: 'index.html' });
     await action('rollback', { revisionId: first });
     const live = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'live', revision: 'current' }) });
     expect(live.headers.get('x-website-revision')).toBe(first);

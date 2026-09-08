@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         state = db.websiteLifecycle.put(changeRelease(state, body.action, body.revisionId), state.version);
       }
     }
-    const url = body.action === 'stage' ? '/staging' : ['publish', 'rollback'].includes(body.action) ? '/site' : body.action === 'select' ? '/preview' : undefined;
+    const url = body.action === 'stage' ? new URL('/staging/', request.url).toString() : ['publish', 'rollback'].includes(body.action) ? new URL('/site/', request.url).toString() : body.action === 'select' ? new URL('/preview/', request.url).toString() : undefined;
     return NextResponse.json({ state, ...(url ? { url } : {}) });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Website action failed.' }, { status: 409 }); }
 }

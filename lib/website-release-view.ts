@@ -12,12 +12,15 @@ export async function serveRelease(mode: ReleaseMode, parts: string[] = []) {
     const state = getDb().websiteLifecycle.get();
     if (!state?.sourceRoot) throw new Error(`${mode} revision is unavailable.`);
     const prefix = `/${mode}`;
-    const requested = parts.length ? parts.join('/') : state.pagePath;
+    const releaseRoot = state.sourceHashes['index.html'] ? 'index.html' : state.pagePath;
+    const requested = parts.length ? parts.join('/') : mode === 'preview' ? state.pagePath : releaseRoot;
     const managed = state.revisions.find(item => item.pagePath === requested && item.document);
     let file: string | undefined;
     try { file = await safeFile(state.sourceRoot, requested); } catch { if (!managed) throw new Error('Page is unavailable.'); }
     const relative = file ? path.relative(await fs.realpath(state.sourceRoot), file).replaceAll('\\', '/') : requested;
-    const id = mode === 'preview' ? (relative === state.pagePath ? state.selectedId : undefined) : mode === 'staging' ? state.stagedPages[relative] : state.publishedPages[relative];
+    const stagedPages = Object.keys(state.stagedPages).length ? state.stagedPages : state.stagedId ? { [state.revisions.find(item => item.id === state.stagedId)?.pagePath || releaseRoot]: state.stagedId } : {};
+    const publishedPages = Object.keys(state.publishedPages).length ? state.publishedPages : state.publishedId ? { [state.revisions.find(item => item.id === state.publishedId)?.pagePath || releaseRoot]: state.publishedId } : {};
+    const id = mode === 'preview' ? (relative === state.pagePath ? state.selectedId : undefined) : mode === 'staging' ? stagedPages[relative] : publishedPages[relative];
     const revision = state.revisions.find(item => item.id === id);
     if (mode === 'preview' && relative === state.pagePath && !revision) throw new Error('Selected preview revision is unavailable.');
     if (mode === 'staging' && revision && revision.stagedHash !== revision.hash) throw new Error('The staged revision failed its integrity check.');
