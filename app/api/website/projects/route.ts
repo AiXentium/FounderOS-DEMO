@@ -7,11 +7,11 @@ const Schema = z.object({ id: z.string().optional(), name: z.string().min(1), pr
 export async function GET() {
   const projects = await Promise.all(getDb().websiteProjects.all('default').map(async (rawProject: any) => {
     const project = rawProject.page ? rawProject : { ...rawProject, page: typeof rawProject.page_json === 'string' ? JSON.parse(rawProject.page_json) : {} };
-    if (project.page?.contentHtml || !project.page?.entryFile) return project;
+    if (project.page?.contentHtml || !project.page?.entryFile) return { ...project, page: { ...(project.page ?? {}), previewUrl: `/api/website/projects/${project.id}/preview` } };
     const source = await fs.readFile(project.page.entryFile, 'utf8').catch(() => '');
     if (!source) return project;
     const contentHtml = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? source;
-    return { ...project, page: { ...project.page, contentHtml } };
+    return { ...project, page: { ...project.page, contentHtml, previewUrl: `/api/website/projects/${project.id}/preview` } };
   }));
   return NextResponse.json({ projects });
 }
