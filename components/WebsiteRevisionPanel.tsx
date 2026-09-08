@@ -68,6 +68,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
           {state.publishedId && <a className={button} href="/site" target="_blank" rel="noreferrer">Open published page</a>}
         </div>
         {editing && <><textarea aria-label="Revision HTML" className="h-80 w-full bg-os-surface2 p-2 font-mono text-xs" value={html} onChange={e => setHtml(e.target.value)} /><button className={button} disabled={busy || running} onClick={() => void action('save')}>Save new revision</button></>}
+        {state.releases.length > 0 && <details className="text-xs"><summary>Release history ({state.releases.length})</summary><div className="mt-2 space-y-2">{[...state.releases].reverse().map((release, index) => <div key={`${release.revisionId}-${release.at}-${index}`} className="border border-os-border p-2"><div>{release.action} | {release.at}</div><div>Revision {release.revisionId.slice(0, 8)} | Hash {release.revisionHash?.slice(0, 12) || 'legacy'} | Build {release.build?.slice(0, 12) || 'legacy'}</div>{release.url && <a href={release.url} target="_blank" rel="noreferrer">Open release</a>}</div>)}</div></details>}
       </>}
       {message && <p role="status" className="text-sm">{message}</p>}
       {state?.runs.map(run => <details key={run.id} className="text-xs"><summary>{run.status}: {run.request} {run.error}</summary>{run.results.map((result, index) => <div key={`${result.agentId}-${index}`}><p>{result.agentId}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{result.reply}</pre></div>)}</details>)}
