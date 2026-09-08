@@ -54,17 +54,27 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
     const approvedOffers = db.affiliateProducts.all().filter((item: any) => item.status === 'approved');
     const contextWarnings: string[] = [];
     let liveOffers: Array<Record<string, unknown>> = [];
+    let viatorOffers = [] as ReturnType<typeof matchingViatorOffers>;
     const detected = detectPageTopic(source.html, state.pagePath);
     if (detected.destination) {
-      try { liveOffers = (viatorConfigured() ? await searchViator(`${detected.destination} tours`) : await searchViatorMcp(`${detected.destination} tours`)) as Array<Record<string, unknown>>; }
+      try {
+        liveOffers = (viatorConfigured() ? await searchViator(`${detected.destination} tours`) : await searchViatorMcp(`${detected.destination} tours`)) as Array<Record<string, unknown>>;
+        viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+        if (!viatorOffers.length && viatorConfigured()) {
+          liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>;
+          viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+        }
+      }
       catch {
-        try { liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>; }
+        try {
+          liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>;
+          viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+        }
         catch { contextWarnings.push('Live affiliate inventory could not be retrieved. Only existing approved offers may be proposed.'); }
       }
     } else {
       contextWarnings.push('No single destination was detected with enough confidence; Viator offers were not added.');
     }
-    const viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
     if (liveOffers.length && !viatorOffers.length) {
       contextWarnings.push(`Live Viator results did not explicitly match ${detected.destination}; no tours were added.`);
     }
