@@ -25,7 +25,7 @@ export function applyHtmlEdits(original: string, output: string) {
 
 export function saveRevision(state: WebsiteLifecycle, html: string, kind: 'source' | 'agent' | 'manual'): WebsiteLifecycle {
   if (!/<html[\s>]/i.test(html) || !/<\/html\s*>/i.test(html) || !/<body[\s>]/i.test(html) || html.length > 2_000_000) throw new Error('A complete HTML document is required.');
-  const revision = { id: randomUUID(), html, hash: hash(html), kind, createdAt: new Date().toISOString(), parentId: state.selectedId, appliedEdits: [], contentChanges: [], designChanges: [], mediaChanges: [], seo: [], affiliateProposals: [], affiliateOffers: [], warnings: [], qa: { status: 'not_run' as const, summary: 'QA has not run.', checks: [] }, status: kind === 'source' ? 'source' as const : 'draft' as const };
+  const revision = { id: randomUUID(), pagePath: state.pagePath, html, hash: hash(html), kind, createdAt: new Date().toISOString(), parentId: state.selectedId, appliedEdits: [], contentChanges: [], designChanges: [], mediaChanges: [], seo: [], affiliateProposals: [], affiliateOffers: [], warnings: [], qa: { status: 'not_run' as const, summary: 'QA has not run.', checks: [] }, status: kind === 'source' ? 'source' as const : 'draft' as const };
   return { ...state, selectedId: revision.id, revisions: [...state.revisions, revision] };
 }
 
@@ -38,10 +38,13 @@ export function changeRelease(state: WebsiteLifecycle, action: 'approve' | 'reje
   if (action === 'approve' && revision.qa.status === 'failed') throw new Error('Resolve failed QA before approval.');
   if (action === 'approve') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'approved', approvedHash: item.hash, approvedAt: new Date().toISOString(), affiliateOffers: item.affiliateOffers.map(offer => ({ ...offer, status: 'approved' as const })) } : item) };
   if (revision.approvedHash !== revision.hash) throw new Error('Approve this exact revision first.');
-  if (action === 'stage') return { ...state, stagedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
+  const pagePath = revision.pagePath ?? state.pagePath;
+  if (action === 'stage') return { ...state, stagedId: id, stagedPages: { ...state.stagedPages, [pagePath]: id }, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
   if (revision.stagedHash !== revision.hash) throw new Error('Stage this exact revision first.');
   if (action === 'rollback' && !state.releases.some(item => item.revisionId === id)) throw new Error('Rollback requires a previously published revision.');
-  return { ...state, publishedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'published' } : item), releases: [...state.releases, { revisionId: id, revisionHash: revision.hash, build: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.BUILDER_BUILD_SHA || 'local', url: '/site', action, at: new Date().toISOString() }] };
+  const publishedPages = action === 'rollback' && state.releases.find(item => item.revisionId === id)?.pageRevisions
+    ? state.releases.find(item => item.revisionId === id)!.pageRevisions! : { ...state.publishedPages, ...state.stagedPages, [pagePath]: id };
+  return { ...state, publishedId: id, publishedPages, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'published' } : item), releases: [...state.releases, { revisionId: id, revisionHash: revision.hash, pageRevisions: publishedPages, build: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.BUILDER_BUILD_SHA || 'local', url: '/site', action, at: new Date().toISOString() }] };
 }
 
 export async function safeFile(root: string, relative: string) {

@@ -28,13 +28,14 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
     return () => clearInterval(timer);
   }, [projectId]);
   const revision = state?.revisions.find(item => item.id === state.selectedId);
-  const action = async (name: string, revisionId = revision?.id) => {
+  const action = async (name: string, revisionId = revision?.id, targetPagePath = pagePath) => {
     setBusy(true); setMessage('');
     try {
-      const response = await fetch('/api/website/lifecycle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: name, projectId, version: state?.version ?? 0, pagePath, revisionId, request, ...(name === 'save' ? { html } : {}) }) });
+      const agentRequest = name === 'runAll' ? 'Preserve every factual statement, image, and link unless a verified correction is required. Apply approved existing components and templates, improve SEO, match only existing source images to the story, propose only destination-relevant Viator and approved manual Amazon offers, verify internal links and mobile behavior, and save a reviewable revision. Never invent content, prices, reviews, images, or experiences.' : request;
+      const response = await fetch('/api/website/lifecycle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: name, projectId, version: state?.version ?? 0, pagePath: targetPagePath, revisionId, request: agentRequest, ...(name === 'save' ? { html } : {}) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'Request failed.');
-      setState(body.state); setMessage(body.jobId ? 'Page work queued. Results will appear here.' : `${name === 'canonical' ? 'Canonical page selected' : name.charAt(0).toUpperCase() + name.slice(1) + ' saved'}.`);
+      setState(body.state); setMessage(body.queued ? `${body.queued} pages queued. The existing specialists will process them sequentially.` : body.jobId ? 'Page work queued. Results will appear here.' : `${name === 'canonical' ? 'Canonical page selected' : name.charAt(0).toUpperCase() + name.slice(1) + ' saved'}.`);
       if (name === 'save') setEditing(false);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Request failed.'); await refresh().catch(() => undefined); }
     finally { setBusy(false); }
@@ -47,7 +48,8 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       <div className="text-xs">{state ? `Canonical page: ${state.pagePath}` : 'Choose the canonical project and one pilot page'}</div>
       {!state && <><select aria-label="Pilot page" className="max-w-full bg-os-surface2 p-2 text-xs" value={pagePath} onChange={e => setPagePath(e.target.value)}>{pages.map(page => <option key={page.path} value={page.path}>{page.title} ({page.path})</option>)}</select><button className={button} disabled={busy || !pagePath} onClick={() => void action('canonical')}>Use this project and page</button></>}
       {state && revision && <>
-        <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.kind} - {item.createdAt} {item.approvedHash ? '(approved)' : ''}</option>)}</select>
+        <select aria-label="Selected website page" className="max-w-full bg-os-surface2 p-2 text-xs" value={state.pagePath} onChange={e => { const next = e.target.value; setPagePath(next); void action('selectPage', undefined, next); }} disabled={busy || running}>{pages.map(page => <option key={page.path} value={page.path}>{page.title} ({page.path})</option>)}</select>
+        <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.filter(item => (item.pagePath ?? state.pagePath) === state.pagePath).map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.kind} - {item.createdAt} {item.approvedHash ? '(approved)' : ''}</option>)}</select>
         <div className="text-xs">Original source protected. Previewing revision {revision.id.slice(0, 8)}.</div>
         {revision.kind === 'agent' && <details className="space-y-2 text-xs" open><summary>Revision report: {revision.status} | QA: {revision.qa.status}</summary>
           <p>{revision.qa.summary}</p>
@@ -58,6 +60,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
         <textarea aria-label="Page agent request" className="w-full bg-os-surface2 p-2 text-sm" rows={3} value={request} onChange={e => setRequest(e.target.value)} />
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy || running} onClick={() => void action('run')}>Run page specialists</button>
+          <button className={button} disabled={busy || running} onClick={() => void action('runAll')}>Process every imported page</button>
           <button className={button} disabled={busy || running} onClick={() => { setHtml(revision.html); setEditing(!editing); }}>Edit a new revision</button>
           <button className={button} disabled={busy || running || !!revision.approvedHash} onClick={() => void action('approve')}>Approve this revision</button>
           <button className={button} disabled={busy || running || revision.status === 'rejected'} onClick={() => void action('reject')}>Reject this revision</button>

@@ -30,10 +30,20 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
   const job = db.localJobs.all().find(item => item.id === jobId);
   let state = db.websiteLifecycle.get();
   try {
-    if (!state || job?.payload?.projectId !== state.projectId || job?.payload?.pagePath !== state.pagePath) throw new Error('Job does not target the canonical page.');
+    if (!state || job?.payload?.projectId !== state.projectId) throw new Error('Job does not target the canonical project.');
     if (state.runs.some(run => run.status === 'running')) throw new Error('A page run is already active.');
-    const source = state.revisions.find(item => item.id === job.payload.revisionId);
+    const targetPath = String(job?.payload?.pagePath || state.pagePath);
+    const previousPath = state.pagePath;
+    let revisions = state.revisions.map(item => item.pagePath ? item : { ...item, pagePath: previousPath });
+    let source = job?.payload?.revisionId ? revisions.find(item => item.id === job.payload.revisionId && item.pagePath === targetPath) : [...revisions].reverse().find(item => item.pagePath === targetPath && item.kind === 'source');
+    if (!source) {
+      const file = await safeFile(state.sourceRoot!, targetPath);
+      const prepared = saveRevision({ ...state, revisions, pagePath: targetPath, selectedId: undefined }, await fs.readFile(file, 'utf8'), 'source');
+      revisions = prepared.revisions;
+      source = revisions.find(item => item.id === prepared.selectedId);
+    }
     if (!source) throw new Error('The requested base revision is missing.');
+    state = db.websiteLifecycle.put({ ...state, revisions, pagePath: targetPath, selectedId: source.id }, state.version);
     const run = { id: jobId, status: 'running' as const, request: String(job.payload.request), startedAt: new Date().toISOString(), results: [] };
     state = db.websiteLifecycle.put({ ...state, runs: [...state.runs, run] }, state.version);
     if (getLlmProvider().name === 'stub') throw new Error('Configure a real LLM provider before running website agents.');
