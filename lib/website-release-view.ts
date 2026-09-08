@@ -13,16 +13,18 @@ export async function serveRelease(mode: ReleaseMode, parts: string[] = []) {
     if (!state?.sourceRoot) throw new Error(`${mode} revision is unavailable.`);
     const prefix = `/${mode}`;
     const requested = parts.length ? parts.join('/') : state.pagePath;
-    const file = await safeFile(state.sourceRoot, requested);
-    const relative = path.relative(await fs.realpath(state.sourceRoot), file).replaceAll('\\', '/');
+    const managed = state.revisions.find(item => item.pagePath === requested && item.document);
+    let file: string | undefined;
+    try { file = await safeFile(state.sourceRoot, requested); } catch { if (!managed) throw new Error('Page is unavailable.'); }
+    const relative = file ? path.relative(await fs.realpath(state.sourceRoot), file).replaceAll('\\', '/') : requested;
     const id = mode === 'preview' ? (relative === state.pagePath ? state.selectedId : undefined) : mode === 'staging' ? state.stagedPages[relative] : state.publishedPages[relative];
     const revision = state.revisions.find(item => item.id === id);
     if (mode === 'preview' && relative === state.pagePath && !revision) throw new Error('Selected preview revision is unavailable.');
     if (mode === 'staging' && revision && revision.stagedHash !== revision.hash) throw new Error('The staged revision failed its integrity check.');
     if (mode === 'site' && !state.releases.length) throw new Error('No published release is available.');
-    const original = await fs.readFile(file);
-    if (hash(original) !== state.sourceHashes[relative]) throw new Error('Original file integrity check failed.');
-    const ext = path.extname(file).toLowerCase();
+    const original = file ? await fs.readFile(file) : Buffer.from(revision?.html || '');
+    if (file && hash(original) !== state.sourceHashes[relative]) throw new Error('Original file integrity check failed.');
+    const ext = path.extname(relative).toLowerCase();
     if (!MIME[ext]) throw new Error('This file type cannot be displayed.');
     let data: string | Buffer = original;
     if (ext === '.html') data = previewHtml(revision?.html ?? original.toString('utf8'), relative, prefix);

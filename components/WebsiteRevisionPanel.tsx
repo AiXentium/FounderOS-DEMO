@@ -12,6 +12,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
   const [html, setHtml] = useState('');
   const [editing, setEditing] = useState(false);
   const [build, setBuild] = useState('');
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([]);
   const refresh = async () => {
     const response = await fetch('/api/website/lifecycle', { cache: 'no-store' });
     if (!response.ok) throw new Error('Could not load page revisions.');
@@ -24,6 +25,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       const next = (project?.page?.pages ?? []).map((item: any) => ({ title: item.title, path: item.file?.startsWith(project.page.packageRoot + '/') ? item.file.slice(project.page.packageRoot.length + 1) : '' })).filter((item: any) => item.path);
       setPages(next); setPagePath(next.find((item: any) => item.path === 'index.html')?.path || next[0]?.path || '');
     }).catch(error => setMessage(error.message));
+    void fetch('/api/templates').then(r => r.json()).then(body => setTemplates(body.templates || [])).catch(() => undefined);
     const timer = setInterval(() => void refresh().catch(() => undefined), 4000);
     return () => clearInterval(timer);
   }, [projectId]);
@@ -41,6 +43,14 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
     finally { setBusy(false); }
   };
   const button = 'border border-os-border px-3 py-2 text-xs disabled:opacity-40';
+  const manage = async (payload: Record<string, unknown>) => {
+    if (!state) return; setBusy(true); setMessage('');
+    try {
+      const response = await fetch('/api/website/manage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId, version: state.version, revisionId: revision?.id, actor: { type: 'human', id: 'business-os-owner', label: 'Business OS owner' }, ...payload }) });
+      const body = await response.json(); if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'Structured edit failed.');
+      setState(body.state); setMessage('Structured page revision saved. Preview it, run QA, and approve before publishing.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Structured edit failed.'); await refresh().catch(() => undefined); } finally { setBusy(false); }
+  };
   const running = state?.runs.some(item => item.status === 'running');
   if (state && state.projectId !== projectId) return <div className="p-4 text-os-text">This duplicate is not the canonical project. Load project {state.projectId} from Saved Projects to continue the pilot.</div>;
   return <section className="min-w-0 bg-os-surface text-os-text">
@@ -51,6 +61,21 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
         <select aria-label="Selected website page" className="max-w-full bg-os-surface2 p-2 text-xs" value={state.pagePath} onChange={e => { const next = e.target.value; setPagePath(next); void action('selectPage', undefined, next); }} disabled={busy || running}>{pages.map(page => <option key={page.path} value={page.path}>{page.title} ({page.path})</option>)}</select>
         <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.filter(item => (item.pagePath ?? state.pagePath) === state.pagePath).map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.kind} - {item.createdAt} {item.approvedHash ? '(approved)' : ''}</option>)}</select>
         <div className="text-xs">Original source protected. Previewing revision {revision.id.slice(0, 8)}.</div>
+        <details className="border border-os-border p-3 text-xs" open={!!revision.document}>
+          <summary>Controlled page manager {revision.document ? `· ${revision.document.sections.length} sections · ${revision.document.templateId}` : '· initialize with your first section'}</summary>
+          <p className="my-2 text-os-dim">Creates attributed revisions from approved templates and variants. It never accepts custom CSS or HTML.</p>
+          <div className="flex flex-wrap gap-2">
+            <select aria-label="Approved template" className="bg-os-surface2 p-2" value={revision.document?.templateId || 'affiliate-magazine'} onChange={e => void manage({ action: 'changeTemplate', templateId: e.target.value })} disabled={busy}>{templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}</select>
+            {(['hero', 'rich-text', 'image', 'gallery', 'highlights', 'cards', 'itinerary', 'affiliate', 'faq', 'cta'] as const).map(type => <button key={type} className={button} disabled={busy} onClick={() => void manage({ action: 'addSection', section: { id: `${type}-${Date.now()}`, type, variant: type === 'itinerary' ? 'timeline' : type === 'gallery' || type === 'cards' ? 'grid' : 'standard', heading: type.replace('-', ' '), body: '', items: [], offerIds: [], visible: true } })}>+ {type}</button>)}
+          </div>
+          {revision.document?.sections.map((section, index) => <div key={section.id} className="mt-2 flex flex-wrap items-center gap-2 border border-os-border p-2">
+            <span>{index + 1}. {section.type} · {section.variant}</span>
+            <button className={button} disabled={busy || index === 0} onClick={() => void manage({ action: 'reorderSection', sectionId: section.id, index: index - 1 })}>↑</button>
+            <button className={button} disabled={busy || index === revision.document!.sections.length - 1} onClick={() => void manage({ action: 'reorderSection', sectionId: section.id, index: index + 1 })}>↓</button>
+            <select aria-label={`${section.id} variant`} className="bg-os-surface2 p-2" value={section.variant} onChange={e => void manage({ action: 'editSection', sectionId: section.id, patch: { variant: e.target.value } })}>{['standard', 'centered', 'split', 'grid', 'timeline', 'compact', 'feature'].map(item => <option key={item}>{item}</option>)}</select>
+            <button className={button} disabled={busy} onClick={() => void manage({ action: 'removeSection', sectionId: section.id })}>Remove</button>
+          </div>)}
+        </details>
         {revision.kind === 'agent' && <details className="space-y-2 text-xs" open><summary>Revision report: {revision.status} | QA: {revision.qa.status}</summary>
           <p>{revision.qa.summary}</p>
           {revision.affiliateOffers.length > 0 && <div><p>Matched affiliate offers included in preview ({revision.affiliateOffers.length})</p>{revision.affiliateOffers.map(offer => <p key={offer.id}><a href={offer.trackedUrl} rel="sponsored nofollow noopener" target="_blank">{offer.title}</a> | {offer.destination} | {offer.status}</p>)}</div>}

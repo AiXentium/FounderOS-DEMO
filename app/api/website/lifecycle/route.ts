@@ -16,6 +16,24 @@ const RequestSchema = z.object({ action: z.enum(['canonical', 'run', 'runAll', '
 export async function GET() {
   const db = getDb();
   let state = db.websiteLifecycle.get();
+  if (state) {
+    const due = state.schedules.filter(item => item.status === 'scheduled' && Date.parse(item.scheduledFor) <= Date.now()).sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor));
+    for (const schedule of due) {
+      try {
+        if (schedule.action === 'publish') {
+          if (!schedule.revisionId) throw new Error('Scheduled revision is missing.');
+          state = changeRelease(state, 'publish', schedule.revisionId);
+        } else {
+          const publishedPages: Record<string, string> = { ...state.publishedPages }; const revisionId = publishedPages[schedule.pagePath]; delete publishedPages[schedule.pagePath];
+          state = { ...state, publishedPages, releases: [...state.releases, { revisionId: revisionId || 'unpublished', pageRevisions: publishedPages, build: process.env.RAILWAY_GIT_COMMIT_SHA || 'local', url: '/site', action: 'unpublish', at: new Date().toISOString() }] };
+        }
+        state = { ...state, schedules: state.schedules.map(item => item.id === schedule.id ? { ...item, status: 'completed' as const, completedAt: new Date().toISOString() } : item) };
+      } catch (error) {
+        state = { ...state, schedules: state.schedules.map(item => item.id === schedule.id ? { ...item, status: 'failed' as const, completedAt: new Date().toISOString(), error: error instanceof Error ? error.message : 'Scheduled action failed.' } : item) };
+      }
+    }
+    if (due.length) state = db.websiteLifecycle.put(state, state.version);
+  }
   if (state?.runs.some(run => run.status === 'running' && Date.now() - Date.parse(run.startedAt) > 600000)) {
     state = db.websiteLifecycle.put({ ...state, runs: state.runs.map(run => {
       if (run.status !== 'running' || Date.now() - Date.parse(run.startedAt) <= 600000) return run;
@@ -46,7 +64,7 @@ export async function POST(request: Request) {
       const source = await safeFile(project.page.packageRoot, body.pagePath!);
       const root = path.join(websiteDataRoot(), 'website-sources', randomUUID());
       const hashes = await snapshotSource(project.page.packageRoot, root);
-      const initial = saveRevision({ projectId: project.id, pagePath: body.pagePath!, version: 0, sourceRoot: root, sourceHashes: hashes, stagedPages: {}, publishedPages: {}, revisions: [], runs: [], releases: [] }, await fs.readFile(path.join(root, body.pagePath!), 'utf8'), 'source');
+      const initial = saveRevision({ projectId: project.id, pagePath: body.pagePath!, version: 0, sourceRoot: root, sourceHashes: hashes, stagedPages: {}, publishedPages: {}, schedules: [], revisions: [], runs: [], releases: [] }, await fs.readFile(path.join(root, body.pagePath!), 'utf8'), 'source');
       state = db.websiteLifecycle.put(initial, 0);
     } else {
       if (!state || state.projectId !== body.projectId) throw new Error('Load the canonical project first.');

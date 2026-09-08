@@ -9,7 +9,7 @@ import { runWebsitePage } from '@/lib/website-page-worker';
 
 function setup() {
   const db = openDb(':memory:');
-  const state = saveRevision({ projectId: 'pilot', pagePath: 'index.html', version: 0, sourceHashes: {}, stagedPages: {}, publishedPages: {}, revisions: [], runs: [], releases: [] }, '<html><head></head><body>Original real content</body></html>', 'source');
+  const state = saveRevision({ projectId: 'pilot', pagePath: 'index.html', version: 0, sourceHashes: {}, stagedPages: {}, publishedPages: {}, schedules: [], revisions: [], runs: [], releases: [] }, '<html><head></head><body>Original real content</body></html>', 'source');
   db.websiteLifecycle.put(state, 0);
   db.localJobs.enqueue({ id: 'job', type: 'website-page-revision', createdAt: new Date().toISOString(), payload: { projectId: 'pilot', pagePath: 'index.html', revisionId: state.selectedId, request: 'Improve readability' } });
   return db;
