@@ -8,8 +8,16 @@ export async function POST(request: Request) {
   if (body.action === 'run') {
     const limit = Math.min(25, Math.max(1, Number(body.limit) || 1)); const results: { id: string; status: string }[] = [];
     for (const job of db.localJobs.all().filter((item: any) => item.status === 'queued' || (item.status === 'retry' && item.attempts < 3)).slice(0, limit)) {
-      db.localJobs.update(job.id, 'failed', `No executor registered for job type: ${job.type}`);
-      results.push({ id: job.id, status: 'failed' });
+      if (job.type === 'website-project-review') {
+        const projectId = job.payload?.projectId;
+        const project = db.websiteProjects.all('default').find((item: any) => item.id === projectId) as any;
+        if (!project) { db.localJobs.update(job.id, 'failed', 'Imported website project not found.'); results.push({ id: job.id, status: 'failed' }); continue; }
+        const pages = project.page?.pages ?? [];
+        const review = { status: 'draft', approvalRequired: true, sourceProtected: true, startedAt: new Date().toISOString(), lanes: job.payload?.lanes ?? [], pages: pages.map((page: any) => ({ slug: page.slug, title: page.title, status: 'ready-for-agent-review', proposedChanges: ['content', 'images', 'seo', 'affiliate-links'] })) };
+        db.websiteProjects.save({ ...project, page: { ...project.page, automationReview: review }, updatedAt: new Date().toISOString() });
+        db.localJobs.update(job.id, 'completed'); results.push({ id: job.id, status: 'completed' }); continue;
+      }
+      db.localJobs.update(job.id, 'failed', `No executor registered for job type: ${job.type}`); results.push({ id: job.id, status: 'failed' });
     }
     return NextResponse.json({ ran: results.length, results });
   }
