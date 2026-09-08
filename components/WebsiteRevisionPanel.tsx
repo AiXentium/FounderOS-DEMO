@@ -60,10 +60,12 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
           <button className={button} disabled={busy || running} onClick={() => void action('run')}>Run page specialists</button>
           <button className={button} disabled={busy || running} onClick={() => { setHtml(revision.html); setEditing(!editing); }}>Edit a new revision</button>
           <button className={button} disabled={busy || running || !!revision.approvedHash} onClick={() => void action('approve')}>Approve this revision</button>
+          <button className={button} disabled={busy || running || revision.status === 'rejected'} onClick={() => void action('reject')}>Reject this revision</button>
           <button className={button} disabled={busy || running || !revision.approvedHash} onClick={() => void action('stage')}>Stage this revision</button>
-          {revision.stagedHash && <><a className={button} target="_blank" rel="noreferrer" href={`/api/website/view/staging/${revision.id}`}>Open staging</a><button className={button} disabled={busy || running} onClick={() => void action('publish')}>Publish this revision</button></>}
+          <a className={button} target="_blank" rel="noreferrer" href="/preview">Open preview</a>
+          {revision.stagedHash && <><a className={button} target="_blank" rel="noreferrer" href="/staging">Open staging</a><button className={button} disabled={busy || running} onClick={() => void action('publish')}>Publish this revision</button></>}
           {state.releases.some(item => item.revisionId === revision.id) && state.publishedId !== revision.id && <button className={button} disabled={busy || running} onClick={() => void action('rollback')}>Roll back to this revision</button>}
-          {state.publishedId && <a className={button} href="/api/website/view/live/current" target="_blank" rel="noreferrer">Open published page</a>}
+          {state.publishedId && <a className={button} href="/site" target="_blank" rel="noreferrer">Open published page</a>}
         </div>
         {editing && <><textarea aria-label="Revision HTML" className="h-80 w-full bg-os-surface2 p-2 font-mono text-xs" value={html} onChange={e => setHtml(e.target.value)} /><button className={button} disabled={busy || running} onClick={() => void action('save')}>Save new revision</button></>}
       </>}
@@ -71,6 +73,6 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       {state?.runs.map(run => <details key={run.id} className="text-xs"><summary>{run.status}: {run.request} {run.error}</summary>{run.results.map((result, index) => <div key={`${result.agentId}-${index}`}><p>{result.agentId}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{result.reply}</pre></div>)}</details>)}
       <div className="text-[10px] text-os-dim">Build {build.slice(0, 12)}</div>
     </div>
-    {revision && <iframe key={revision.id} title="Selected saved HTML revision" sandbox="allow-scripts" src={`/api/website/view/preview/${revision.id}`} className="h-[780px] w-full border-0 bg-white" />}
+    {revision && <iframe key={revision.id} title="Selected saved HTML revision" sandbox="allow-scripts" src="/preview" className="h-[780px] w-full border-0 bg-white" />}
   </section>;
 }

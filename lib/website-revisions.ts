@@ -29,18 +29,19 @@ export function saveRevision(state: WebsiteLifecycle, html: string, kind: 'sourc
   return { ...state, selectedId: revision.id, revisions: [...state.revisions, revision] };
 }
 
-export function changeRelease(state: WebsiteLifecycle, action: 'approve' | 'stage' | 'publish' | 'rollback' | 'select', id: string): WebsiteLifecycle {
+export function changeRelease(state: WebsiteLifecycle, action: 'approve' | 'reject' | 'stage' | 'publish' | 'rollback' | 'select', id: string): WebsiteLifecycle {
   const revision = state.revisions.find(item => item.id === id);
   if (!revision || hash(revision.html) !== revision.hash) throw new Error('Revision missing or integrity check failed.');
   if (state.runs.some(run => run.status === 'running')) throw new Error('Wait for the current page run to finish.');
   if (action === 'select') return { ...state, selectedId: id };
+  if (action === 'reject') return { ...state, selectedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'rejected', approvedHash: undefined, approvedAt: undefined, stagedHash: undefined } : item) };
   if (action === 'approve' && revision.qa.status === 'failed') throw new Error('Resolve failed QA before approval.');
   if (action === 'approve') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'approved', approvedHash: item.hash, approvedAt: new Date().toISOString(), affiliateOffers: item.affiliateOffers.map(offer => ({ ...offer, status: 'approved' as const })) } : item) };
   if (revision.approvedHash !== revision.hash) throw new Error('Approve this exact revision first.');
-  if (action === 'stage') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
+  if (action === 'stage') return { ...state, stagedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
   if (revision.stagedHash !== revision.hash) throw new Error('Stage this exact revision first.');
   if (action === 'rollback' && !state.releases.some(item => item.revisionId === id)) throw new Error('Rollback requires a previously published revision.');
-  return { ...state, publishedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'published' } : item), releases: [...state.releases, { revisionId: id, action, at: new Date().toISOString() }] };
+  return { ...state, publishedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'published' } : item), releases: [...state.releases, { revisionId: id, revisionHash: revision.hash, build: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.BUILDER_BUILD_SHA || 'local', url: '/site', action, at: new Date().toISOString() }] };
 }
 
 export async function safeFile(root: string, relative: string) {

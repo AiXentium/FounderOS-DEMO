@@ -5,6 +5,7 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: ['better-sqlite3', 'node-ical', 'nodemailer'],
   outputFileTracingRoot: new URL('.', import.meta.url).pathname,
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     return [{ source: '/builder', destination: '/website-builder' }];
   },

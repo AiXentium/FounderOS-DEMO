@@ -14,18 +14,18 @@ export const WebsiteRevisionSchema = z.object({
   affiliateOffers: z.array(PageAffiliateOfferSchema).default([]),
   warnings: z.array(z.string()).default([]),
   qa: z.object({ status: z.enum(['not_run', 'passed', 'needs_review', 'failed']), summary: z.string(), checks: z.array(z.string()) }).default({ status: 'not_run', summary: 'QA has not run.', checks: [] }),
-  status: z.enum(['source', 'draft', 'needs_review', 'approved', 'staged', 'published']).default('draft'),
+  status: z.enum(['source', 'draft', 'needs_review', 'approved', 'rejected', 'staged', 'published']).default('draft'),
 });
 export const WebsiteLifecycleSchema = z.object({
   projectId: z.string().min(1), pagePath: z.string().min(1), version: z.number().int().default(0),
   sourceRoot: z.string().optional(), sourceHashes: z.record(z.string()).default({}),
-  selectedId: z.string().optional(), publishedId: z.string().optional(),
+  selectedId: z.string().optional(), stagedId: z.string().optional(), publishedId: z.string().optional(),
   revisions: z.array(WebsiteRevisionSchema),
   runs: z.array(z.object({ id: z.string(), status: z.enum(['running', 'completed', 'failed']), request: z.string(),
     startedAt: z.string(), finishedAt: z.string().optional(), error: z.string().optional(),
     brain: z.unknown().optional(), results: z.array(z.object({ agentId: z.string(), reply: z.string(), createdAt: z.string() })),
     revisionId: z.string().optional(),
   })),
-  releases: z.array(z.object({ revisionId: z.string(), action: z.enum(['publish', 'rollback']), at: z.string() })),
+  releases: z.array(z.object({ revisionId: z.string(), revisionHash: z.string().optional(), build: z.string().optional(), url: z.string().optional(), action: z.enum(['publish', 'rollback']), at: z.string() })),
 });
 export type WebsiteLifecycle = z.infer<typeof WebsiteLifecycleSchema>;

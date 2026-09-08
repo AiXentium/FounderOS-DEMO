@@ -10,7 +10,7 @@ import { websiteDataRoot } from '@/lib/website-storage';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-const RequestSchema = z.object({ action: z.enum(['canonical', 'run', 'save', 'select', 'approve', 'stage', 'publish', 'rollback']), projectId: z.string().min(1), pagePath: z.string().optional(), version: z.number().int().nonnegative(), revisionId: z.string().optional(), request: z.string().min(1).max(12000).optional(), html: z.string().max(2_000_000).optional() });
+const RequestSchema = z.object({ action: z.enum(['canonical', 'run', 'save', 'select', 'approve', 'reject', 'stage', 'publish', 'rollback']), projectId: z.string().min(1), pagePath: z.string().optional(), version: z.number().int().nonnegative(), revisionId: z.string().optional(), request: z.string().min(1).max(12000).optional(), html: z.string().max(2_000_000).optional() });
 
 export async function GET() {
   const db = getDb();
@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         state = db.websiteLifecycle.put(changeRelease(state, body.action, body.revisionId), state.version);
       }
     }
-    return NextResponse.json({ state });
+    const url = body.action === 'stage' ? '/staging' : ['publish', 'rollback'].includes(body.action) ? '/site' : body.action === 'select' ? '/preview' : undefined;
+    return NextResponse.json({ state, ...(url ? { url } : {}) });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Website action failed.' }, { status: 409 }); }
 }
