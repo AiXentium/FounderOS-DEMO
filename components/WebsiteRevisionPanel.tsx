@@ -40,7 +40,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       const response = await fetch('/api/website/lifecycle', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: name, projectId, version: state?.version ?? 0, pagePath: targetPagePath, revisionId, request: agentRequest, ...(name === 'save' ? { html } : {}) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(typeof body.error === 'string' ? body.error : 'Request failed.');
-      setState(body.state); setMessage(body.queued ? `${body.queued} pages queued. The existing specialists will process them sequentially.` : body.jobId ? 'Page work queued. Results will appear here.' : `${name === 'canonical' ? 'Canonical page selected' : name.charAt(0).toUpperCase() + name.slice(1) + ' saved'}.`);
+      setState(body.state); setMessage(body.queued ? `${body.queued} fresh page revisions queued from immutable sources. The existing specialists will process them sequentially.` : body.jobId ? 'Page work queued. Results will appear here.' : `${name === 'canonical' ? 'Canonical page selected' : name.charAt(0).toUpperCase() + name.slice(1) + ' saved'}.`);
       if (name === 'save') setEditing(false);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Request failed.'); await refresh().catch(() => undefined); }
     finally { setBusy(false); }

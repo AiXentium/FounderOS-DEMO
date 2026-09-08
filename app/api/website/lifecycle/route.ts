@@ -82,11 +82,11 @@ export async function POST(request: Request) {
         state = db.websiteLifecycle.put(next, state.version);
       } else if (body.action === 'runAll') {
         const project = db.websiteProjects.all().find(item => item.id === state!.projectId);
-        const pages = (project?.page?.pages ?? []).map((item: any) => path.relative(project.page.packageRoot, item.file).replaceAll('\\', '/')).filter((item: string) => item.endsWith('.html') && !state!.revisions.some(revision => revision.pagePath === item && revision.kind === 'agent'));
-        if (!pages.length) throw new Error('Every imported HTML page already has an agent revision.');
+        const pages = (project?.page?.pages ?? []).map((item: any) => path.relative(project.page.packageRoot, item.file).replaceAll('\\', '/')).filter((item: string) => item.endsWith('.html') && path.posix.basename(item).toLowerCase() !== 'site_map.html');
+        if (!pages.length) throw new Error('The canonical project has no imported website pages.');
         if (db.localJobs.all().some(item => item.type === 'website-page-revision' && ['queued', 'running'].includes(item.status))) throw new Error('Website page work is already queued or running.');
         const now = new Date().toISOString();
-        for (const pagePath of pages) db.localJobs.enqueue({ id: randomUUID(), type: 'website-page-revision', createdAt: now, payload: { projectId: state.projectId, pagePath, request: body.request || 'Preserve all factual content and links. Improve this page with approved existing design patterns, relevant source images, SEO, destination-matched affiliate proposals, internal-link validation, and mobile QA. Never invent facts, prices, reviews, images, or experiences.' } });
+        for (const pagePath of pages) db.localJobs.enqueue({ id: randomUUID(), type: 'website-page-revision', createdAt: now, payload: { projectId: state.projectId, pagePath, request: body.request || 'Create a fresh reviewable revision from this immutable source page. Preserve all factual content and links. Improve it with approved existing design patterns, relevant source images, SEO, destination-and-story-matched affiliate proposals, internal-link validation, and mobile QA. Never invent facts, prices, reviews, images, or experiences. Do not approve, stage, or publish.' } });
         return NextResponse.json({ queued: pages.length, state }, { status: 202 });
       } else if (body.action === 'run') {
         if (!body.request || !body.revisionId || !state.revisions.some(item => item.id === body.revisionId)) throw new Error('Select a revision and describe the page changes.');
