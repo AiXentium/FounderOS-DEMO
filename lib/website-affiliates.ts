@@ -19,7 +19,7 @@ export type PageAffiliateOffer = z.infer<typeof PageAffiliateOfferSchema>;
 
 const DESTINATIONS = ['Venice', 'Madrid', 'Rome', 'Florence', 'Paris', 'Barcelona', 'Capri', 'Positano', 'Verona', 'Tuscany', 'Segovia', 'Cappadocia', 'French Riviera', 'Bellagio', 'Burano'];
 
-const STOP_WORDS = new Set(['about', 'best', 'blog', 'complete', 'destination', 'guide', 'lets', 'miles', 'page', 'plan', 'things', 'tour', 'tours', 'travel', 'trip', 'with', 'your']);
+const STOP_WORDS = new Set(['about', 'best', 'blog', 'complete', 'destination', 'destinations', 'guide', 'html', 'index', 'lets', 'miles', 'page', 'plan', 'talk', 'things', 'tour', 'tours', 'travel', 'trip', 'with', 'your']);
 export function detectPageTopic(html: string, pagePath: string) {
   const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? '';
   const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1].replace(/<[^>]+>/g, ' ') ?? '';
@@ -27,8 +27,9 @@ export function detectPageTopic(html: string, pagePath: string) {
   const pathWords = pagePath.replace(/[\/_-]+/g, ' ');
   const weighted = `${pathWords} ${pathWords} ${title} ${title} ${h1} ${hero}`.toLowerCase();
   const destination = DESTINATIONS.find(item => weighted.includes(item.toLowerCase()));
+  const destinationWords = new Set(destination?.toLowerCase().split(/\s+/) || []);
   const storyTerms = [...new Set(`${pathWords} ${title} ${h1}`.toLowerCase().replace(/<[^>]+>/g, ' ').match(/[a-z]{4,}/g) || [])]
-    .filter(word => !STOP_WORDS.has(word) && word !== destination?.toLowerCase()).slice(0, 8);
+    .filter(word => !STOP_WORDS.has(word) && !destinationWords.has(word)).slice(0, 8);
   return { destination, storyTerms, topic: [destination, ...storyTerms.slice(0, 4), 'travel experiences'].filter(Boolean).join(' ') };
 }
 

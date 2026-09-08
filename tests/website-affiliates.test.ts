@@ -5,6 +5,7 @@ describe('website affiliate revisions', () => {
   it('detects the page destination and rejects unrelated tours', () => {
     const topic = detectPageTopic('<html><head><title>Venice Travel Guide</title></head><body><h1>Plan Venice</h1></body></html>', 'destinations/venice/index.html');
     expect(topic.destination).toBe('Venice');
+    expect(topic.storyTerms).toEqual([]);
     const offers = matchingViatorOffers([
       { id: 'v1', name: 'Venice Grand Canal Small Group Tour', url: 'https://www.viator.com/tours/-/V1', trackedUrl: 'https://www.viator.com/tours/-/V1?mcid=partner' },
       { id: 'r1', name: 'Rome Colosseum Tour', url: 'https://www.viator.com/tours/-/R1', trackedUrl: 'https://www.viator.com/tours/-/R1?mcid=partner' },

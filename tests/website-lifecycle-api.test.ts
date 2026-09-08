@@ -51,6 +51,10 @@ describe('website pilot API', () => {
     expect(preview.headers.get('content-security-policy')).toContain('sandbox');
     const asset = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'preview', revision: second, path: ['assets', 'style.css'] }) });
     expect(asset.status).toBe(200); expect(await asset.text()).toContain('navy');
+    await action('selectPage', { pagePath: 'about/index.html' });
+    const independentPreview = await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'preview', revision: second }) });
+    expect(await independentPreview.text()).toContain('Real travel guide');
+    await action('selectPage', { pagePath: 'index.html' });
     expect((await view(new Request('http://localhost'), { params: Promise.resolve({ mode: 'staging', revision: second }) })).status).toBe(404);
     await action('approve');
     const staged = await action('stage');

@@ -20,16 +20,15 @@ export async function GET(_request: Request, context: { params: Promise<{ mode: 
     if (mode === 'staging' && revision.stagedHash !== revision.hash) throw new Error('This revision has not been staged.');
     if (mode === 'live' && !state.releases.some(item => item.revisionId === id)) throw new Error('This revision has not been published.');
     const prefix = `/api/website/view/${mode}/${id}`;
-    const requested = parts.length ? parts.join('/') : state.pagePath;
+    const requested = parts.length ? parts.join('/') : revision.pagePath || state.pagePath;
     const file = await safeFile(state.sourceRoot, requested);
     const relative = path.relative(await fs.realpath(state.sourceRoot), file).replaceAll('\\', '/');
     const original = await fs.readFile(file);
     if (hash(original) !== state.sourceHashes[relative]) throw new Error('Original file integrity check failed.');
     const ext = path.extname(file).toLowerCase();
     if (!MIME[ext]) throw new Error('This file type cannot be displayed.');
-    if (mode === 'live' && ext === '.html' && relative !== state.pagePath) throw new Error('Only the approved pilot page is published.');
     let data: string | Buffer = original;
-    if (ext === '.html') data = previewHtml(relative === state.pagePath ? revision.html : original.toString('utf8'), relative, prefix);
+    if (ext === '.html') data = previewHtml(relative === (revision.pagePath || state.pagePath) ? revision.html : original.toString('utf8'), relative, prefix);
     if (ext === '.css') data = original.toString('utf8').replace(/url\(\s*(['"]?)\/(?!\/)([^)'"\s]+)\1\s*\)/gi, (_, quote, value) => `url(${quote}${prefix}/${value}${quote})`);
     return new NextResponse(typeof data === 'string' ? data : new Uint8Array(data), { headers: { 'content-type': MIME[ext], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "sandbox allow-scripts; default-src 'self' https: data: blob:; style-src 'self' https: 'unsafe-inline'; script-src 'self' https: 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'", 'x-website-revision': revision.id } });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Preview unavailable.' }, { status: 404 }); }
