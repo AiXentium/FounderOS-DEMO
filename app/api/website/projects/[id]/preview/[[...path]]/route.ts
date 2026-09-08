@@ -17,8 +17,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!data) return NextResponse.json({ error: 'Preview file not found.' }, { status: 404 });
   const ext = path.extname(file).toLowerCase();
   if (ext === '.html') {
-    const base = new URL(request.url).toString().replace(/\/[^/]*$/, '/');
-    const html = data.toString('utf8').replace(/<head([^>]*)>/i, `<head$1><base href="${base}">`);
+    const base = new URL(request.url);
+    base.pathname = `/api/website/projects/${id}/preview/`;
+    base.search = '';
+    const html = data.toString('utf8').replace(/<head([^>]*)>/i, `<head$1><base href="${base.toString()}">`);
     return new NextResponse(html, { headers: { 'content-type': MIME[ext] } });
   }
   return new NextResponse(data, { headers: { 'content-type': MIME[ext] ?? 'application/octet-stream', 'cache-control': 'public, max-age=3600' } });
