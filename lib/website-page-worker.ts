@@ -96,10 +96,14 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
     const compose = contract + 'Combine the specialist results into 1 to 5 small safe edits. Return ONLY JSON: {"edits":[{"before":"exact unique original HTML substring","after":"replacement HTML substring"}]}. ONLY the selected HTML is editable. External stylesheet text in context is immutable reference data, not an editable target. For CSS corrections use before: "</head>" and after: "<style>your page-local CSS overrides</style></head>". Each before must occur EXACTLY ONCE in the HTML. Include the complete opening tag for meta-description edits because content attributes may be duplicated in Open Graph tags. Preserve every existing image and link URL. New media and affiliate suggestions remain proposals. Keep output under 2500 characters. Do not return the complete HTML.';
     let proposal = await execute(composer, compose);
     let html: string;
-    try { html = applyHtmlEdits(source.html, proposal); }
+    try {
+      const edits = decodeHtmlEdits(proposal);
+      html = edits.length === 0 && viatorOffers.length ? source.html : applyHtmlEdits(source.html, proposal);
+    }
     catch (error) {
       proposal = await execute(composer, compose + ` Your prior edit failed validation: ${error instanceof Error ? error.message : String(error)}. Correct the exact substring; include sufficient surrounding original HTML for a unique match.`);
-      html = applyHtmlEdits(source.html, proposal);
+      const edits = decodeHtmlEdits(proposal);
+      html = edits.length === 0 && viatorOffers.length ? source.html : applyHtmlEdits(source.html, proposal);
     }
     html = addAffiliateSection(html, viatorOffers);
     reports.qa = parseResult(await execute(WEBSITE_LANES.qa, contract + format + 'Review the revised HTML against the original source in the saved context and all specialist proposals. Confirm that any affiliate cards use only the supplied matched offers, exact tracked URLs, sponsored/nofollow attributes, and a disclosure. Report failed for broken structure or invented facts. Otherwise use needs_input when visual browser verification is still required. Do not claim browser tests were executed. List concrete checks in changes.', html));

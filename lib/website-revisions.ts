@@ -7,7 +7,7 @@ import type { WebsiteLifecycle } from '@/lib/website-revision-schema';
 export const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 
 export function decodeHtmlEdits(output: string) {
-  return z.object({ edits: z.array(z.object({ before: z.string().min(1).max(8000), after: z.string().min(1).max(8000) })).min(1).max(10) }).parse(JSON.parse(output.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))).edits;
+  return z.object({ edits: z.array(z.object({ before: z.string().min(1).max(8000), after: z.string().min(1).max(8000) })).max(10) }).parse(JSON.parse(output.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))).edits;
 }
 export function applyHtmlEdits(original: string, output: string) {
   const edits = decodeHtmlEdits(output);
