@@ -49,6 +49,11 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       {state && revision && <>
         <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.kind} - {item.createdAt} {item.approvedHash ? '(approved)' : ''}</option>)}</select>
         <div className="text-xs">Original source protected. Previewing revision {revision.id.slice(0, 8)}.</div>
+        {revision.kind === 'agent' && <details className="space-y-2 text-xs" open><summary>Revision report: {revision.status} | QA: {revision.qa.status}</summary>
+          <p>{revision.qa.summary}</p>
+          {([['Content proposals', revision.contentChanges], ['Design proposals', revision.designChanges], ['Media matches', revision.mediaChanges], ['SEO proposals', revision.seo], ['Affiliate proposals', revision.affiliateProposals], ['Warnings', revision.warnings], ['QA checks', revision.qa.checks]] as Array<[string, string[]]>).map(([label, items]) => <details key={label}><summary>{label} ({items.length})</summary><ul className="list-disc space-y-1 pl-4">{items.map((item, index) => <li key={index}>{item}</li>)}</ul></details>)}
+          <details><summary>Applied HTML edits ({revision.appliedEdits.length})</summary>{revision.appliedEdits.map((edit, index) => <div key={index} className="my-2 overflow-auto"><div>Before</div><pre className="whitespace-pre-wrap">{edit.before}</pre><div>After</div><pre className="whitespace-pre-wrap">{edit.after}</pre></div>)}</details>
+        </details>}
         <textarea aria-label="Page agent request" className="w-full bg-os-surface2 p-2 text-sm" rows={3} value={request} onChange={e => setRequest(e.target.value)} />
         <div className="flex flex-wrap gap-2">
           <button className={button} disabled={busy || running} onClick={() => void action('run')}>Run page specialists</button>
@@ -62,7 +67,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
         {editing && <><textarea aria-label="Revision HTML" className="h-80 w-full bg-os-surface2 p-2 font-mono text-xs" value={html} onChange={e => setHtml(e.target.value)} /><button className={button} disabled={busy || running} onClick={() => void action('save')}>Save new revision</button></>}
       </>}
       {message && <p role="status" className="text-sm">{message}</p>}
-      {state?.runs.map(run => <details key={run.id} className="text-xs"><summary>{run.status}: {run.request} {run.error}</summary>{run.results.map(result => <div key={result.agentId}><p>{result.agentId}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{result.reply}</pre></div>)}</details>)}
+      {state?.runs.map(run => <details key={run.id} className="text-xs"><summary>{run.status}: {run.request} {run.error}</summary>{run.results.map((result, index) => <div key={`${result.agentId}-${index}`}><p>{result.agentId}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{result.reply}</pre></div>)}</details>)}
       <div className="text-[10px] text-os-dim">Build {build.slice(0, 12)}</div>
     </div>
     {revision && <iframe key={revision.id} title="Selected saved HTML revision" sandbox="allow-scripts" src={`/api/website/view/preview/${revision.id}`} className="h-[780px] w-full border-0 bg-white" />}

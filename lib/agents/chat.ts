@@ -46,7 +46,7 @@ export async function chatWithAgent(
   agents: RuntimeAgent[],
   agentId: string,
   message: string,
-  opts: { screenContext?: string; brainChatId?: string } = {},
+  opts: { screenContext?: string; brainChatId?: string; websiteTask?: { instructions: string; brainContext: string } } = {},
 ): Promise<ChatResult> {
   const agent = agents.find((a) => a.id === agentId);
   if (!agent) throw new Error(`unknown agent: ${agentId}`);
@@ -54,6 +54,15 @@ export async function chatWithAgent(
   const now = () => new Date().toISOString();
 
   db.agentMessages.insert({ id: randomUUID(), agentId, role: 'user', content: message, toolCalls: [], createdAt: now() });
+
+  // Website revisions supply their own scoped source and retrieved context.
+  // Reuse the normal provider and persistence without unrelated chat history
+  // or tools that could write outside the selected page revision.
+  if (opts.websiteTask) {
+    const result = await llmChat({ system: `${systemPromptFor(agent, undefined, opts.websiteTask.brainContext)}\n${opts.websiteTask.instructions}`, messages: [{ role: 'user', content: message }] });
+    db.agentMessages.insert({ id: randomUUID(), agentId, role: 'assistant', content: result.text, toolCalls: result.toolCalls, createdAt: now() });
+    return { reply: result.text, messages: db.agentMessages.byAgent(agentId) };
+  }
 
   // Full rolling history. Prior `tool` turns are kept in the record for the
   // activity feed, but the gateway provider drops them before calling the model

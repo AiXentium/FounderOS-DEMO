@@ -6,8 +6,11 @@ import type { WebsiteLifecycle } from '@/lib/website-revision-schema';
 
 export const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 
+export function decodeHtmlEdits(output: string) {
+  return z.object({ edits: z.array(z.object({ before: z.string().min(1).max(8000), after: z.string().min(1).max(8000) })).min(1).max(10) }).parse(JSON.parse(output.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))).edits;
+}
 export function applyHtmlEdits(original: string, output: string) {
-  const edits = z.object({ edits: z.array(z.object({ before: z.string().min(1).max(8000), after: z.string().min(1).max(8000) })).min(1).max(10) }).parse(JSON.parse(output.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))).edits;
+  const edits = decodeHtmlEdits(output);
   let html = original;
   for (const edit of edits) {
     if (html.split(edit.before).length !== 2) throw new Error('An agent edit did not uniquely match the saved HTML. Source preserved.');
@@ -22,7 +25,7 @@ export function applyHtmlEdits(original: string, output: string) {
 
 export function saveRevision(state: WebsiteLifecycle, html: string, kind: 'source' | 'agent' | 'manual'): WebsiteLifecycle {
   if (!/<html[\s>]/i.test(html) || !/<\/html\s*>/i.test(html) || !/<body[\s>]/i.test(html) || html.length > 2_000_000) throw new Error('A complete HTML document is required.');
-  const revision = { id: randomUUID(), html, hash: hash(html), kind, createdAt: new Date().toISOString(), parentId: state.selectedId };
+  const revision = { id: randomUUID(), html, hash: hash(html), kind, createdAt: new Date().toISOString(), parentId: state.selectedId, appliedEdits: [], contentChanges: [], designChanges: [], mediaChanges: [], seo: [], affiliateProposals: [], warnings: [], qa: { status: 'not_run' as const, summary: 'QA has not run.', checks: [] }, status: kind === 'source' ? 'source' as const : 'draft' as const };
   return { ...state, selectedId: revision.id, revisions: [...state.revisions, revision] };
 }
 
@@ -31,12 +34,13 @@ export function changeRelease(state: WebsiteLifecycle, action: 'approve' | 'stag
   if (!revision || hash(revision.html) !== revision.hash) throw new Error('Revision missing or integrity check failed.');
   if (state.runs.some(run => run.status === 'running')) throw new Error('Wait for the current page run to finish.');
   if (action === 'select') return { ...state, selectedId: id };
-  if (action === 'approve') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, approvedHash: item.hash, approvedAt: new Date().toISOString() } : item) };
+  if (action === 'approve' && revision.qa.status === 'failed') throw new Error('Resolve failed QA before approval.');
+  if (action === 'approve') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'approved', approvedHash: item.hash, approvedAt: new Date().toISOString() } : item) };
   if (revision.approvedHash !== revision.hash) throw new Error('Approve this exact revision first.');
-  if (action === 'stage') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, stagedHash: item.hash } : item) };
+  if (action === 'stage') return { ...state, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
   if (revision.stagedHash !== revision.hash) throw new Error('Stage this exact revision first.');
   if (action === 'rollback' && !state.releases.some(item => item.revisionId === id)) throw new Error('Rollback requires a previously published revision.');
-  return { ...state, publishedId: id, releases: [...state.releases, { revisionId: id, action, at: new Date().toISOString() }] };
+  return { ...state, publishedId: id, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'published' } : item), releases: [...state.releases, { revisionId: id, action, at: new Date().toISOString() }] };
 }
 
 export async function safeFile(root: string, relative: string) {

@@ -4,6 +4,15 @@ export const WebsiteRevisionSchema = z.object({
   id: z.string(), html: z.string().max(2_000_000), hash: z.string(),
   kind: z.enum(['source', 'agent', 'manual']), createdAt: z.string(), parentId: z.string().optional(),
   approvedHash: z.string().optional(), approvedAt: z.string().optional(), stagedHash: z.string().optional(),
+  contentChanges: z.array(z.string()).default([]),
+  appliedEdits: z.array(z.object({ before: z.string(), after: z.string() })).default([]),
+  designChanges: z.array(z.string()).default([]),
+  mediaChanges: z.array(z.string()).default([]),
+  seo: z.array(z.string()).default([]),
+  affiliateProposals: z.array(z.string()).default([]),
+  warnings: z.array(z.string()).default([]),
+  qa: z.object({ status: z.enum(['not_run', 'passed', 'needs_review', 'failed']), summary: z.string(), checks: z.array(z.string()) }).default({ status: 'not_run', summary: 'QA has not run.', checks: [] }),
+  status: z.enum(['source', 'draft', 'needs_review', 'approved', 'staged', 'published']).default('draft'),
 });
 export const WebsiteLifecycleSchema = z.object({
   projectId: z.string().min(1), pagePath: z.string().min(1), version: z.number().int().default(0),

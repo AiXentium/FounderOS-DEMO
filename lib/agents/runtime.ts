@@ -33,6 +33,20 @@ export function createRuntime(db: FounderDb, agents: RuntimeAgent[]) {
       return [...registry.values()];
     },
 
+    async websiteTask(id: string, message: string, instructions: string, brainContext: string) {
+      if (!registry.has(id)) throw new Error(`unknown agent: ${id}`);
+      const startedAt = new Date().toISOString();
+      try {
+        const { chatWithAgent } = await import('@/lib/agents/chat');
+        const result = await chatWithAgent(db, agents, id, message, { websiteTask: { instructions, brainContext } });
+        db.agentRuns.insert({ id: randomUUID(), agentId: id, startedAt, finishedAt: new Date().toISOString(), ok: true, summary: 'Website page task completed; full result saved in agent messages and page run.' });
+        return result;
+      } catch (error) {
+        db.agentRuns.insert({ id: randomUUID(), agentId: id, startedAt, finishedAt: new Date().toISOString(), ok: false, summary: error instanceof Error ? error.message : String(error) });
+        throw error;
+      }
+    },
+
     async run(id: string): Promise<AgentRun> {
       const agent = registry.get(id);
       if (!agent) throw new Error(`unknown agent: ${id}`);
