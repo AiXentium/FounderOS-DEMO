@@ -24,6 +24,7 @@ export async function GET(_request: Request, context: { params: Promise<{ mode: 
     if (hash(original) !== state.sourceHashes[relative]) throw new Error('Original file integrity check failed.');
     const ext = path.extname(file).toLowerCase();
     if (!MIME[ext]) throw new Error('This file type cannot be displayed.');
+    if (mode === 'live' && ext === '.html' && relative !== state.pagePath) throw new Error('Only the approved pilot page is published.');
     let data: string | Buffer = original;
     if (ext === '.html') data = previewHtml(relative === state.pagePath ? revision.html : original.toString('utf8'), relative, prefix);
     if (ext === '.css') data = original.toString('utf8').replace(/url\(\s*(['"]?)\/(?!\/)([^)'"\s]+)\1\s*\)/gi, (_, quote, value) => `url(${quote}${prefix}/${value}${quote})`);
