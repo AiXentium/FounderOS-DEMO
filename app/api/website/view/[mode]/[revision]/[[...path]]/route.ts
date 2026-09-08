@@ -13,7 +13,10 @@ export async function GET(_request: Request, context: { params: Promise<{ mode: 
     const state = getDb().websiteLifecycle.get();
     const id = mode === 'live' && requestedId === 'current' ? state?.publishedId : requestedId;
     const revision = state?.revisions.find(item => item.id === id);
-    if (!state?.sourceRoot || !revision || !['preview', 'staging', 'live'].includes(mode)) throw new Error('Revision is unavailable.');
+    if (!state) throw new Error('Website lifecycle is unavailable.');
+    if (!state.sourceRoot) throw new Error('Protected source is unavailable.');
+    if (!revision) throw new Error(`Revision ${id} is unavailable.`);
+    if (!['preview', 'staging', 'live'].includes(mode)) throw new Error(`View mode ${mode} is unavailable.`);
     if (mode === 'staging' && revision.stagedHash !== revision.hash) throw new Error('This revision has not been staged.');
     if (mode === 'live' && !state.releases.some(item => item.revisionId === id)) throw new Error('This revision has not been published.');
     const prefix = `/api/website/view/${mode}/${id}`;
