@@ -443,35 +443,48 @@ CREATE TABLE IF NOT EXISTS skills (
 `;
 
 /** Databases created before the hierarchy build lack these columns. */
+function addColumnIfMissing(
+  db: InstanceType<typeof Database>,
+  table: string,
+  column: string,
+  sql: string,
+): boolean {
+  const hasColumn = () => (db.pragma(`table_info(${table})`) as { name: string }[]).some((item) => item.name === column);
+  if (hasColumn()) return false;
+  try {
+    db.exec(sql);
+    return true;
+  } catch (error) {
+    // Next.js can initialize several prerender workers against the same SQLite
+    // volume. Another worker may complete this additive migration after our
+    // table_info check but before ALTER TABLE executes.
+    if (hasColumn()) return false;
+    throw error;
+  }
+}
+
 function migrateAgentsTable(db: InstanceType<typeof Database>): void {
-  const columns = new Set(
-    (db.pragma('table_info(agents)') as { name: string }[]).map((c) => c.name),
-  );
-  if (!columns.has('parent_id')) db.exec('ALTER TABLE agents ADD COLUMN parent_id TEXT');
-  if (!columns.has('instance')) db.exec("ALTER TABLE agents ADD COLUMN instance TEXT NOT NULL DEFAULT 'builtin'");
+  addColumnIfMissing(db, 'agents', 'parent_id', 'ALTER TABLE agents ADD COLUMN parent_id TEXT');
+  addColumnIfMissing(db, 'agents', 'instance', "ALTER TABLE agents ADD COLUMN instance TEXT NOT NULL DEFAULT 'builtin'");
 }
 
 /** Databases created before the funnel-space build lack these columns. */
 function migrateFunnelContactsTable(db: InstanceType<typeof Database>): void {
-  const columns = new Set(
-    (db.pragma('table_info(funnel_contacts)') as { name: string }[]).map((c) => c.name),
-  );
-  if (!columns.has('relationship')) db.exec("ALTER TABLE funnel_contacts ADD COLUMN relationship TEXT NOT NULL DEFAULT 'warm'");
-  if (!columns.has('likelihood')) db.exec('ALTER TABLE funnel_contacts ADD COLUMN likelihood INTEGER NOT NULL DEFAULT 50');
-  if (!columns.has('email')) db.exec('ALTER TABLE funnel_contacts ADD COLUMN email TEXT');
-  if (!columns.has('phone')) db.exec('ALTER TABLE funnel_contacts ADD COLUMN phone TEXT');
+  addColumnIfMissing(db, 'funnel_contacts', 'relationship', "ALTER TABLE funnel_contacts ADD COLUMN relationship TEXT NOT NULL DEFAULT 'warm'");
+  addColumnIfMissing(db, 'funnel_contacts', 'likelihood', 'ALTER TABLE funnel_contacts ADD COLUMN likelihood INTEGER NOT NULL DEFAULT 50');
+  addColumnIfMissing(db, 'funnel_contacts', 'email', 'ALTER TABLE funnel_contacts ADD COLUMN email TEXT');
+  addColumnIfMissing(db, 'funnel_contacts', 'phone', 'ALTER TABLE funnel_contacts ADD COLUMN phone TEXT');
   // dossier identity (Round 15) — the human behind the deal
   for (const col of ['person', 'company', 'role', 'linkedin']) {
-    if (!columns.has(col)) db.exec(`ALTER TABLE funnel_contacts ADD COLUMN ${col} TEXT`);
+    addColumnIfMissing(db, 'funnel_contacts', col, `ALTER TABLE funnel_contacts ADD COLUMN ${col} TEXT`);
   }
 }
 
 // Skills gained a `markdown` (SKILL.md) column after first ship. Add it, and
 // clear the stale rows so the re-seed backfills each skill's doc.
 function migrateSkillsTable(db: InstanceType<typeof Database>): void {
-  const columns = new Set((db.pragma('table_info(skills)') as { name: string }[]).map((c) => c.name));
-  if (columns.size > 0 && !columns.has('markdown')) {
-    db.exec("ALTER TABLE skills ADD COLUMN markdown TEXT NOT NULL DEFAULT ''");
+  const columns = db.pragma('table_info(skills)') as { name: string }[];
+  if (columns.length > 0 && addColumnIfMissing(db, 'skills', 'markdown', "ALTER TABLE skills ADD COLUMN markdown TEXT NOT NULL DEFAULT ''")) {
     db.exec('DELETE FROM skills');
   }
 }
@@ -509,17 +522,11 @@ function rowToAgent(row: AgentRow): Agent {
 /** lead_magnets gained `origin` when the operator started creating them from the
  *  OS; older databases predate the column. */
 function migrateLeadMagnetsTable(db: InstanceType<typeof Database>): void {
-  const columns = new Set(
-    (db.prepare('PRAGMA table_info(lead_magnets)').all() as { name: string }[]).map((c) => c.name),
-  );
-  if (!columns.has('origin')) db.exec("ALTER TABLE lead_magnets ADD COLUMN origin TEXT NOT NULL DEFAULT 'seed'");
+  addColumnIfMissing(db, 'lead_magnets', 'origin', "ALTER TABLE lead_magnets ADD COLUMN origin TEXT NOT NULL DEFAULT 'seed'");
 }
 
 function migrateAffiliateProductsTable(db: InstanceType<typeof Database>): void {
-  const columns = new Set(
-    (db.prepare('PRAGMA table_info(affiliate_products)').all() as { name: string }[]).map((c) => c.name),
-  );
-  if (!columns.has('image_url')) db.exec('ALTER TABLE affiliate_products ADD COLUMN image_url TEXT');
+  addColumnIfMissing(db, 'affiliate_products', 'image_url', 'ALTER TABLE affiliate_products ADD COLUMN image_url TEXT');
 }
 
 export function openDb(path: string) {
