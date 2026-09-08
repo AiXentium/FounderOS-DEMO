@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
+import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getDb } from '@/lib/data';
 const Schema = z.object({ id: z.string().optional(), name: z.string().min(1), prompt: z.string().default(''), direction: z.string().default('editorial'), page: z.record(z.unknown()).default({}) });
 export async function GET() {
-  return NextResponse.json({ projects: getDb().websiteProjects.all('default') });
+  const projects = await Promise.all(getDb().websiteProjects.all('default').map(async (project: any) => {
+    if (project.page?.contentHtml || !project.page?.entryFile) return project;
+    const source = await fs.readFile(project.page.entryFile, 'utf8').catch(() => '');
+    if (!source) return project;
+    const contentHtml = source.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? source;
+    return { ...project, page: { ...project.page, contentHtml } };
+  }));
+  return NextResponse.json({ projects });
 }
 export async function POST(request: Request) {
   const parsed = Schema.safeParse(await request.json().catch(() => null));
