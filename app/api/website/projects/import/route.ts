@@ -10,6 +10,7 @@ const execFileAsync = promisify(execFile);
 const ROOT = path.join(process.cwd(), 'data', 'website-projects');
 const badEntry = (entry: string) => entry.replaceAll('\\', '/').startsWith('/') || entry.replaceAll('\\', '/').split('/').includes('..');
 const readJson = async (file: string) => JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>;
+const detectProjectType = (entries: string[]) => entries.some(x => /(^|\/)package\.json$/i.test(x)) ? 'node-web' : entries.some(x => /(^|\/)(manage\.py|app\.py|main\.py)$/i.test(x)) ? 'python-web' : entries.some(x => /(^|\/)index\.html$/i.test(x)) ? 'static-web' : 'web-project';
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     const visit = async (dir: string) => { for (const entry of await fs.readdir(dir, { withFileTypes: true })) { const current = path.join(dir, entry.name); if (entry.isDirectory()) await visit(current); else if (entry.name.toLowerCase() === 'index.html') { const html = await fs.readFile(current, 'utf8'); const rel = path.relative(root, current).replaceAll('\\', '/'); pages.push({ title: html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() || rel, slug: rel === 'index.html' ? 'home' : rel.replace(/\/index\.html$/, ''), file: current }); } } };
     await visit(root);
     if (!pages.length) throw new Error('Package contains no index.html pages.');
-    const project = { id, name: String(manifest.name ?? manifest.title ?? file.name.replace(/\.zip$/i, '')), prompt: `Imported website package: ${file.name}`, direction: 'editorial', page: { title: String(manifest.name ?? manifest.title ?? file.name), blocks: pages.map(page => page.title), generated: true, sourceType: 'website-package', packageRoot: root, entryFile: pages[0].file, pages, builder }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const project = { id, name: String(manifest.name ?? manifest.title ?? file.name.replace(/\.zip$/i, '')), prompt: `Imported website package: ${file.name}`, direction: 'editorial', page: { title: String(manifest.name ?? manifest.title ?? file.name), blocks: pages.map(page => page.title), generated: true, sourceType: 'website-package', projectType: detectProjectType(entries), packageRoot: root, entryFile: pages[0].file, pages, builder }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     getDb().websiteProjects.save(project);
     await fs.unlink(temp).catch(() => undefined);
     return NextResponse.json({ project }, { status: 201 });

@@ -7,7 +7,8 @@ import { ASSET_DIR, listAssets, safeAssetFolder, safeAssetName, safeAssetPath } 
 
 const execFileAsync = promisify(execFile);
 const MAX_TOTAL_ASSET_BYTES = 2 * 1024 * 1024 * 1024;
-const BLOCKED_EXTENSIONS = /\.(php[0-9]?|phtml|phar|cgi|pl|py|rb|sh|bash|js|mjs|ts|tsx|html?|xhtml|exe|dll|bat|cmd)$/i;
+// Uploaded source is stored for inspection/import, never executed by this app.
+const INVALID_NAME = /[\0\r\n]/;
 
 function findAsset(name: string) {
   return listAssets().find((asset) => asset.name === name || asset.storageName === name);
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   const file = form.get('file');
   if (!(file instanceof File)) return NextResponse.json({ error: 'file is required' }, { status: 400 });
   if (file.size > 500 * 1024 * 1024) return NextResponse.json({ error: 'maximum file size is 500MB' }, { status: 413 });
-  if (!file.name.trim() || BLOCKED_EXTENSIONS.test(file.name)) return NextResponse.json({ error: 'unsupported or executable file type' }, { status: 415 });
+  if (!file.name.trim() || INVALID_NAME.test(file.name)) return NextResponse.json({ error: 'invalid file name' }, { status: 415 });
   const currentBytes = listAssets().reduce((sum, asset) => sum + asset.size, 0);
   if (currentBytes + file.size > MAX_TOTAL_ASSET_BYTES) return NextResponse.json({ error: 'asset storage quota exceeded' }, { status: 413 });
 
@@ -65,8 +66,7 @@ export async function POST(request: Request) {
       const { stdout } = await execFileAsync('unzip', ['-Z1', filePath]);
       const entries = stdout.split('\n').filter(Boolean);
       if (entries.some((entry) => entry.startsWith('/') || entry.split('/').includes('..'))) throw new Error('unsafe ZIP paths');
-      if (entries.some((entry) => BLOCKED_EXTENSIONS.test(entry))) throw new Error('ZIP contains an executable or active-content file');
-      await execFileAsync('unzip', ['-q', '-j', filePath, '-d', folderPath]);
+      await execFileAsync('unzip', ['-q', filePath, '-d', folderPath]);
       return NextResponse.json({ asset: { name, size: file.size }, extracted: entries.length, folder }, { status: 201 });
     } catch (error) {
       await fs.rm(folderPath, { recursive: true, force: true });
