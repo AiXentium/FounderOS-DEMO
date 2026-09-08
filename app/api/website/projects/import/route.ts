@@ -1,12 +1,10 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
+import AdmZip from 'adm-zip';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/data';
 
-const execFileAsync = promisify(execFile);
 const ROOT = path.join(process.cwd(), 'data', 'website-projects');
 const badEntry = (entry: string) => entry.replaceAll('\\', '/').startsWith('/') || entry.replaceAll('\\', '/').split('/').includes('..');
 const readJson = async (file: string) => JSON.parse(await fs.readFile(file, 'utf8')) as Record<string, unknown>;
@@ -20,9 +18,14 @@ export async function POST(request: Request) {
   const id = randomUUID(); const temp = path.join('/tmp', `${id}.zip`); const destination = path.join(ROOT, id);
   try {
     await fs.mkdir(ROOT, { recursive: true }); await fs.writeFile(temp, Buffer.from(await file.arrayBuffer()));
-    const { stdout } = await execFileAsync('unzip', ['-Z1', temp]); const entries = stdout.split('\n').map(x => x.trim()).filter(Boolean);
+    const zip = new AdmZip(temp); const entries = zip.getEntries().map(entry => entry.entryName).filter(Boolean);
     if (!entries.length || entries.some(badEntry)) throw new Error('Invalid or unsafe ZIP package.');
-    await execFileAsync('unzip', ['-q', temp, '-d', destination]);
+    for (const entry of zip.getEntries()) {
+      const target = path.resolve(destination, entry.entryName);
+      if (!target.startsWith(`${path.resolve(destination)}${path.sep}`)) throw new Error('Invalid or unsafe ZIP package.');
+      if (entry.isDirectory) await fs.mkdir(target, { recursive: true });
+      else { await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, entry.getData()); }
+    }
     let root = destination;
     if (!(await fs.stat(path.join(root, '.project.json')).catch(() => null))) {
       const nested = (await fs.readdir(root, { withFileTypes: true })).find(x => x.isDirectory());
