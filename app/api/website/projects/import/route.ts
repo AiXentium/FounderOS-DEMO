@@ -22,8 +22,12 @@ export async function POST(request: Request) {
   if (existing && (await fs.stat(existing.page.packageRoot).catch(() => null))) return NextResponse.json({ error: 'Original files already exist. Restore cannot overwrite them.' }, { status: 409 });
   const id = existing?.id || randomUUID(); const temp = path.join('/tmp', `${randomUUID()}.zip`); const destination = path.join(ROOT, id);
   if (await fs.stat(destination).catch(() => null)) return NextResponse.json({ error: 'Destination already exists; source files will not be overwritten.' }, { status: 409 });
+  let ownsDestination = false;
   try {
-    await fs.mkdir(ROOT, { recursive: true }); await fs.writeFile(temp, Buffer.from(await file.arrayBuffer()));
+    await fs.mkdir(ROOT, { recursive: true });
+    await fs.mkdir(destination);
+    ownsDestination = true;
+    await fs.writeFile(temp, Buffer.from(await file.arrayBuffer()));
     const zip = new AdmZip(temp); const entries = zip.getEntries().map(entry => entry.entryName).filter(Boolean);
     if (!entries.length || entries.some(badEntry)) throw new Error('Invalid or unsafe ZIP package.');
     if (entries.length > 20000 || zip.getEntries().reduce((sum, entry) => sum + entry.header.size, 0) > 500 * 1024 * 1024) throw new Error('Expanded package exceeds file or size limits.');
@@ -56,5 +60,5 @@ export async function POST(request: Request) {
     getDb().websiteProjects.save(project);
     await fs.unlink(temp).catch(() => undefined);
     return NextResponse.json({ project: { ...project, page: { ...project.page, previewUrl: `/api/website/projects/${id}/preview` } } }, { status: 201 });
-  } catch (error) { await fs.rm(destination, { recursive: true, force: true }).catch(() => undefined); await fs.unlink(temp).catch(() => undefined); return NextResponse.json({ error: error instanceof Error ? error.message : 'Package import failed' }, { status: 422 }); }
+  } catch (error) { if (ownsDestination) await fs.rm(destination, { recursive: true, force: true }).catch(() => undefined); await fs.unlink(temp).catch(() => undefined); return NextResponse.json({ error: error instanceof Error ? error.message : 'Package import failed' }, { status: 422 }); }
 }
