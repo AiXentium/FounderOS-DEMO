@@ -19,6 +19,7 @@ export type PageAffiliateOffer = z.infer<typeof PageAffiliateOfferSchema>;
 
 const DESTINATIONS = ['Venice', 'Madrid', 'Rome', 'Florence', 'Paris', 'Barcelona', 'Capri', 'Positano', 'Verona', 'Tuscany', 'Segovia', 'Cappadocia', 'French Riviera', 'Bellagio', 'Burano'];
 
+const STOP_WORDS = new Set(['about', 'best', 'blog', 'complete', 'destination', 'guide', 'lets', 'miles', 'page', 'plan', 'things', 'tour', 'tours', 'travel', 'trip', 'with', 'your']);
 export function detectPageTopic(html: string, pagePath: string) {
   const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? '';
   const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1].replace(/<[^>]+>/g, ' ') ?? '';
@@ -26,21 +27,34 @@ export function detectPageTopic(html: string, pagePath: string) {
   const pathWords = pagePath.replace(/[\/_-]+/g, ' ');
   const weighted = `${pathWords} ${pathWords} ${title} ${title} ${h1} ${hero}`.toLowerCase();
   const destination = DESTINATIONS.find(item => weighted.includes(item.toLowerCase()));
-  return { destination, topic: [destination, title || h1 || pathWords].filter(Boolean).join(' travel experiences') };
+  const storyTerms = [...new Set(`${pathWords} ${title} ${h1}`.toLowerCase().replace(/<[^>]+>/g, ' ').match(/[a-z]{4,}/g) || [])]
+    .filter(word => !STOP_WORDS.has(word) && word !== destination?.toLowerCase()).slice(0, 8);
+  return { destination, storyTerms, topic: [destination, ...storyTerms.slice(0, 4), 'travel experiences'].filter(Boolean).join(' ') };
 }
 
-export function matchingViatorOffers(products: Array<Record<string, unknown>>, destination?: string, limit = 3): PageAffiliateOffer[] {
+export function matchingViatorOffers(products: Array<Record<string, unknown>>, destination?: string, storyTerms: string[] = [], limit = 3): PageAffiliateOffer[] {
   if (!destination) return [];
   const needle = destination.toLowerCase();
-  return products.filter(product => String(product.name ?? '').toLowerCase().includes(needle))
-    .filter(product => /^https:\/\//.test(String(product.url ?? '')) && /^https:\/\//.test(String(product.trackedUrl ?? '')))
+  return products.filter(product => {
+      const haystack = `${product.name ?? ''} ${product.description ?? ''}`.toLowerCase();
+      const specificStory = storyTerms.filter(term => term.length >= 5);
+      return haystack.includes(needle) && (!specificStory.length || specificStory.some(term => haystack.includes(term)));
+    })
+    .filter(product => {
+      try {
+        const source = new URL(String(product.url ?? '')); const tracked = new URL(String(product.trackedUrl ?? ''));
+        const viator = (host: string) => host === 'viator.com' || host.endsWith('.viator.com');
+        const hasTracking = [...tracked.searchParams.keys()].some(key => ['mcid', 'pid', 'campaign', 'medium'].includes(key.toLowerCase()));
+        return source.protocol === 'https:' && tracked.protocol === 'https:' && viator(source.hostname) && (viator(tracked.hostname) || hasTracking);
+      } catch { return false; }
+    })
     .slice(0, limit)
     .map(product => PageAffiliateOfferSchema.parse({
       id: String(product.id), provider: 'viator', title: String(product.name), destination,
       sourceUrl: String(product.url), trackedUrl: String(product.trackedUrl),
       price: typeof product.price === 'string' ? product.price : undefined,
       imageUrl: typeof product.imageUrl === 'string' ? product.imageUrl : undefined,
-      matchReason: `The experience title explicitly matches ${destination}.`, status: 'proposed', verifiedAt: new Date().toISOString(),
+      matchReason: `The experience matches ${destination}${storyTerms.length ? ` and the page topic (${storyTerms.slice(0, 3).join(', ')})` : ''}.`, status: 'proposed', verifiedAt: new Date().toISOString(),
     }));
 }
 

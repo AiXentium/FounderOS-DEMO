@@ -9,9 +9,9 @@ import { hash } from '@/lib/website-revisions';
 export const dynamic = 'force-dynamic';
 const Schema = z.object({
   projectId: z.string().min(1), version: z.number().int().nonnegative(),
-  action: z.enum(['createPage', 'changeTemplate', 'addSection', 'removeSection', 'reorderSection', 'editSection', 'updateSeo', 'addAffiliate', 'schedule', 'cancelSchedule', 'unpublish']),
+  action: z.enum(['createPage', 'changeTemplate', 'addSection', 'removeSection', 'reorderSection', 'editSection', 'updateSeo', 'addAffiliate', 'attachCatalogAffiliate', 'schedule', 'cancelSchedule', 'unpublish']),
   actor: WebsiteActorSchema.omit({ at: true }).extend({ at: z.string().optional() }),
-  pagePath: z.string().optional(), revisionId: z.string().optional(), templateId: z.string().optional(), section: z.unknown().optional(), sectionId: z.string().optional(), index: z.number().int().optional(), patch: z.record(z.unknown()).optional(), seo: z.unknown().optional(), offer: z.unknown().optional(), scheduledFor: z.string().optional(), scheduleAction: z.enum(['publish', 'unpublish']).optional(), scheduleId: z.string().optional(), title: z.string().optional(), pageType: z.enum(['standard', 'article', 'destination', 'campaign']).optional(),
+  pagePath: z.string().optional(), revisionId: z.string().optional(), templateId: z.string().optional(), section: z.unknown().optional(), sectionId: z.string().optional(), index: z.number().int().optional(), patch: z.record(z.unknown()).optional(), seo: z.unknown().optional(), offer: z.unknown().optional(), catalogProductId: z.string().optional(), matchReason: z.string().max(1000).optional(), scheduledFor: z.string().optional(), scheduleAction: z.enum(['publish', 'unpublish']).optional(), scheduleId: z.string().optional(), title: z.string().optional(), pageType: z.enum(['standard', 'article', 'destination', 'campaign']).optional(),
 });
 const validPath = (value: string) => !value.includes('..') && !value.includes('\\') && !value.startsWith('/') && value.endsWith('.html');
 
@@ -31,6 +31,15 @@ export async function POST(request: Request) {
       document = WebsitePageDocumentSchema.parse({ ...document, title: body.title || 'New page', pageType: body.pageType || 'standard', seo: { ...document.seo, title: body.title || 'New page' } });
       const html = renderDocument(document); const revision = { ...base, id: randomUUID(), pagePath: body.pagePath, html, hash: hash(html), kind: 'manual' as const, createdAt: new Date().toISOString(), parentId: undefined, approvedHash: undefined, approvedAt: undefined, stagedHash: undefined, document, attribution: actor, affiliateOffers: [], status: 'draft' as const, qa: { status: 'not_run' as const, summary: 'QA must run before approval.', checks: [] } };
       next = { ...current, pagePath: body.pagePath, selectedId: revision.id, revisions: [...current.revisions, revision] };
+    } else if (body.action === 'attachCatalogAffiliate') {
+      const product: any = db.affiliateProducts.all().find((item: any) => item.id === body.catalogProductId);
+      if (!product || product.status !== 'approved') throw new Error('Only an approved affiliate catalog product can be attached.');
+      const trackedUrl = String(product.trackedUrl || ''); const sourceUrl = String(product.url || '');
+      const amazon = (value: string) => { try { const host = new URL(value).hostname; return host === 'amzn.to' || host.endsWith('.amazon.com') || /(^|\.)amazon\.[a-z.]+$/i.test(host); } catch { return false; } };
+      if (!amazon(sourceUrl) || !amazon(trackedUrl)) throw new Error('Manual catalog attachment currently supports verified Amazon links only.');
+      const parent = current.revisions.find(item => item.id === (body.revisionId || current.selectedId)); if (!parent) throw new Error('Select a revision first.');
+      const title = String(product.name || 'Amazon travel product'); const destination = parent.document?.title || 'Travel';
+      next = applyManagedCommand(current, { action: 'addAffiliate', actor, revisionId: parent.id, offer: { id: String(product.id), provider: 'amazon', title, destination, sourceUrl, trackedUrl, matchReason: body.matchReason || `Manually selected for ${destination}; relevance requires page approval.`, status: 'proposed', verifiedAt: new Date().toISOString() } });
     } else if (body.action === 'schedule') {
       if (!body.scheduledFor || !body.scheduleAction || Number.isNaN(Date.parse(body.scheduledFor))) throw new Error('A valid scheduled time and action are required.');
       if (body.scheduleAction === 'publish') {

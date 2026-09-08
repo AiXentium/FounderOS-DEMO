@@ -13,6 +13,8 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState(false);
   const [build, setBuild] = useState('');
   const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [affiliateProducts, setAffiliateProducts] = useState<Array<{ id: string; name: string; source: string; status: string }>>([]);
+  const [affiliateProductId, setAffiliateProductId] = useState('');
   const refresh = async () => {
     const response = await fetch('/api/website/lifecycle', { cache: 'no-store' });
     if (!response.ok) throw new Error('Could not load page revisions.');
@@ -26,6 +28,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       setPages(next); setPagePath(next.find((item: any) => item.path === 'index.html')?.path || next[0]?.path || '');
     }).catch(error => setMessage(error.message));
     void fetch('/api/templates').then(r => r.json()).then(body => setTemplates(body.templates || [])).catch(() => undefined);
+    void fetch('/api/affiliate/products').then(r => r.json()).then(body => { const products = (body.products || []).filter((item: any) => item.status === 'approved' && String(item.source).toLowerCase().includes('amazon')); setAffiliateProducts(products); setAffiliateProductId(products[0]?.id || ''); }).catch(() => undefined);
     const timer = setInterval(() => void refresh().catch(() => undefined), 4000);
     return () => clearInterval(timer);
   }, [projectId]);
@@ -75,6 +78,10 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
             <select aria-label={`${section.id} variant`} className="bg-os-surface2 p-2" value={section.variant} onChange={e => void manage({ action: 'editSection', sectionId: section.id, patch: { variant: e.target.value } })}>{['standard', 'centered', 'split', 'grid', 'timeline', 'compact', 'feature'].map(item => <option key={item}>{item}</option>)}</select>
             <button className={button} disabled={busy} onClick={() => void manage({ action: 'removeSection', sectionId: section.id })}>Remove</button>
           </div>)}
+          <div className="mt-3 flex flex-wrap gap-2 border-t border-os-border pt-3">
+            <select aria-label="Approved manual Amazon product" className="min-w-48 bg-os-surface2 p-2" value={affiliateProductId} onChange={e => setAffiliateProductId(e.target.value)}><option value="">Approved manual Amazon product</option>{affiliateProducts.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select>
+            <button className={button} disabled={busy || !affiliateProductId} onClick={() => void manage({ action: 'attachCatalogAffiliate', catalogProductId: affiliateProductId })}>Add Amazon proposal</button>
+          </div>
         </details>
         {revision.kind === 'agent' && <details className="space-y-2 text-xs" open><summary>Revision report: {revision.status} | QA: {revision.qa.status}</summary>
           <p>{revision.qa.summary}</p>

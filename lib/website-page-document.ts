@@ -57,6 +57,10 @@ export function applyManagedCommand(state: WebsiteLifecycle, command: ManageComm
     document = { ...document, seo: WebsitePageDocumentSchema.shape.seo.parse({ ...document.seo, ...(command.seo as object) }) };
   } else if (command.action === 'addAffiliate') {
     const offer = PageAffiliateOfferSchema.parse(command.offer); offers = [...offers.filter(o => o.id !== offer.id), offer];
+    const affiliateIndex = sections.findIndex(s => s.type === 'affiliate');
+    if (affiliateIndex >= 0) sections[affiliateIndex] = { ...sections[affiliateIndex], offerIds: [...new Set([...sections[affiliateIndex].offerIds, offer.id])] };
+    else sections.push({ id: `affiliate-${randomUUID()}`, type: 'affiliate', variant: 'grid', heading: 'Useful booking options', items: [], offerIds: [offer.id], visible: true });
+    document = { ...document, sections };
   } else throw new Error('Unsupported structured page action.');
   document = WebsitePageDocumentSchema.parse({ ...document, updatedAt: now });
   const html = renderDocument(document, offers);

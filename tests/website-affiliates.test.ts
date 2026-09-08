@@ -25,4 +25,13 @@ describe('website affiliate revisions', () => {
     expect(matchingViatorOffers([{ id: 'v', name: 'Random tour' }], undefined)).toEqual([]);
     expect(addAffiliateSection(original, [])).toBe(original);
   });
+
+  it('requires story relevance and a credible tracked Viator URL', () => {
+    const products = [
+      { id: 'good', name: 'Madrid Royal Palace Guided Visit', url: 'https://www.viator.com/tours/-/M1', trackedUrl: 'https://www.viator.com/tours/-/M1?mcid=partner' },
+      { id: 'wrong-story', name: 'Madrid Flamenco Night', url: 'https://www.viator.com/tours/-/M2', trackedUrl: 'https://www.viator.com/tours/-/M2?mcid=partner' },
+      { id: 'untracked', name: 'Madrid Royal Palace Tour', url: 'https://www.viator.com/tours/-/M3', trackedUrl: 'https://example.com/M3' },
+    ];
+    expect(matchingViatorOffers(products, 'Madrid', ['royal', 'palace']).map(item => item.id)).toEqual(['good']);
+  });
 });

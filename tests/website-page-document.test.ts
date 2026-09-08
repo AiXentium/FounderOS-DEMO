@@ -22,4 +22,11 @@ describe('structured website management', () => {
     expect(next.revisions[1].attribution?.id).toBe('owner');
     expect(() => applyManagedCommand(next, { action: 'editSection', actor, sectionId: 'intro', patch: { css: 'body{display:none}' } })).toThrow(/CSS and HTML/);
   });
+
+  it('adds an affiliate offer and disclosure through a controlled section', () => {
+    const next = applyManagedCommand(state(), { action: 'addAffiliate', actor, offer: { id: 'a1', provider: 'amazon', title: 'Travel adapter', destination: 'Travel', sourceUrl: 'https://www.amazon.com/dp/example', trackedUrl: 'https://amzn.to/example', matchReason: 'Manually selected for this packing guide.', status: 'proposed', verifiedAt: actor.at } });
+    expect(next.revisions.at(-1)?.document?.sections.some(section => section.type === 'affiliate')).toBe(true);
+    expect(next.revisions.at(-1)?.html).toContain('This page contains affiliate links');
+    expect(next.revisions.at(-1)?.html).toContain('rel="sponsored nofollow noopener"');
+  });
 });

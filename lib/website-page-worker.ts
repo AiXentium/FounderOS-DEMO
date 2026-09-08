@@ -68,17 +68,17 @@ export async function runWebsitePage(db: FounderDb, jobId: string) {
     const detected = detectPageTopic(source.html, state.pagePath);
     if (detected.destination) {
       try {
-        liveOffers = (viatorConfigured() ? await searchViator(`${detected.destination} tours`) : await searchViatorMcp(`${detected.destination} tours`)) as Array<Record<string, unknown>>;
-        viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+        liveOffers = (viatorConfigured() ? await searchViator(detected.topic) : await searchViatorMcp(detected.topic)) as Array<Record<string, unknown>>;
+        viatorOffers = matchingViatorOffers(liveOffers, detected.destination, detected.storyTerms);
         if (!viatorOffers.length && viatorConfigured()) {
-          liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>;
-          viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+          liveOffers = await searchViatorMcp(detected.topic) as Array<Record<string, unknown>>;
+          viatorOffers = matchingViatorOffers(liveOffers, detected.destination, detected.storyTerms);
         }
       }
       catch {
         try {
-          liveOffers = await searchViatorMcp(`${detected.destination} tours`) as Array<Record<string, unknown>>;
-          viatorOffers = matchingViatorOffers(liveOffers, detected.destination);
+          liveOffers = await searchViatorMcp(detected.topic) as Array<Record<string, unknown>>;
+          viatorOffers = matchingViatorOffers(liveOffers, detected.destination, detected.storyTerms);
         }
         catch { contextWarnings.push('Live affiliate inventory could not be retrieved. Only existing approved offers may be proposed.'); }
       }

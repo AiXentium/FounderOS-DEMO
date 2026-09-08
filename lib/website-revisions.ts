@@ -41,6 +41,7 @@ export function changeRelease(state: WebsiteLifecycle, action: 'approve' | 'reje
   const pagePath = revision.pagePath ?? state.pagePath;
   if (action === 'stage') return { ...state, stagedId: id, stagedPages: { ...state.stagedPages, [pagePath]: id }, revisions: state.revisions.map(item => item.id === id ? { ...item, status: 'staged', stagedHash: item.hash } : item) };
   if (revision.stagedHash !== revision.hash) throw new Error('Stage this exact revision first.');
+  if (revision.affiliateOffers.some(offer => offer.status !== 'approved')) throw new Error('Approve all affiliate offers in this exact revision before publishing.');
   if (action === 'rollback' && !state.releases.some(item => item.revisionId === id)) throw new Error('Rollback requires a previously published revision.');
   const publishedPages = action === 'rollback' && state.releases.find(item => item.revisionId === id)?.pageRevisions
     ? state.releases.find(item => item.revisionId === id)!.pageRevisions! : { ...state.publishedPages, ...state.stagedPages, [pagePath]: id };
