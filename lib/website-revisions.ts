@@ -13,7 +13,7 @@ export function applyHtmlEdits(original: string, output: string) {
   const edits = decodeHtmlEdits(output);
   let html = original;
   for (const edit of edits) {
-    if (html.split(edit.before).length !== 2) throw new Error('An agent edit did not uniquely match the saved HTML. Source preserved.');
+    if (html.split(edit.before).length !== 2) throw new Error(`Edit target occurs ${html.split(edit.before).length - 1} times in the HTML: ${edit.before.slice(0, 120)}. Target a unique HTML substring. External CSS is reference-only; insert page-local CSS before </head>. Source preserved.`);
     html = html.replace(edit.before, () => edit.after);
   }
   const resources = (text: string) => [...text.matchAll(/\b(?:src|href)\s*=\s*['"]([^'"]+)['"]/gi)].map(match => match[1]);

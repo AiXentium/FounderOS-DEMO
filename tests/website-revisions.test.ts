@@ -3,9 +3,17 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { openDb } from '@/lib/db';
-import { changeRelease, saveRevision, safeFile, snapshotSource, previewHtml, hash } from '@/lib/website-revisions';
+import { applyHtmlEdits, changeRelease, saveRevision, safeFile, snapshotSource, previewHtml, hash } from '@/lib/website-revisions';
 
 describe('one-page website revisions', () => {
+  it('applies page-local CSS without changing external source files or resource URLs', () => {
+    const html = '<html><head><link href="assets/style.css"></head><body><img src="assets/image.jpg"></body></html>';
+    expect(() => applyHtmlEdits(html, JSON.stringify({ edits: [{ before: '.mobile-nav { display: block; }', after: '.mobile-nav { display: none; }' }] }))).toThrow(/External CSS is reference-only/);
+    const result = applyHtmlEdits(html, JSON.stringify({ edits: [{ before: '</head>', after: '<style>html{overflow-x:clip}</style></head>' }] }));
+    expect(result).toContain('html{overflow-x:clip}');
+    expect(result).toContain('href="assets/style.css"');
+    expect(result).toContain('src="assets/image.jpg"');
+  });
   it('snapshots complete assets, resolves directory indexes and rejects escapes', async () => {
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'website-revisions-'));
     try {
