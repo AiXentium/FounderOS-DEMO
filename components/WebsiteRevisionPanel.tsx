@@ -54,6 +54,42 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       setState(body.state); setMessage('Structured page revision saved. Preview it, run QA, and approve before publishing.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Structured edit failed.'); await refresh().catch(() => undefined); } finally { setBusy(false); }
   };
+  const promptManage = (actionName: string) => {
+    if (actionName === 'createPage') {
+      const path = window.prompt('New page path (for example campaigns/summer-madrid/index.html)'); if (!path) return;
+      const title = window.prompt('Page title'); if (!title) return;
+      const pageType = window.prompt('Page type: standard, article, destination, or campaign', 'campaign') || 'campaign';
+      void manage({ action: 'createPage', pagePath: path, title, pageType }); return;
+    }
+    if (actionName === 'updateSeo') {
+      const title = window.prompt('SEO title', revision?.document?.seo.title || ''); if (title === null) return;
+      const description = window.prompt('Meta description', revision?.document?.seo.description || ''); if (description === null) return;
+      const canonical = window.prompt('Canonical URL (optional)', revision?.document?.seo.canonical || ''); if (canonical === null) return;
+      void manage({ action: 'updateSeo', seo: { title, description, canonical: canonical || undefined, noIndex: revision?.document?.seo.noIndex || false } }); return;
+    }
+    if (actionName === 'editSourceText') {
+      const match = window.prompt('Exact visible text to replace'); if (!match) return;
+      const replacement = window.prompt('Replacement text (plain text only)', match); if (replacement === null) return;
+      void manage({ action: 'editSourceText', match, replacement }); return;
+    }
+    if (actionName === 'swapSourceImage') {
+      const sourceUrl = window.prompt('Exact current image URL or path'); if (!sourceUrl) return;
+      const replacementUrl = window.prompt('Replacement image URL or imported asset path'); if (!replacementUrl) return;
+      const alt = window.prompt('Accessible alt text', '') ?? '';
+      void manage({ action: 'swapSourceImage', sourceUrl, replacementUrl, alt }); return;
+    }
+    if (actionName === 'editSourceCta') {
+      const match = window.prompt('Exact current button/link label'); if (!match) return;
+      const replacement = window.prompt('New button/link label', match); if (replacement === null) return;
+      const href = window.prompt('New destination URL or path (leave blank to keep current)', '') ?? '';
+      void manage({ action: 'editSourceCta', match, replacement, href: href || undefined }); return;
+    }
+    if (actionName === 'schedule') {
+      const scheduleAction = window.prompt('Schedule action: publish or unpublish', 'publish'); if (!scheduleAction) return;
+      const scheduledFor = window.prompt('Date and time (ISO format, for example 2026-09-10T14:00:00-04:00)'); if (!scheduledFor) return;
+      void manage({ action: 'schedule', scheduleAction, scheduledFor, pagePath: state?.pagePath, revisionId: revision?.id });
+    }
+  };
   const running = state?.runs.some(item => item.status === 'running');
   if (state && state.projectId !== projectId) return <div className="p-4 text-os-text">This duplicate is not the canonical project. Load project {state.projectId} from Saved Projects to continue the pilot.</div>;
   return <section className="min-w-0 bg-os-surface text-os-text">
@@ -62,12 +98,17 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       {!state && <><select aria-label="Pilot page" className="max-w-full bg-os-surface2 p-2 text-xs" value={pagePath} onChange={e => setPagePath(e.target.value)}>{pages.map(page => <option key={page.path} value={page.path}>{page.title} ({page.path})</option>)}</select><button className={button} disabled={busy || !pagePath} onClick={() => void action('canonical')}>Use this project and page</button></>}
       {state && revision && <>
         <select aria-label="Selected website page" className="max-w-full bg-os-surface2 p-2 text-xs" value={state.pagePath} onChange={e => { const next = e.target.value; setPagePath(next); void action('selectPage', undefined, next); }} disabled={busy || running}>{pages.map(page => <option key={page.path} value={page.path}>{page.title} ({page.path})</option>)}</select>
-        <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.filter(item => (item.pagePath ?? state.pagePath) === state.pagePath).map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.kind} - {item.createdAt} {item.approvedHash ? '(approved)' : ''}</option>)}</select>
+        <select aria-label="Saved page revision" className="max-w-full bg-os-surface2 p-2 text-xs" value={revision.id} onChange={e => void action('select', e.target.value)} disabled={busy || running}>{state.revisions.filter(item => (item.pagePath ?? state.pagePath) === state.pagePath).map((item, i) => <option key={item.id} value={item.id}>{i + 1}. {item.status} · {item.kind} · {item.attribution?.label || 'system/import'} · {item.createdAt}</option>)}</select>
         <div className="text-xs">Original source protected. Previewing revision {revision.id.slice(0, 8)}.</div>
         <details className="border border-os-border p-3 text-xs" open={!!revision.document}>
           <summary>Controlled page manager {revision.document ? `· ${revision.document.sections.length} sections · ${revision.document.templateId}` : '· initialize with your first section'}</summary>
           <p className="my-2 text-os-dim">Creates attributed revisions from approved templates and variants. It never accepts custom CSS or HTML.</p>
           <div className="flex flex-wrap gap-2">
+            <button className={button} disabled={busy} onClick={() => promptManage('createPage')}>Create page / campaign</button>
+            <button className={button} disabled={busy} onClick={() => promptManage('updateSeo')}>Edit SEO</button>
+            <button className={button} disabled={busy} onClick={() => promptManage('editSourceText')}>Edit existing copy</button>
+            <button className={button} disabled={busy} onClick={() => promptManage('editSourceCta')}>Edit existing CTA</button>
+            <button className={button} disabled={busy} onClick={() => promptManage('swapSourceImage')}>Swap existing image</button>
             <select aria-label="Approved template" className="bg-os-surface2 p-2" value={revision.document?.templateId || 'affiliate-magazine'} onChange={e => void manage({ action: 'changeTemplate', templateId: e.target.value })} disabled={busy}>{templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}</select>
             {(['hero', 'rich-text', 'image', 'gallery', 'highlights', 'cards', 'itinerary', 'affiliate', 'faq', 'cta'] as const).map(type => <button key={type} className={button} disabled={busy} onClick={() => void manage({ action: 'addSection', section: { id: `${type}-${Date.now()}`, type, variant: type === 'itinerary' ? 'timeline' : type === 'gallery' || type === 'cards' ? 'grid' : 'standard', heading: type.replace('-', ' '), body: '', items: [], offerIds: [], visible: true } })}>+ {type}</button>)}
           </div>
@@ -76,12 +117,19 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
             <button className={button} disabled={busy || index === 0} onClick={() => void manage({ action: 'reorderSection', sectionId: section.id, index: index - 1 })}>↑</button>
             <button className={button} disabled={busy || index === revision.document!.sections.length - 1} onClick={() => void manage({ action: 'reorderSection', sectionId: section.id, index: index + 1 })}>↓</button>
             <select aria-label={`${section.id} variant`} className="bg-os-surface2 p-2" value={section.variant} onChange={e => void manage({ action: 'editSection', sectionId: section.id, patch: { variant: e.target.value } })}>{['standard', 'centered', 'split', 'grid', 'timeline', 'compact', 'feature'].map(item => <option key={item}>{item}</option>)}</select>
+            <button className={button} disabled={busy} onClick={() => { const heading = window.prompt('Section heading', section.heading || ''); if (heading === null) return; const body = window.prompt('Section copy', section.body || ''); if (body === null) return; void manage({ action: 'editSection', sectionId: section.id, patch: { heading, body } }); }}>Edit copy</button>
+            <button className={button} disabled={busy} onClick={() => { const label = window.prompt('CTA label', section.cta?.label || ''); if (label === null) return; const href = window.prompt('CTA destination', section.cta?.href || '#'); if (href === null) return; void manage({ action: 'editSection', sectionId: section.id, patch: { cta: label ? { label, href } : undefined } }); }}>Edit CTA</button>
+            <button className={button} disabled={busy} onClick={() => { const src = window.prompt('Image URL or imported asset path', section.image?.src || ''); if (src === null) return; const alt = window.prompt('Accessible alt text', section.image?.alt || '') ?? ''; void manage({ action: 'editSection', sectionId: section.id, patch: { image: src ? { src, alt } : undefined } }); }}>Swap image</button>
+            <button className={button} disabled={busy} onClick={() => void manage({ action: 'editSection', sectionId: section.id, patch: { visible: !section.visible } })}>{section.visible ? 'Hide' : 'Show'}</button>
             <button className={button} disabled={busy} onClick={() => void manage({ action: 'removeSection', sectionId: section.id })}>Remove</button>
           </div>)}
           <div className="mt-3 flex flex-wrap gap-2 border-t border-os-border pt-3">
             <select aria-label="Approved manual Amazon product" className="min-w-48 bg-os-surface2 p-2" value={affiliateProductId} onChange={e => setAffiliateProductId(e.target.value)}><option value="">Approved manual Amazon product</option>{affiliateProducts.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select>
             <button className={button} disabled={busy || !affiliateProductId} onClick={() => void manage({ action: 'attachCatalogAffiliate', catalogProductId: affiliateProductId })}>Add Amazon proposal</button>
+            <button className={button} disabled={busy} onClick={() => promptManage('schedule')}>Schedule publish/unpublish</button>
+            <button className={button} disabled={busy || !state.publishedPages[state.pagePath]} onClick={() => void manage({ action: 'unpublish', pagePath: state.pagePath })}>Unpublish page</button>
           </div>
+          {state.schedules.filter(item => item.pagePath === state.pagePath).length > 0 && <div className="mt-3 space-y-2 border-t border-os-border pt-3"><div>Publishing schedule</div>{state.schedules.filter(item => item.pagePath === state.pagePath).map(item => <div key={item.id} className="flex flex-wrap items-center gap-2"><span>{item.action} · {item.scheduledFor} · {item.status} · {item.attribution.label}</span>{item.status === 'scheduled' && <button className={button} disabled={busy} onClick={() => void manage({ action: 'cancelSchedule', scheduleId: item.id })}>Cancel</button>}</div>)}</div>}
         </details>
         {revision.kind === 'agent' && <details className="space-y-2 text-xs" open><summary>Revision report: {revision.status} | QA: {revision.qa.status}</summary>
           <p>{revision.qa.summary}</p>
@@ -97,7 +145,7 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
           <button className={button} disabled={busy || running || !!revision.approvedHash} onClick={() => void action('approve')}>Approve this revision</button>
           <button className={button} disabled={busy || running || revision.status === 'rejected'} onClick={() => void action('reject')}>Reject this revision</button>
           <button className={button} disabled={busy || running || !revision.approvedHash} onClick={() => void action('stage')}>Stage this revision</button>
-          <a className={button} target="_blank" rel="noreferrer" href="/preview">Open preview</a>
+          <a className={button} target="_blank" rel="noreferrer" href={`/api/website/view/preview/${revision.id}`}>Open exact preview</a>
           {revision.stagedHash && <><a className={button} target="_blank" rel="noreferrer" href="/staging">Open staging</a><button className={button} disabled={busy || running} onClick={() => void action('publish')}>Publish this revision</button></>}
           {state.releases.some(item => item.revisionId === revision.id) && state.publishedId !== revision.id && <button className={button} disabled={busy || running} onClick={() => void action('rollback')}>Roll back to this revision</button>}
           {state.publishedId && <a className={button} href="/site" target="_blank" rel="noreferrer">Open published page</a>}
@@ -109,6 +157,6 @@ export function WebsiteRevisionPanel({ projectId }: { projectId: string }) {
       {state?.runs.map(run => <details key={run.id} className="text-xs"><summary>{run.status}: {run.request} {run.error}</summary>{run.results.map((result, index) => <div key={`${result.agentId}-${index}`}><p>{result.agentId}</p><pre className="max-h-48 overflow-auto whitespace-pre-wrap">{result.reply}</pre></div>)}</details>)}
       <div className="text-[10px] text-os-dim">Build {build.slice(0, 12)}</div>
     </div>
-    {revision && <iframe key={revision.id} title="Selected saved HTML revision" sandbox="allow-scripts" src="/preview" className="h-[780px] w-full border-0 bg-white" />}
+    {revision && <iframe key={revision.id} title="Selected saved HTML revision" sandbox="allow-scripts" src={`/api/website/view/preview/${revision.id}`} className="h-[780px] w-full border-0 bg-white" />}
   </section>;
 }
